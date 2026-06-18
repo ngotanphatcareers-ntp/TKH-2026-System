@@ -350,3 +350,126 @@ function filterStudentsDemo() {
         }
     });
 }
+
+const profileDemoUsers = {
+    tkh001: {
+        username: "tkh001",
+        fullName: "Trịnh Trần Thiên Phú",
+        groupName: "Giô-sép",
+        initial: "P",
+        baseEncourage: 12
+    },
+    tkh002: {
+        username: "tkh002",
+        fullName: "Ngô Tấn Phát",
+        groupName: "Giô-sép",
+        initial: "P",
+        baseEncourage: 8
+    },
+    tkh003: {
+        username: "tkh003",
+        fullName: "Phạm Bá Nam",
+        groupName: "Đa-vít",
+        initial: "N",
+        baseEncourage: 15
+    }
+};
+
+function getProfileUsernameFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("user") || "tkh001";
+}
+
+function loadProfileDemo() {
+    if (!window.location.pathname.includes("profile.html")) {
+        return;
+    }
+
+    const profileUsername = getProfileUsernameFromUrl();
+    const profileUser = profileDemoUsers[profileUsername];
+
+    if (!profileUser) {
+        document.getElementById("profileName").innerText = "Không tìm thấy thành viên";
+        return;
+    }
+
+    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+
+    document.getElementById("profileName").innerText = "Hồ sơ: " + profileUser.fullName;
+    document.getElementById("profileGroup").innerText = "Nhóm: " + profileUser.groupName;
+    document.getElementById("profileAvatar").innerText = profileUser.initial;
+    document.getElementById("profileFullName").innerText = profileUser.fullName;
+    document.getElementById("profileUsername").innerText = profileUser.username + " · " + profileUser.groupName;
+
+    const encourageKey = "encourage_" + profileUsername;
+    const encouragedByKey = "encouragedBy_" + profileUsername;
+
+    const extraCount = Number(localStorage.getItem(encourageKey)) || 0;
+    document.getElementById("encourageCount").innerText =
+        profileUser.baseEncourage + extraCount;
+
+    const encourageButton = document.querySelector(".encourage-btn");
+    const encourageMessage = document.getElementById("encourageMessage");
+
+    if (currentUser && currentUser.username === profileUsername) {
+        encourageButton.disabled = true;
+        encourageMessage.style.color = "red";
+        encourageMessage.innerText = "Bạn không thể tự khích lệ chính mình.";
+        return;
+    }
+
+    if (currentUser) {
+        const encouragedBy = JSON.parse(localStorage.getItem(encouragedByKey)) || [];
+
+        if (encouragedBy.includes(currentUser.username)) {
+            encourageButton.disabled = true;
+            encourageMessage.style.color = "#374151";
+            encourageMessage.innerText = "Bạn đã khích lệ thành viên này rồi.";
+        }
+    }
+}
+
+function encourageUserDemo() {
+    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+
+    if (!currentUser) {
+        window.location.href = "index.html";
+        return;
+    }
+
+    const profileUsername = getProfileUsernameFromUrl();
+
+    if (currentUser.username === profileUsername) {
+        return;
+    }
+
+    const encourageKey = "encourage_" + profileUsername;
+    const encouragedByKey = "encouragedBy_" + profileUsername;
+
+    const profileUser = profileDemoUsers[profileUsername];
+
+    let extraCount = Number(localStorage.getItem(encourageKey)) || 0;
+    let encouragedBy = JSON.parse(localStorage.getItem(encouragedByKey)) || [];
+
+    if (encouragedBy.includes(currentUser.username)) {
+        return;
+    }
+
+    extraCount++;
+    encouragedBy.push(currentUser.username);
+
+    localStorage.setItem(encourageKey, extraCount);
+    localStorage.setItem(encouragedByKey, JSON.stringify(encouragedBy));
+
+    document.getElementById("encourageCount").innerText =
+        profileUser.baseEncourage + extraCount;
+
+    const encourageButton = document.querySelector(".encourage-btn");
+    const encourageMessage = document.getElementById("encourageMessage");
+
+    encourageButton.disabled = true;
+    encourageMessage.style.color = "green";
+    encourageMessage.innerText = "Bạn đã gửi một lời khích lệ!";
+}
+
+document.addEventListener("DOMContentLoaded", loadProfileDemo);
