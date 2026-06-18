@@ -53,6 +53,7 @@ function loginDemo() {
     }
 
     localStorage.setItem("currentUser", JSON.stringify(user));
+    localStorage.setItem("currentUsername", user.username);
 
     message.style.color = "green";
     message.innerText = "Đăng nhập thành công!";
@@ -314,7 +315,17 @@ function loadDashboardUser() {
         return;
     }
 
-    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+    const currentUsername = localStorage.getItem("currentUsername");
+
+    let currentUser = null;
+
+    if (currentUsername) {
+        currentUser = demoUsers.find(user => user.username === currentUsername);
+    }
+
+    if (!currentUser) {
+        currentUser = JSON.parse(localStorage.getItem("currentUser"));
+    }
 
     if (!currentUser) {
         window.location.href = "index.html";
@@ -496,3 +507,15 @@ document.addEventListener("visibilitychange", function () {
         runDashboardLoader();
     }
 });
+
+
+function runPageLoaders() {
+    loadDashboardUser();
+
+    setTimeout(() => {
+        loadDashboardUser();
+    }, 300);
+}
+
+document.addEventListener("DOMContentLoaded", runPageLoaders);
+window.addEventListener("pageshow", runPageLoaders);
