@@ -402,8 +402,10 @@ function getProfileUsernameFromUrl() {
 }
 
 function loadProfileDemo() {
-    if (!window.location.pathname.includes("profile.html")) {
-        return;
+    const currentPage = window.location.pathname.split("/").pop();
+
+    if (currentPage !== "profile.html") {
+    return;
     }
 
     const profileUsername = getProfileUsernameFromUrl();
@@ -493,47 +495,15 @@ function encourageUserDemo() {
     encourageMessage.innerText = "Bạn đã gửi một lời khích lệ!";
 }
 
-document.addEventListener("DOMContentLoaded", loadProfileDemo);
-
-
-function runDashboardLoader() {
-    loadDashboardUser();
-
-    setTimeout(() => {
-        loadDashboardUser();
-    }, 300);
-}
-
-document.addEventListener("DOMContentLoaded", runDashboardLoader);
-
-window.addEventListener("pageshow", runDashboardLoader);
-
-document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) {
-        runDashboardLoader();
-    }
-});
-
-
 function runPageLoaders() {
-    loadDashboardUser();
-
-    setTimeout(() => {
+    if (typeof loadDashboardUser === "function") {
         loadDashboardUser();
-    }, 300);
+    }
+
+    if (typeof loadProfileDemo === "function") {
+        loadProfileDemo();
+    }
 }
 
 document.addEventListener("DOMContentLoaded", runPageLoaders);
 window.addEventListener("pageshow", runPageLoaders);
-
-
-function runProfileLoader() {
-    loadProfileDemo();
-
-    setTimeout(() => {
-        loadProfileDemo();
-    }, 300);
-}
-
-document.addEventListener("DOMContentLoaded", runProfileLoader);
-window.addEventListener("pageshow", runProfileLoader);
