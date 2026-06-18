@@ -626,9 +626,9 @@ function showAdminShortcutDemo() {
 
     adminLinks.forEach(link => {
         if (currentUser && currentUser.role === "admin") {
-            link.style.display = "block";
+            link.classList.add("show-admin-link");
         } else {
-            link.style.display = "none";
+            link.classList.remove("show-admin-link");
         }
     });
 }

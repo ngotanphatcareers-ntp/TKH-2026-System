@@ -685,5 +685,9 @@ body {
 }
 
 .sidebar a.admin-only {
-    display: none !important;
+    display: none;
+}
+
+.sidebar a.admin-only.show-admin-link {
+    display: block !important;
 }
