@@ -344,7 +344,7 @@ function loadDashboardUser() {
     }
 }
 
-document.addEventListener("DOMContentLoaded", loadDashboardUser);
+
 
 // window.addEventListener("pageshow", function () {
 //     loadDashboardUser();
@@ -402,9 +402,7 @@ function getProfileUsernameFromUrl() {
 }
 
 function loadProfileDemo() {
-    const currentPage = window.location.pathname.split("/").pop();
-
-    if (currentPage !== "profile.html") {
+    if (!document.getElementById("profileFullName")) {
     return;
     }
 
@@ -496,11 +494,13 @@ function encourageUserDemo() {
 }
 
 function runPageLoaders() {
-    if (typeof loadDashboardUser === "function") {
+    const currentPage = window.location.pathname.split("/").pop();
+
+    if (currentPage === "dashboard.html") {
         loadDashboardUser();
     }
 
-    if (typeof loadProfileDemo === "function") {
+    if (currentPage === "profile.html") {
         loadProfileDemo();
     }
 }
