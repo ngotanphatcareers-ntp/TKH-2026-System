@@ -310,6 +310,10 @@ function toggleMobileMenu() {
 }//hết
 
 function loadDashboardUser() {
+    if (!window.location.pathname.includes("dashboard.html")) {
+        return;
+    }
+
     const currentUser = JSON.parse(localStorage.getItem("currentUser"));
 
     if (!currentUser) {
