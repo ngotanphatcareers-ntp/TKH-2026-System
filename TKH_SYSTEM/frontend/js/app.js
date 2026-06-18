@@ -335,9 +335,9 @@ function loadDashboardUser() {
 
 document.addEventListener("DOMContentLoaded", loadDashboardUser);
 
-window.addEventListener("pageshow", function () {
-    loadDashboardUser();
-});
+// window.addEventListener("pageshow", function () {
+//     loadDashboardUser();
+// });
 
 
 function filterStudentsDemo() {
@@ -477,3 +477,22 @@ function encourageUserDemo() {
 }
 
 document.addEventListener("DOMContentLoaded", loadProfileDemo);
+
+
+function runDashboardLoader() {
+    loadDashboardUser();
+
+    setTimeout(() => {
+        loadDashboardUser();
+    }, 300);
+}
+
+document.addEventListener("DOMContentLoaded", runDashboardLoader);
+
+window.addEventListener("pageshow", runDashboardLoader);
+
+document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) {
+        runDashboardLoader();
+    }
+});
