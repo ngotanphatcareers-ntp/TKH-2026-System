@@ -88,6 +88,50 @@ const CHURCH_LOCATION = {
 
 const CHECKIN_RADIUS_METERS = 200;
 
+
+function saveAttendanceDemo() {
+
+    const currentUser =
+        JSON.parse(localStorage.getItem("currentUser")) ||
+        demoUsers.find(
+            user => user.username === localStorage.getItem("currentUsername")
+        );
+
+    if (!currentUser) {
+        return;
+    }
+
+    const attendanceHistory =
+        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+
+    const today = new Date().toDateString();
+
+    const alreadyChecked =
+    attendanceHistory.find(
+        item =>
+            item.username === currentUser.username &&
+            new Date(item.checkInTime).toDateString() === today
+    );
+
+    if (alreadyChecked) {
+    return;
+    }
+
+attendanceHistory.unshift({
+        username: currentUser.username,
+        fullName: currentUser.fullName,
+        session: "Buổi học hiện tại",
+        status: "Có mặt",
+        checkInTime: new Date().toLocaleString("vi-VN")
+    });
+
+    localStorage.setItem(
+        "attendanceHistory",
+        JSON.stringify(attendanceHistory)
+    );
+}
+
+
 function checkInDemo() {
     const gpsMessage = document.getElementById("gpsMessage");
     const statusCard = document.getElementById("attendanceStatus");
@@ -139,6 +183,9 @@ function checkInDemo() {
 
                 gpsMessage.style.color = "green";
                 gpsMessage.innerText = "✅ Bạn đang trong khu vực điểm danh.";
+
+                saveAttendanceDemo();
+                loadAttendanceHistoryDemo();
             } else {
                 statusCard.className = "status-card status-fail";
                 statusCard.innerText = "Ngoài khu vực điểm danh";
@@ -493,9 +540,65 @@ function encourageUserDemo() {
     encourageMessage.innerText = "Bạn đã gửi một lời khích lệ!";
 }
 
+
+//hàm lịch sử điểm danh
+function loadAttendanceHistoryDemo() {
+
+    const historyContainer =
+        document.getElementById("attendanceHistory");
+
+    if (!historyContainer) {
+        return;
+    }
+
+    const currentUser =
+        JSON.parse(localStorage.getItem("currentUser")) ||
+        demoUsers.find(
+            user => user.username === localStorage.getItem("currentUsername")
+        );
+
+    if (!currentUser) {
+        return;
+    }
+
+    const attendanceHistory =
+        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+
+    const myHistory =
+        attendanceHistory.filter(
+            item => item.username === currentUser.username
+        );
+
+    if (myHistory.length === 0) {
+
+        historyContainer.innerHTML = `
+            <p>Chưa có lịch sử điểm danh.</p>
+        `;
+
+        return;
+    }
+
+    historyContainer.innerHTML =
+        myHistory.map(item => `
+            <div class="question-card">
+                <h3>${item.session}</h3>
+                <p>Trạng thái: ${item.status}</p>
+                <p class="question-meta">
+                    ${item.checkInTime}
+                </p>
+            </div>
+        `).join("");
+}//hết
+
+
+
 function runPageLoaders() {
     loadDashboardUser();
     loadProfileDemo();
+    loadAttendanceHistoryDemo();
+    loadMyQuestionsDemo();
+    loadAdminQuestionsDemo();
+    showAdminShortcutDemo();
 }
 
 document.addEventListener("DOMContentLoaded", runPageLoaders);
@@ -607,13 +710,6 @@ function loadAdminQuestionsDemo() {
     `).join("");
 }
 
-function runQuestionLoaders() {
-    loadMyQuestionsDemo();
-    loadAdminQuestionsDemo();
-}
-
-document.addEventListener("DOMContentLoaded", runQuestionLoaders);
-window.addEventListener("pageshow", runQuestionLoaders);
 
 
 //chỉ admin thấy
@@ -633,6 +729,5 @@ function showAdminShortcutDemo() {
     });
 }
 
-document.addEventListener("DOMContentLoaded", showAdminShortcutDemo);
-window.addEventListener("pageshow", showAdminShortcutDemo);
 //hết
+
