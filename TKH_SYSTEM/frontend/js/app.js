@@ -335,6 +335,10 @@ function loadDashboardUser() {
 
 document.addEventListener("DOMContentLoaded", loadDashboardUser);
 
+window.addEventListener("pageshow", function () {
+    loadDashboardUser();
+});
+
 
 function filterStudentsDemo() {
     const keyword = document.getElementById("studentSearch").value.toLowerCase();
