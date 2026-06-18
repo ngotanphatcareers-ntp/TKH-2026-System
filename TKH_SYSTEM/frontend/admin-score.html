@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TKH 2026 - Quản lý điểm số</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="app-page">
+
+<aside class="sidebar">
+    <h2>TKH Admin</h2>
+    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰ Menu</button>
+    <a href="admin-dashboard.html">Tổng quan Admin</a>
+    <a href="admin-members.html">Quản lý thành viên</a>
+    <a href="admin-groups.html">Quản lý nhóm</a>
+    <a href="admin-attendance.html">Quản lý điểm danh</a>
+    <a href="admin-session.html">Quản lý buổi học</a>
+    <a href="admin-score.html" class="active">Quản lý điểm số</a>
+    <a href="admin-schedule.html">Quản lý lịch học</a>
+    <a href="dashboard.html">Trang học viên</a>
+</aside>
+
+<main class="main-content">
+
+    <div class="topbar">
+        <div>
+            <h1>Quản lý điểm số</h1>
+            <p>Cộng/trừ điểm cá nhân và theo dõi lịch sử điểm TKH.</p>
+        </div>
+
+        <button onclick="logoutDemo()">Đăng xuất</button>
+    </div>
+
+    <div class="cards">
+        <div class="info-card">
+            <h3>Tổng điểm đã cộng</h3>
+            <p class="big-number">1,250</p>
+            <span>Toàn chương trình</span>
+        </div>
+
+        <div class="info-card">
+            <h3>Điểm Bible Challenge</h3>
+            <p class="big-number">320</p>
+            <span>Từ trả bài cũ</span>
+        </div>
+
+        <div class="info-card">
+            <h3>Nhóm dẫn đầu</h3>
+            <p class="big-number">Đa-vít</p>
+            <span>460 điểm</span>
+        </div>
+    </div>
+
+    <section class="attendance-box password-box">
+        <h2>Cộng / trừ điểm thủ công</h2>
+
+        <label>Chọn thành viên</label>
+        <select class="form-input" id="scoreUser">
+            <option>Nguyễn Văn A - Giô-sép</option>
+            <option>Trần Thị B - Giô-sép</option>
+            <option>Lê Văn C - Đa-vít</option>
+            <option>Phạm Thị D - Ê-xơ-tê</option>
+        </select>
+
+        <label>Loại điểm</label>
+        <select class="form-input" id="scoreType">
+            <option value="bible_challenge">Trả bài cũ / Bible Challenge</option>
+            <option value="attendance">Điểm danh</option>
+            <option value="memory_verse">Thuộc câu gốc</option>
+            <option value="game">Trò chơi</option>
+            <option value="manual">Thủ công</option>
+            <option value="late">Đi trễ</option>
+        </select>
+
+        <label>Số điểm</label>
+        <input type="number" id="scoreValue" placeholder="Ví dụ: 10 hoặc -5">
+
+        <label>Lý do</label>
+        <input type="text" id="scoreReason" placeholder="Ví dụ: Trả bài cũ tốt">
+
+        <button class="checkin-btn" onclick="addScoreDemo()">
+            Lưu điểm
+        </button>
+
+        <p id="scoreMessage"></p>
+    </section>
+
+    <div class="attendance-box">
+        <h2>Lịch sử điểm gần đây</h2>
+
+        <table class="score-table">
+            <thead>
+                <tr>
+                    <th>Ngày</th>
+                    <th>Thành viên</th>
+                    <th>Nhóm</th>
+                    <th>Loại điểm</th>
+                    <th>Điểm</th>
+                    <th>Lý do</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr>
+                    <td>08/06/2026</td>
+                    <td>Nguyễn Văn A</td>
+                    <td>Giô-sép</td>
+                    <td>Bible Challenge</td>
+                    <td>+10</td>
+                    <td>Trả bài cũ tốt</td>
+                </tr>
+
+                <tr>
+                    <td>08/06/2026</td>
+                    <td>Trần Thị B</td>
+                    <td>Giô-sép</td>
+                    <td>Điểm danh</td>
+                    <td>+5</td>
+                    <td>Điểm danh hợp lệ</td>
+                </tr>
+
+                <tr>
+                    <td>08/06/2026</td>
+                    <td>Lê Văn C</td>
+                    <td>Đa-vít</td>
+                    <td>Đi trễ</td>
+                    <td>-2</td>
+                    <td>Đi trễ 15 phút</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</main>
+
+<script src="js/app.js"></script>
+
+</body>
+</html>

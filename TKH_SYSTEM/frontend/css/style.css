@@ -1,0 +1,514 @@
+* {
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    margin: 0;
+}
+
+.login-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0f172a, #1d4ed8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+}
+
+.login-wrapper {
+    width: 100%;
+    max-width: 1000px;
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    background: rgba(255,255,255,0.08);
+    border-radius: 28px;
+    overflow: hidden;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.35);
+}
+
+.login-left {
+    padding: 60px;
+    color: white;
+}
+
+.label {
+    letter-spacing: 3px;
+    font-size: 13px;
+    opacity: 0.85;
+}
+
+.login-left h1 {
+    font-size: 54px;
+    margin: 20px 0 12px;
+}
+
+.subtitle {
+    font-size: 18px;
+    line-height: 1.6;
+    max-width: 420px;
+    opacity: 0.9;
+}
+
+.login-card {
+    background: white;
+    padding: 48px;
+}
+
+.login-card h2 {
+    margin: 0 0 8px;
+    font-size: 30px;
+    color: #111827;
+}
+
+.hint {
+    margin-bottom: 28px;
+    color: #6b7280;
+}
+
+.login-card label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #374151;
+}
+
+.login-card input {
+    width: 100%;
+    padding: 14px;
+    margin-bottom: 18px;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    font-size: 15px;
+}
+
+.login-card button {
+    width: 100%;
+    padding: 15px;
+    margin-top: 8px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.login-card button:hover {
+    background: #1d4ed8;
+}
+
+#loginMessage {
+    margin-top: 18px;
+    text-align: center;
+    font-weight: bold;
+}
+
+@media (max-width: 768px) {
+    .login-wrapper {
+        grid-template-columns: 1fr;
+    }
+
+    .login-left {
+        padding: 36px;
+    }
+
+    .login-left h1 {
+        font-size: 38px;
+    }
+
+    .login-card {
+        padding: 36px;
+    }
+}
+
+.app-page {
+    min-height: 100vh;
+    display: flex;
+    background: #f3f4f6;
+    color: #111827;
+}
+
+.sidebar {
+    width: 250px;
+    background: #0f172a;
+    color: white;
+    padding: 28px 20px;
+}
+
+.sidebar h2 {
+    margin: 0 0 32px;
+}
+
+.sidebar a {
+    display: block;
+    color: #cbd5e1;
+    text-decoration: none;
+    padding: 13px 14px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+}
+
+.sidebar a:hover,
+.sidebar a.active {
+    background: #2563eb;
+    color: white;
+}
+
+.main-content {
+    flex: 1;
+    padding: 32px;
+}
+
+.topbar {
+    background: white;
+    border-radius: 18px;
+    padding: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.topbar h1 {
+    margin: 0 0 6px;
+}
+
+.topbar p {
+    margin: 0;
+    color: #6b7280;
+}
+
+.topbar button {
+    padding: 12px 18px;
+    border: none;
+    border-radius: 10px;
+    background: #ef4444;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+    margin-top: 24px;
+}
+
+.info-card {
+    background: white;
+    border-radius: 18px;
+    padding: 24px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+}
+
+.info-card h3 {
+    margin: 0 0 12px;
+    color: #374151;
+}
+
+.big-number {
+    font-size: 42px;
+    font-weight: bold;
+    margin: 0 0 8px;
+    color: #2563eb;
+}
+
+.info-card span {
+    color: #6b7280;
+}
+
+.attendance-box {
+    margin-top: 24px;
+    background: white;
+    border-radius: 18px;
+    padding: 28px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+}
+
+.attendance-box h2 {
+    margin-top: 0;
+}
+
+.status-card {
+    padding: 22px;
+    border-radius: 16px;
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 22px;
+}
+
+.status-waiting {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-success {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-fail {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.checkin-btn {
+    width: 100%;
+    padding: 16px;
+    background: #16a34a;
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-size: 17px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.checkin-btn:hover {
+    background: #15803d;
+}
+
+.gps-info {
+    margin-top: 24px;
+    padding: 18px;
+    background: #f9fafb;
+    border-radius: 14px;
+}
+
+.gps-info p {
+    margin: 10px 0;
+}
+
+#gpsMessage {
+    margin-top: 18px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.distance-label {
+    margin: 0;
+    color: #6b7280;
+    text-align: center;
+}
+
+.distance-number {
+    margin: 8px 0 0;
+    font-size: 34px;
+    font-weight: bold;
+    color: #2563eb;
+    text-align: center;
+}
+
+.score-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.score-table th,
+.score-table td {
+    border-bottom: 1px solid #e5e7eb;
+    padding: 14px;
+    text-align: left;
+}
+
+.score-table th {
+    background: #f9fafb;
+}
+
+.highlight-row {
+    background: #eff6ff;
+    font-weight: bold;
+}
+
+.highlight-row td {
+    color: #1d4ed8;
+}
+
+.password-box {
+    max-width: 560px;
+}
+
+.password-box label {
+    display: block;
+    margin: 16px 0 8px;
+    font-weight: bold;
+    color: #374151;
+}
+
+.password-box input {
+    width: 100%;
+    padding: 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    font-size: 15px;
+}
+
+#passwordMessage {
+    margin-top: 18px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.admin-actions {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+}
+
+.admin-actions button {
+    padding: 16px;
+    border: none;
+    border-radius: 14px;
+    background: #2563eb;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.admin-actions button:hover {
+    background: #1d4ed8;
+}
+
+.form-input {
+    width: 100%;
+    padding: 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    font-size: 15px;
+    background: white;
+}
+
+#scoreMessage {
+    margin-top: 18px;
+    font-weight: bold;
+    text-align: center;
+}
+
+#sessionMessage {
+    margin-top: 18px;
+    font-weight: bold;
+    text-align: center;
+}
+
+#scheduleMessage {
+    margin-top: 18px;
+    font-weight: bold;
+    text-align: center;
+}
+
+/* =========================
+   MOBILE RESPONSIVE
+   ========================= */
+
+@media (max-width: 768px) {
+
+    .app-page {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        padding: 18px;
+    }
+
+    .sidebar h2 {
+        margin-bottom: 16px;
+        font-size: 22px;
+    }
+
+    .sidebar a {
+        padding: 12px;
+        margin-bottom: 6px;
+        font-size: 15px;
+    }
+
+    .main-content {
+        padding: 16px;
+    }
+
+    .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .topbar h1 {
+        font-size: 24px;
+    }
+
+    .topbar button {
+        width: 100%;
+    }
+
+    .cards {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .info-card {
+        padding: 20px;
+    }
+
+    .big-number {
+        font-size: 32px;
+    }
+
+    .attendance-box {
+        padding: 20px;
+        overflow-x: auto;
+    }
+
+    .admin-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-actions button,
+    .checkin-btn {
+        width: 100%;
+        min-height: 48px;
+    }
+
+    .score-table {
+        min-width: 700px;
+    }
+
+    .password-box {
+        max-width: 100%;
+    }
+
+    .distance-number {
+        font-size: 30px;
+    }
+}
+
+.mobile-menu-btn {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .mobile-menu-btn {
+        display: block;
+        width: 100%;
+        padding: 14px;
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-weight: bold;
+        margin-bottom: 12px;
+        cursor: pointer;
+    }
+
+    @media (max-width: 768px) {
+    .sidebar a {
+        display: none;
+    }
+
+    .sidebar.open a {
+        display: block;
+    }
+}
+}

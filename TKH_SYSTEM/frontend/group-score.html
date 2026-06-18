@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TKH 2026 - Điểm nhóm</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="app-page">
+
+    <aside class="sidebar">
+        <h2>TKH 2026</h2>
+        <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰ Menu</button>
+        <a href="dashboard.html">Tổng quan</a>
+        <a href="attendance.html">Điểm danh</a>
+        <a href="my-score.html">Điểm cá nhân</a>
+        <a href="group-score.html" class="active">Điểm nhóm</a>
+        <a href="schedule.html">Lịch học</a>
+        <a href="change-password.html">Đổi mật khẩu</a>
+        <a href="../TKH-Bible-Challenge/index.html">Bible Challenge</a>
+    </aside>
+
+    <main class="main-content">
+
+        <div class="topbar">
+            <div>
+                <h1>Điểm nhóm</h1>
+                <p>Theo dõi điểm thi đua giữa các nhóm trong chương trình TKH.</p>
+            </div>
+
+            <button onclick="logoutDemo()">Đăng xuất</button>
+        </div>
+
+        <div class="cards">
+            <div class="info-card">
+                <h3>Nhóm của bạn</h3>
+                <p class="big-number">Giô-sép</p>
+                <span>Nhóm hiện tại</span>
+            </div>
+
+            <div class="info-card">
+                <h3>Tổng điểm nhóm</h3>
+                <p class="big-number">420</p>
+                <span>Điểm hiện tại</span>
+            </div>
+
+            <div class="info-card">
+                <h3>Xếp hạng</h3>
+                <p class="big-number">#2</p>
+                <span>Trong 8 nhóm</span>
+            </div>
+        </div>
+
+        <div class="attendance-box">
+            <h2>Bảng xếp hạng nhóm</h2>
+
+            <table class="score-table">
+                <thead>
+                    <tr>
+                        <th>Hạng</th>
+                        <th>Nhóm</th>
+                        <th>Điểm</th>
+                        <th>Trạng thái</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <td>#1</td>
+                        <td>Đa-vít</td>
+                        <td>460</td>
+                        <td>Đang dẫn đầu</td>
+                    </tr>
+                    <tr class="highlight-row">
+                        <td>#2</td>
+                        <td>Giô-sép</td>
+                        <td>420</td>
+                        <td>Nhóm của bạn</td>
+                    </tr>
+                    <tr>
+                        <td>#3</td>
+                        <td>Ê-xơ-tê</td>
+                        <td>390</td>
+                        <td>Đang bám sát</td>
+                    </tr>
+                    <tr>
+                        <td>#4</td>
+                        <td>Đa-ni-ên</td>
+                        <td>360</td>
+                        <td>Cần cố gắng</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="attendance-box">
+            <h2>Lịch sử điểm nhóm</h2>
+
+            <table class="score-table">
+                <thead>
+                    <tr>
+                        <th>Ngày</th>
+                        <th>Nội dung</th>
+                        <th>Điểm</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <td>01/06/2026</td>
+                        <td>Trò chơi khởi động</td>
+                        <td>+50</td>
+                    </tr>
+                    <tr>
+                        <td>03/06/2026</td>
+                        <td>Hoàn thành thử thách nhóm</td>
+                        <td>+80</td>
+                    </tr>
+                    <tr>
+                        <td>08/06/2026</td>
+                        <td>Điểm trả bài của thành viên</td>
+                        <td>+35</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </main>
+
+    <script src="js/app.js"></script>
+
+</body>
+</html>

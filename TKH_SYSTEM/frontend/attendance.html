@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TKH 2026 - Điểm danh</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="app-page">
+
+    <aside class="sidebar">
+        <h2>TKH 2026</h2>
+        <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰ Menu</button>
+        <a href="dashboard.html">Tổng quan</a>
+        <a href="attendance.html" class="active">Điểm danh</a>
+        <a href="my-score.html">Điểm cá nhân</a>
+        <a href="group-score.html">Điểm nhóm</a>
+        <a href="schedule.html">Lịch học</a>
+        <a href="change-password.html">Đổi mật khẩu</a>
+        <a href="../TKH-Bible-Challenge/index.html">Bible Challenge</a>
+    </aside>
+
+    <main class="main-content">
+        <div class="topbar">
+            <div>
+                <h1>Điểm danh hôm nay</h1>
+                <p>Chỉ điểm danh được khi bạn ở trong bán kính 200m từ Nhà Thờ Nguyễn Tri Phương.</p>
+            </div>
+            <button onclick="logoutDemo()">Đăng xuất</button>
+        </div>
+
+        <section class="attendance-box">
+            <h2>Trạng thái điểm danh</h2>
+
+            <div id="attendanceStatus" class="status-card status-waiting">
+                Chưa điểm danh
+            </div>
+
+            <button class="checkin-btn" onclick="checkInDemo()">
+                Điểm danh ngay
+            </button>
+
+            <div class="gps-info">
+            <p class="distance-label">📍 Khoảng cách đến Nhà Thờ Nguyễn Tri Phương</p>
+            <p class="distance-number"><span id="distance">-</span></p>
+            </div>
+
+            <p id="gpsMessage"></p>
+        </section>
+    </main>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

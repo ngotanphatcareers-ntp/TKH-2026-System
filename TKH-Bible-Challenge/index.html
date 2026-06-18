@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TKH Bible Challenge</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+
+
+<body>
+
+<div id="winnerBackdrop"
+     class="winner-backdrop hidden">
+</div>
+
+<div id="winnerBackdrop"
+     class="winner-backdrop hidden">
+</div>
+
+<div id="leaderOverlay" class="leader-overlay hidden">
+
+    <h1 id="leaderText"></h1>
+
+</div>
+
+<div id="winnerOverlay"
+     class="winner-overlay hidden">
+
+    <img id="winnerImage"
+         class="winner-image">
+
+    <h1 id="winnerName"></h1>
+
+</div>
+
+
+
+    <!-- INTRO -->
+
+    <div id="introScreen" class="intro-screen">
+
+        <h1>THÁNH KINH HÈ 2026</h1>
+
+        <h2>BIBLE CHALLENGE</h2>
+
+        <button id="goBtn">GO!</button>
+
+    </div>
+
+    <!-- GROUP SCREEN -->
+
+    <div id="groupScreen" class="group-screen hidden">
+
+        <h1>CHỌN NHÓM</h1>
+
+        <div class="group-grid" id="groupGrid">
+
+        </div>
+
+        <button id="randomBtn">
+            RANDOM
+        </button>
+
+
+        <button id="scoreBtn">
+            SCOREBOARD
+        </button>
+
+
+        <button id="resetBtn">
+            RESET GAME
+        </button>
+
+        
+
+    </div>
+
+    <div id="memberScreen" class="group-screen hidden">
+
+    <h1 id="memberTitle">
+        THÀNH VIÊN
+    </h1>
+
+    <div id="memberGrid" class="group-grid"></div>
+
+    <button id="backBtn">
+        QUAY LẠI
+    </button>
+
+    <button id="memberRandomBtn">
+        RANDOM MEMBER
+    </button>
+
+    </div>
+
+<div id="scoreScreen" class="group-screen hidden">
+
+    <h1>BẢNG ĐIỂM</h1>
+
+    <div id="scoreBoard"></div>
+
+    <button id="backToGroupBtn">
+        QUAY LẠI
+    </button>
+
+    </div>
+
+
+    <script src="data.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+    <script src="script.js"></script>
+
+</body>
+</html>

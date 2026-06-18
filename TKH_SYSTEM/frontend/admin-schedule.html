@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TKH 2026 - Quản lý lịch học</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="app-page">
+
+<aside class="sidebar">
+    <h2>TKH Admin</h2>
+    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰ Menu</button>
+    <a href="admin-dashboard.html">Tổng quan Admin</a>
+    <a href="admin-members.html">Quản lý thành viên</a>
+    <a href="admin-groups.html">Quản lý nhóm</a>
+    <a href="admin-attendance.html">Quản lý điểm danh</a>
+    <a href="admin-session.html">Quản lý buổi học</a>
+    <a href="admin-score.html">Quản lý điểm số</a>
+    <a href="admin-schedule.html" class="active">Quản lý lịch học</a>
+    <a href="dashboard.html">Trang học viên</a>
+</aside>
+
+<main class="main-content">
+
+    <div class="topbar">
+        <div>
+            <h1>Quản lý lịch học</h1>
+            <p>Cập nhật chủ đề, câu gốc và hoạt động cho từng buổi TKH.</p>
+        </div>
+
+        <button onclick="logoutDemo()">Đăng xuất</button>
+    </div>
+
+    <section class="attendance-box password-box">
+        <h2>Thêm nội dung lịch học</h2>
+
+        <label>Ngày học</label>
+        <input type="date" id="scheduleDate">
+
+        <label>Chủ đề</label>
+        <input type="text" id="scheduleTitle" placeholder="Ví dụ: Yêu thương và phục vụ">
+
+        <label>Câu gốc</label>
+        <input type="text" id="bibleVerse" placeholder="Ví dụ: Giăng 13:34">
+
+        <label>Hoạt động</label>
+        <input type="text" id="scheduleActivity" placeholder="Ví dụ: Học Kinh Thánh, Bible Challenge">
+
+        <button class="checkin-btn" onclick="createScheduleDemo()">
+            Lưu lịch học
+        </button>
+
+        <p id="scheduleMessage"></p>
+    </section>
+
+    <div class="attendance-box">
+        <h2>Danh sách lịch học</h2>
+
+        <table class="score-table">
+            <thead>
+                <tr>
+                    <th>Ngày</th>
+                    <th>Chủ đề</th>
+                    <th>Câu gốc</th>
+                    <th>Hoạt động</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr>
+                    <td>01/06/2026</td>
+                    <td>Khởi động Thánh Kinh Hè</td>
+                    <td>Thi Thiên 119:105</td>
+                    <td>Giới thiệu nhóm, sinh hoạt chung</td>
+                </tr>
+
+                <tr>
+                    <td>03/06/2026</td>
+                    <td>Đức tin và sự vâng lời</td>
+                    <td>Hê-bơ-rơ 11:1</td>
+                    <td>Học Kinh Thánh, trả bài cũ</td>
+                </tr>
+
+                <tr>
+                    <td>08/06/2026</td>
+                    <td>Yêu thương và phục vụ</td>
+                    <td>Giăng 13:34</td>
+                    <td>Thảo luận nhóm, Bible Challenge</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</main>
+
+<script src="js/app.js"></script>
+
+</body>
+</html>

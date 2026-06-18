@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TKH 2026 - Lịch học</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="app-page">
+
+    <aside class="sidebar">
+        <h2>TKH 2026</h2>
+        <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰ Menu</button>
+        <a href="dashboard.html">Tổng quan</a>
+        <a href="attendance.html">Điểm danh</a>
+        <a href="my-score.html">Điểm cá nhân</a>
+        <a href="group-score.html">Điểm nhóm</a>
+        <a href="schedule.html" class="active">Lịch học</a>
+        <a href="change-password.html">Đổi mật khẩu</a>
+        <a href="../TKH-Bible-Challenge/index.html">Bible Challenge</a>
+    </aside>
+
+    <main class="main-content">
+
+        <div class="topbar">
+            <div>
+                <h1>Lịch học TKH</h1>
+                <p>Theo dõi nội dung học, câu gốc và hoạt động từng buổi.</p>
+            </div>
+
+            <button onclick="logoutDemo()">Đăng xuất</button>
+        </div>
+
+        <div class="attendance-box">
+            <h2>Danh sách buổi học</h2>
+
+            <table class="score-table">
+                <thead>
+                    <tr>
+                        <th>Ngày</th>
+                        <th>Chủ đề</th>
+                        <th>Câu gốc</th>
+                        <th>Hoạt động</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <td>01/06/2026</td>
+                        <td>Khởi động Thánh Kinh Hè</td>
+                        <td>Thi Thiên 119:105</td>
+                        <td>Giới thiệu nhóm, sinh hoạt chung</td>
+                    </tr>
+                    <tr>
+                        <td>03/06/2026</td>
+                        <td>Đức tin và sự vâng lời</td>
+                        <td>Hê-bơ-rơ 11:1</td>
+                        <td>Học Kinh Thánh, trả bài cũ</td>
+                    </tr>
+                    <tr>
+                        <td>08/06/2026</td>
+                        <td>Yêu thương và phục vụ</td>
+                        <td>Giăng 13:34</td>
+                        <td>Thảo luận nhóm, Bible Challenge</td>
+                    </tr>
+                    <tr>
+                        <td>10/06/2026</td>
+                        <td>Tổng kết và trao thưởng</td>
+                        <td>II Ti-mô-thê 4:7</td>
+                        <td>Thi cuối kỳ, tổng kết điểm</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </main>
+
+    <script src="js/app.js"></script>
+
+</body>
+</html>
