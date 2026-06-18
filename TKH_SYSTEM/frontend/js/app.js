@@ -311,8 +311,8 @@ function toggleMobileMenu() {
 }//hết
 
 function loadDashboardUser() {
-    if (!window.location.pathname.includes("dashboard.html")) {
-        return;
+    if (!document.getElementById("welcomeName")) {
+    return;
     }
 
     const currentUsername = localStorage.getItem("currentUsername");
