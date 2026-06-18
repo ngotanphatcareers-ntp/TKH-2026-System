@@ -86,3 +86,23 @@ Hiện tại hệ thống vẫn là frontend demo.
 Các dữ liệu như user, điểm số, điểm danh đang dùng dữ liệu giả lập hoặc localStorage.
 
 Khi backend hoàn thành, dữ liệu sẽ được lưu trong SQL Server và đồng bộ giữa mọi thiết bị.
+
+
+## Frontend Status
+
+Completed:
+- Login
+- GPS Attendance
+- Group Score
+- Personal Score
+- Schedule
+- Encouragement System
+- Session Questions
+- Mobile Responsive
+- GitHub + Netlify Deployment
+
+Current Phase:
+Frontend Completed
+
+Next Phase:
+Backend Development (Node.js + SQL Server)
