@@ -684,6 +684,6 @@ body {
     color: #6b7280;
 }
 
-.admin-only {
-    display: none;
+.sidebar a.admin-only {
+    display: none !important;
 }

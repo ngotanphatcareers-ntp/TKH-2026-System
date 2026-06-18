@@ -622,14 +622,14 @@ function showAdminShortcutDemo() {
         JSON.parse(localStorage.getItem("currentUser")) ||
         demoUsers.find(user => user.username === localStorage.getItem("currentUsername"));
 
-    if (!currentUser || currentUser.role !== "admin") {
-        return;
-    }
-
     const adminLinks = document.querySelectorAll(".admin-only");
 
     adminLinks.forEach(link => {
-        link.style.display = "block";
+        if (currentUser && currentUser.role === "admin") {
+            link.style.display = "block";
+        } else {
+            link.style.display = "none";
+        }
     });
 }
 
