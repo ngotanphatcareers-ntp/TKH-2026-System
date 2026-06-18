@@ -1,90 +1,207 @@
-# TKH 2026 - Backend Roadmap
+# TKH 2026 - Backend Roadmap (V2)
 
-## 1. Công nghệ backend
+## 1. Mục tiêu
 
-- Node.js
-- Express.js
-- SQL Server
-- bcrypt
-- JWT hoặc session login
-- dotenv
+Chuyển hệ thống từ Frontend Demo sang hệ thống hoạt động thực tế.
 
-## 2. Cấu trúc backend dự kiến
+Toàn bộ dữ liệu sẽ được lưu trong SQL Server thay vì localStorage.
 
+---
+
+## 2. Công nghệ sử dụng
+
+### Backend
+
+* Node.js
+* Express.js
+
+### Database
+
+* SQL Server Express
+
+### Authentication
+
+* bcrypt
+* JWT
+
+### Khác
+
+* dotenv
+* cors
+* mssql
+
+---
+
+## 3. Cấu trúc Backend
+
+```text
 TKH_SYSTEM
+│
 ├── frontend
+│
 ├── backend
 │   ├── server.js
+│   │
 │   ├── config
 │   │   └── db.js
+│   │
 │   ├── routes
 │   │   ├── auth.routes.js
 │   │   ├── attendance.routes.js
 │   │   ├── score.routes.js
 │   │   ├── group.routes.js
 │   │   ├── session.routes.js
-│   │   └── schedule.routes.js
+│   │   ├── schedule.routes.js
+│   │   └── settings.routes.js
+│   │
 │   ├── controllers
-│   └── middleware
+│   │
+│   ├── middleware
+│   │   ├── auth.middleware.js
+│   │   └── admin.middleware.js
+│   │
+│   └── services
+│
 ├── database
+│
 └── docs
+```
 
-## 3. API cần làm
+---
 
-### Auth
+## 4. API Modules
 
-- POST /api/auth/login
-- POST /api/auth/change-password
-- POST /api/auth/logout
-- GET /api/auth/me
+### Authentication
+
+* POST /api/auth/login
+* POST /api/auth/change-password
+* POST /api/auth/logout
+* GET /api/auth/me
 
 ### Attendance
 
-- POST /api/attendance/check-in
-- GET /api/attendance/my-history
-- GET /api/admin/attendance/current-session
+* POST /api/attendance/check-in
+* GET /api/attendance/my-history
 
 ### Scores
 
-- GET /api/scores/my-score
-- GET /api/scores/group-ranking
-- POST /api/admin/scores
+* GET /api/scores/my-score
+* GET /api/scores/group-ranking
 
 ### Sessions
 
-- GET /api/sessions/active
-- POST /api/admin/sessions
-- PATCH /api/admin/sessions/:id/status
+* GET /api/sessions/active
+* POST /api/admin/sessions
+* PATCH /api/admin/sessions/:id
 
-### Schedules
+### Schedule
 
-- GET /api/schedules
-- POST /api/admin/schedules
+* GET /api/schedules
+* POST /api/admin/schedules
 
-### Random Bible Challenge
+### Settings
 
-- GET /api/random/eligible-members
+* GET /api/settings
+* PATCH /api/admin/settings
 
-## 4. Thứ tự làm backend
+### Bible Challenge
 
-1. Tạo backend folder
-2. Cài Node.js packages
-3. Kết nối SQL Server
-4. Làm login thật
-5. Làm đổi mật khẩu thật
-6. Làm API lấy user hiện tại
-7. Làm điểm danh GPS thật
-8. Làm API điểm cá nhân
-9. Làm API điểm nhóm
-10. Làm API session hiện tại
-11. Làm API random eligible members
-12. Tích hợp với TKH-Bible-Challenge
+* GET /api/random/eligible-members
 
-## 5. Lưu ý bảo mật
+---
 
-- Không lưu mật khẩu text
-- Dùng bcrypt để hash password
-- Không cho frontend quyết định điểm danh thành công
-- Backend phải tự tính khoảng cách GPS
-- Admin API phải kiểm tra role = admin
-- Dùng HTTPS khi chạy thật để GPS hoạt động ổn định
+## 5. Quy tắc GPS
+
+Frontend chỉ gửi:
+
+* latitude
+* longitude
+* accuracy
+
+Backend sẽ:
+
+* Tính khoảng cách tới nhà thờ
+* Kiểm tra bán kính
+* Kiểm tra độ chính xác GPS
+* Quyết định điểm danh thành công hay không
+
+---
+
+## 6. Import Thành Viên
+
+Nguồn dữ liệu:
+
+Excel
+
+Dự kiến:
+
+160-180 thành viên
+
+Quy trình:
+
+Excel
+→ Import
+→ SQL Server
+→ Tạo User
+
+Mật khẩu mặc định:
+
+123456
+
+---
+
+## 7. Thứ tự triển khai
+
+### Phase 1
+
+* Cài Node.js
+* Tạo Backend Folder
+* Kết nối SQL Server
+
+### Phase 2
+
+* Login thật
+* JWT
+* Đổi mật khẩu thật
+
+### Phase 3
+
+* Điểm danh GPS thật
+* Attendance Records
+
+### Phase 4
+
+* Điểm cá nhân
+* Điểm nhóm
+
+### Phase 5
+
+* Random Bible Challenge Integration
+
+### Phase 6
+
+* Import Excel thành viên
+
+---
+
+## 8. Bảo mật
+
+* Không lưu password dạng text
+* Hash bằng bcrypt
+* JWT Authentication
+* Admin API phải kiểm tra role
+* Attendance phải được xác thực ở Backend
+
+---
+
+## 9. Trạng thái hiện tại
+
+Frontend: Hoàn thành
+
+Database Design: Hoàn thành
+
+GitHub: Hoàn thành
+
+Netlify: Hoàn thành
+
+Backend: Chưa bắt đầu
