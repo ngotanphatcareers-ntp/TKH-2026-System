@@ -330,3 +330,19 @@ function loadDashboardUser() {
 }
 
 document.addEventListener("DOMContentLoaded", loadDashboardUser);
+
+
+function filterStudentsDemo() {
+    const keyword = document.getElementById("studentSearch").value.toLowerCase();
+    const cards = document.querySelectorAll(".student-card");
+
+    cards.forEach(card => {
+        const name = card.getAttribute("data-name");
+
+        if (name.includes(keyword)) {
+            card.style.display = "block";
+        } else {
+            card.style.display = "none";
+        }
+    });
+}

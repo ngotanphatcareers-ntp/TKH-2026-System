@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TKH 2026 - Khích lệ</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="app-page">
+
+<aside class="sidebar">
+    <h2>TKH 2026</h2>
+    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰ Menu</button>
+
+    <a href="dashboard.html">Tổng quan</a>
+    <a href="attendance.html">Điểm danh</a>
+    <a href="my-score.html">Điểm cá nhân</a>
+    <a href="group-score.html">Điểm nhóm</a>
+    <a href="schedule.html">Lịch học</a>
+    <a href="student-directory.html" class="active">Khích lệ</a>
+    <a href="session-questions.html">Câu hỏi buổi học</a>
+    <a href="change-password.html">Đổi mật khẩu</a>
+    <a href="../TKH-Bible-Challenge/index.html">Bible Challenge</a>
+</aside>
+
+<main class="main-content">
+
+    <div class="topbar">
+        <div>
+            <h1>Khích lệ thành viên</h1>
+            <p>Tìm kiếm thành viên và gửi sự khích lệ trong chương trình TKH.</p>
+        </div>
+
+        <button onclick="logoutDemo()">Đăng xuất</button>
+    </div>
+
+    <section class="attendance-box">
+        <h2>Tìm thành viên</h2>
+
+        <input
+            type="text"
+            id="studentSearch"
+            class="form-input"
+            placeholder="Nhập tên hoặc mã tài khoản, ví dụ: tkh001"
+            onkeyup="filterStudentsDemo()"
+        >
+    </section>
+
+    <section class="student-grid">
+
+        <div class="student-card" data-name="trịnh trần thiên phú tkh001">
+            <div class="student-avatar">P</div>
+            <h3>Trịnh Trần Thiên Phú</h3>
+            <p>tkh001 · Nhóm Giô-sép</p>
+            <p class="encourage-count">👏 12 lượt khích lệ</p>
+            <a href="profile.html?user=tkh001" class="profile-btn">Xem hồ sơ</a>
+        </div>
+
+        <div class="student-card" data-name="ngô tấn phát tkh002">
+            <div class="student-avatar">P</div>
+            <h3>Ngô Tấn Phát</h3>
+            <p>tkh002 · Nhóm Giô-sép</p>
+            <p class="encourage-count">👏 8 lượt khích lệ</p>
+            <a href="profile.html?user=tkh002" class="profile-btn">Xem hồ sơ</a>
+        </div>
+
+        <div class="student-card" data-name="phạm bá nam tkh003">
+            <div class="student-avatar">N</div>
+            <h3>Phạm Bá Nam</h3>
+            <p>tkh003 · Nhóm Đa-vít</p>
+            <p class="encourage-count">👏 15 lượt khích lệ</p>
+            <a href="profile.html?user=tkh003" class="profile-btn">Xem hồ sơ</a>
+        </div>
+
+    </section>
+
+</main>
+
+<script src="js/app.js"></script>
+
+</body>
+</html>
