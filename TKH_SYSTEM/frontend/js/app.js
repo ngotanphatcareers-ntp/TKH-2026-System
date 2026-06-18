@@ -308,3 +308,25 @@ function toggleMobileMenu() {
     const sidebar = document.querySelector(".sidebar");
     sidebar.classList.toggle("open");
 }//hết
+
+function loadDashboardUser() {
+    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+
+    if (!currentUser) {
+        window.location.href = "index.html";
+        return;
+    }
+
+    const welcomeName = document.getElementById("welcomeName");
+    const welcomeGroup = document.getElementById("welcomeGroup");
+
+    if (welcomeName) {
+        welcomeName.innerText = "Xin chào, " + currentUser.fullName;
+    }
+
+    if (welcomeGroup) {
+        welcomeGroup.innerText = "Nhóm: " + currentUser.groupName;
+    }
+}
+
+document.addEventListener("DOMContentLoaded", loadDashboardUser);
