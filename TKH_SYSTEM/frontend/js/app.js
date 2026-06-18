@@ -500,3 +500,139 @@ function runPageLoaders() {
 
 document.addEventListener("DOMContentLoaded", runPageLoaders);
 window.addEventListener("pageshow", runPageLoaders);
+
+function getStoredQuestionsDemo() {
+    return JSON.parse(localStorage.getItem("sessionQuestionsDemo")) || [];
+}
+
+function saveStoredQuestionsDemo(questions) {
+    localStorage.setItem("sessionQuestionsDemo", JSON.stringify(questions));
+}
+
+function submitQuestionDemo() {
+    const session = document.getElementById("questionSession").value;
+    const questionText = document.getElementById("questionText").value.trim();
+    const message = document.getElementById("questionMessage");
+
+    const currentUser =
+        JSON.parse(localStorage.getItem("currentUser")) ||
+        demoUsers.find(user => user.username === localStorage.getItem("currentUsername"));
+
+    if (!currentUser) {
+        window.location.href = "index.html";
+        return;
+    }
+
+    if (!questionText) {
+        message.style.color = "red";
+        message.innerText = "Vui lòng nhập câu hỏi hoặc ghi chú.";
+        return;
+    }
+
+    const questions = getStoredQuestionsDemo();
+
+    questions.unshift({
+        session: session,
+        text: questionText,
+        userFullName: currentUser.fullName,
+        username: currentUser.username,
+        groupName: currentUser.groupName,
+        createdAt: new Date().toLocaleString("vi-VN"),
+        status: "Mới"
+    });
+
+    saveStoredQuestionsDemo(questions);
+
+    document.getElementById("questionText").value = "";
+
+    message.style.color = "green";
+    message.innerText = "Đã gửi câu hỏi thành công!";
+
+    loadMyQuestionsDemo();
+}
+
+function loadMyQuestionsDemo() {
+    const list = document.getElementById("myQuestionList");
+
+    if (!list) {
+        return;
+    }
+
+    const currentUser =
+        JSON.parse(localStorage.getItem("currentUser")) ||
+        demoUsers.find(user => user.username === localStorage.getItem("currentUsername"));
+
+    if (!currentUser) {
+        return;
+    }
+
+    const questions = getStoredQuestionsDemo()
+        .filter(q => q.username === currentUser.username);
+
+    if (questions.length === 0) {
+        list.innerHTML = `<p class="empty-note">Chưa có câu hỏi nào được gửi trong phiên demo này.</p>`;
+        return;
+    }
+
+    list.innerHTML = questions.map(q => `
+        <div class="question-card">
+            <h3>${q.session}</h3>
+            <p>${q.text}</p>
+            <p class="question-meta">Trạng thái: ${q.status} · ${q.createdAt}</p>
+        </div>
+    `).join("");
+}
+
+function loadAdminQuestionsDemo() {
+    const list = document.getElementById("adminQuestionList");
+
+    if (!list) {
+        return;
+    }
+
+    const questions = getStoredQuestionsDemo();
+
+    if (questions.length === 0) {
+        list.innerHTML = `<p class="empty-note">Chưa có câu hỏi nào trong phiên demo này.</p>`;
+        return;
+    }
+
+    list.innerHTML = questions.map(q => `
+        <div class="question-card">
+            <h3>${q.session}</h3>
+            <p><strong>${q.userFullName}</strong> (${q.username}) · Nhóm ${q.groupName}</p>
+            <p>${q.text}</p>
+            <p class="question-meta">Trạng thái: ${q.status} · ${q.createdAt}</p>
+        </div>
+    `).join("");
+}
+
+function runQuestionLoaders() {
+    loadMyQuestionsDemo();
+    loadAdminQuestionsDemo();
+}
+
+document.addEventListener("DOMContentLoaded", runQuestionLoaders);
+window.addEventListener("pageshow", runQuestionLoaders);
+
+
+//chỉ admin thấy
+function showAdminShortcutDemo() {
+    const currentUser =
+        JSON.parse(localStorage.getItem("currentUser")) ||
+        demoUsers.find(user => user.username === localStorage.getItem("currentUsername"));
+
+    if (!currentUser || currentUser.role !== "admin") {
+        return;
+    }
+
+    const adminLinks = document.querySelectorAll(".admin-only");
+
+    adminLinks.forEach(link => {
+        link.style.display = "block";
+    });
+}
+
+document.addEventListener("DOMContentLoaded", showAdminShortcutDemo);
+window.addEventListener("pageshow", showAdminShortcutDemo);
+//hết

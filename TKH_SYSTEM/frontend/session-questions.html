@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TKH 2026 - Câu hỏi buổi học</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="app-page">
+
+<aside class="sidebar">
+    <h2>TKH 2026</h2>
+    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰ Menu</button>
+
+    <a href="dashboard.html">Tổng quan</a>
+    <a href="attendance.html">Điểm danh</a>
+    <a href="my-score.html">Điểm cá nhân</a>
+    <a href="group-score.html">Điểm nhóm</a>
+    <a href="schedule.html">Lịch học</a>
+    <a href="student-directory.html">Khích lệ</a>
+    <a href="session-questions.html" class="active">Câu hỏi buổi học</a>
+    <a href="admin-dashboard.html" class="admin-only">Trang Admin</a>
+    <a href="change-password.html">Đổi mật khẩu</a>
+    <a href="../TKH-Bible-Challenge/index.html">Bible Challenge</a>
+</aside>
+
+<main class="main-content">
+
+    <div class="topbar">
+        <div>
+            <h1>Câu hỏi buổi học</h1>
+            <p>Gửi câu hỏi hoặc ghi chú của bạn cho từng buổi học TKH.</p>
+        </div>
+
+        <button onclick="logoutDemo()">Đăng xuất</button>
+    </div>
+
+    <section class="attendance-box password-box">
+        <h2>Gửi câu hỏi</h2>
+
+        <label>Chọn buổi học</label>
+        <select class="form-input" id="questionSession">
+            <option value="Buổi 1">Buổi 1 - Khởi động Thánh Kinh Hè</option>
+            <option value="Buổi 2">Buổi 2 - Đức tin và sự vâng lời</option>
+            <option value="Buổi 3">Buổi 3 - Yêu thương và phục vụ</option>
+            <option value="Buổi 4">Buổi 4 - Sống bởi đức tin</option>
+            <option value="Buổi 5">Buổi 5 - Phục vụ trong yêu thương</option>
+        </select>
+
+        <label>Câu hỏi / ghi chú</label>
+        <textarea id="questionText" class="form-input question-textarea" placeholder="Nhập câu hỏi hoặc điều bạn muốn chia sẻ..."></textarea>
+
+        <button class="checkin-btn" onclick="submitQuestionDemo()">
+            Gửi câu hỏi
+        </button>
+
+        <p id="questionMessage"></p>
+    </section>
+
+    <section class="attendance-box">
+        <h2>Câu hỏi đã gửi gần đây</h2>
+
+        <div id="myQuestionList" class="question-list">
+            <p class="empty-note">Chưa có câu hỏi nào được gửi trong phiên demo này.</p>
+        </div>
+    </section>
+
+</main>
+
+<script src="js/app.js?v=20"></script>
+
+</body>
+</html>
