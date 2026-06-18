@@ -494,15 +494,8 @@ function encourageUserDemo() {
 }
 
 function runPageLoaders() {
-    const currentPage = window.location.pathname.split("/").pop();
-
-    if (currentPage === "dashboard.html") {
-        loadDashboardUser();
-    }
-
-    if (currentPage === "profile.html") {
-        loadProfileDemo();
-    }
+    loadDashboardUser();
+    loadProfileDemo();
 }
 
 document.addEventListener("DOMContentLoaded", runPageLoaders);
