@@ -392,7 +392,13 @@ const profileDemoUsers = {
 
 function getProfileUsernameFromUrl() {
     const params = new URLSearchParams(window.location.search);
-    return params.get("user") || "tkh001";
+    const username = params.get("user");
+
+    if (username) {
+        return username.toLowerCase().trim();
+    }
+
+    return "tkh001";
 }
 
 function loadProfileDemo() {
@@ -519,3 +525,15 @@ function runPageLoaders() {
 
 document.addEventListener("DOMContentLoaded", runPageLoaders);
 window.addEventListener("pageshow", runPageLoaders);
+
+
+function runProfileLoader() {
+    loadProfileDemo();
+
+    setTimeout(() => {
+        loadProfileDemo();
+    }, 300);
+}
+
+document.addEventListener("DOMContentLoaded", runProfileLoader);
+window.addEventListener("pageshow", runProfileLoader);
