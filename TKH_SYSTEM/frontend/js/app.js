@@ -7,21 +7,21 @@ const demoUsers = [
         groupName: null
     },
     {
-        username: "user001",
+        username: "tkh001",
         defaultPassword: "123456",
         role: "student",
         fullName: "Trịnh Trần Thiên Phú",
         groupName: "Giô-sép"
     },
     {
-        username: "user002",
+        username: "tkh002",
         defaultPassword: "123456",
         role: "student",
         fullName: "Ngô Tấn Phát",
         groupName: "Giô-sép"
     },
     {
-        username: "user003",
+        username: "tkh003",
         defaultPassword: "123456",
         role: "student",
         fullName: "Phạm Bá Nam",
