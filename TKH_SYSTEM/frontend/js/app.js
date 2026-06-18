@@ -128,7 +128,7 @@ function checkInDemo() {
                 statusCard.innerText = "GPS chưa đủ chính xác";
 
                 gpsMessage.style.color = "red";
-                gpsMessage.innerText = "Vui lòng thử lại ở nơi GPS ổn định hơn.";
+                gpsMessage.innerText = "Nếu bạn đang dùng máy tính, vui lòng điểm danh bằng điện thoại để hệ thống lấy vị trí chính xác hơn.";
                 return;
             }
 
