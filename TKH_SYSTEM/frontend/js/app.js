@@ -10,7 +10,7 @@ const demoUsers = [
         username: "tkh001",
         defaultPassword: "123456",
         role: "student",
-        fullName: "Trịnh Trần Thiên Phú",
+        fullName: "Trịnh Thiên Phú",
         groupName: "Giô-sép"
     },
     {
