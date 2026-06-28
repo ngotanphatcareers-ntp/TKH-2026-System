@@ -78,6 +78,8 @@ function formatDistance(distance) {
 
 
 function logoutDemo() {
+    localStorage.removeItem("currentUser");
+    localStorage.removeItem("currentUsername");
     window.location.href = "index.html";
 }
 
@@ -250,16 +252,23 @@ function changePasswordDemo() {
     const confirmPassword = document.getElementById("confirmPassword").value.trim();
     const message = document.getElementById("passwordMessage");
 
+    const currentUser =
+        JSON.parse(localStorage.getItem("currentUser"));
+
     if (!currentPassword || !newPassword || !confirmPassword) {
         message.style.color = "red";
         message.innerText = "Vui lòng nhập đầy đủ thông tin.";
         return;
     }
 
-    if (currentPassword !== "123456") {
-        message.style.color = "red";
-        message.innerText = "Mật khẩu hiện tại không đúng.";
-        return;
+    const savedPassword =
+        localStorage.getItem("password_" + currentUser.username) ||
+        currentUser.defaultPassword;
+
+    if (currentPassword !== savedPassword) {
+    message.style.color = "red";
+    message.innerText = "Mật khẩu hiện tại không đúng.";
+    return;
     }
 
     if (newPassword.length < 6) {
@@ -274,7 +283,7 @@ function changePasswordDemo() {
         return;
     }
 
-    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+    
 
 localStorage.setItem(
     "password_" + currentUser.username,
@@ -450,7 +459,7 @@ function getProfileUsernameFromUrl() {
 
 function loadProfileDemo() {
     if (!document.getElementById("profileFullName")) {
-    return;
+        return;
     }
 
     const profileUsername = getProfileUsernameFromUrl();
@@ -461,84 +470,56 @@ function loadProfileDemo() {
         return;
     }
 
-    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-
     document.getElementById("profileName").innerText = "Hồ sơ: " + profileUser.fullName;
     document.getElementById("profileGroup").innerText = "Nhóm: " + profileUser.groupName;
     document.getElementById("profileAvatar").innerText = profileUser.initial;
     document.getElementById("profileFullName").innerText = profileUser.fullName;
-    document.getElementById("profileUsername").innerText = profileUser.username + " · " + profileUser.groupName;
-
-    const encourageKey = "encourage_" + profileUsername;
-    const encouragedByKey = "encouragedBy_" + profileUsername;
-
-    const extraCount = Number(localStorage.getItem(encourageKey)) || 0;
-    document.getElementById("encourageCount").innerText =
-        profileUser.baseEncourage + extraCount;
-
-    const encourageButton = document.querySelector(".encourage-btn");
-    const encourageMessage = document.getElementById("encourageMessage");
-
-    if (currentUser && currentUser.username === profileUsername) {
-        encourageButton.disabled = true;
-        encourageMessage.style.color = "red";
-        encourageMessage.innerText = "Bạn không thể tự khích lệ chính mình.";
-        return;
-    }
-
-    if (currentUser) {
-        const encouragedBy = JSON.parse(localStorage.getItem(encouragedByKey)) || [];
-
-        if (encouragedBy.includes(currentUser.username)) {
-            encourageButton.disabled = true;
-            encourageMessage.style.color = "#374151";
-            encourageMessage.innerText = "Bạn đã khích lệ thành viên này rồi.";
-        }
-    }
+    document.getElementById("profileUsername").innerText =
+        profileUser.username + " · " + profileUser.groupName;
 }
 
-function encourageUserDemo() {
-    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+// function encourageUserDemo() {
+//     const currentUser = JSON.parse(localStorage.getItem("currentUser"));
 
-    if (!currentUser) {
-        window.location.href = "index.html";
-        return;
-    }
+//     if (!currentUser) {
+//         window.location.href = "index.html";
+//         return;
+//     }
 
-    const profileUsername = getProfileUsernameFromUrl();
+//     const profileUsername = getProfileUsernameFromUrl();
 
-    if (currentUser.username === profileUsername) {
-        return;
-    }
+//     if (currentUser.username === profileUsername) {
+//         return;
+//     }
 
-    const encourageKey = "encourage_" + profileUsername;
-    const encouragedByKey = "encouragedBy_" + profileUsername;
+//     const encourageKey = "encourage_" + profileUsername;
+//     const encouragedByKey = "encouragedBy_" + profileUsername;
 
-    const profileUser = profileDemoUsers[profileUsername];
+//     const profileUser = profileDemoUsers[profileUsername];
 
-    let extraCount = Number(localStorage.getItem(encourageKey)) || 0;
-    let encouragedBy = JSON.parse(localStorage.getItem(encouragedByKey)) || [];
+//     let extraCount = Number(localStorage.getItem(encourageKey)) || 0;
+//     let encouragedBy = JSON.parse(localStorage.getItem(encouragedByKey)) || [];
 
-    if (encouragedBy.includes(currentUser.username)) {
-        return;
-    }
+//     if (encouragedBy.includes(currentUser.username)) {
+//         return;
+//     }
 
-    extraCount++;
-    encouragedBy.push(currentUser.username);
+//     extraCount++;
+//     encouragedBy.push(currentUser.username);
 
-    localStorage.setItem(encourageKey, extraCount);
-    localStorage.setItem(encouragedByKey, JSON.stringify(encouragedBy));
+//     localStorage.setItem(encourageKey, extraCount);
+//     localStorage.setItem(encouragedByKey, JSON.stringify(encouragedBy));
 
-    document.getElementById("encourageCount").innerText =
-        profileUser.baseEncourage + extraCount;
+//     document.getElementById("encourageCount").innerText =
+//         profileUser.baseEncourage + extraCount;
 
-    const encourageButton = document.querySelector(".encourage-btn");
-    const encourageMessage = document.getElementById("encourageMessage");
+//     const encourageButton = document.querySelector(".encourage-btn");
+//     const encourageMessage = document.getElementById("encourageMessage");
 
-    encourageButton.disabled = true;
-    encourageMessage.style.color = "green";
-    encourageMessage.innerText = "Bạn đã gửi một lời khích lệ!";
-}
+//     encourageButton.disabled = true;
+//     encourageMessage.style.color = "green";
+//     encourageMessage.innerText = "Bạn đã gửi một lời khích lệ!";
+// }
 
 
 //hàm lịch sử điểm danh
@@ -590,7 +571,62 @@ function loadAttendanceHistoryDemo() {
         `).join("");
 }//hết
 
-
+const studyMaterialsDemo = [
+    {
+        session: "Buổi 1",
+        title: "Đức tin đặt nền trên Lời Chúa",
+        bibleVerse: "Thi Thiên 119:105",
+        verseText: "Lời Chúa là ngọn đèn cho chân con, ánh sáng cho đường lối con.",
+        note: "Tài liệu ôn tập dành cho buổi học đầu tiên.",
+        files: [
+            {
+                icon: "📄",
+                name: "Bài học Buổi 1",
+                type: "PDF",
+                size: "2.4 MB",
+                url: "#"
+            },
+            {
+                icon: "🖼️",
+                name: "Slide Buổi 1",
+                type: "PowerPoint",
+                size: "5.1 MB",
+                url: "#"
+            }
+        ]
+    },
+    {
+        session: "Buổi 2",
+        title: "Sống vâng phục Chúa mỗi ngày",
+        bibleVerse: "Giô-suê 1:9",
+        verseText: "Hãy mạnh dạn và can đảm; đừng run sợ, đừng kinh khiếp.",
+        note: "Bao gồm câu gốc và tài liệu ôn tập nhóm nhỏ.",
+        files: [
+            {
+                icon: "📄",
+                name: "Phiếu học tập Buổi 2",
+                type: "PDF",
+                size: "1.8 MB",
+                url: "#"
+            },
+            {
+                icon: "🎵",
+                name: "Audio câu gốc",
+                type: "MP3",
+                size: "3.6 MB",
+                url: "#"
+            }
+        ]
+    },
+    {
+        session: "Buổi 3",
+        title: "Làm chứng về Chúa bằng đời sống",
+        bibleVerse: "Ma-thi-ơ 5:16",
+        verseText: "Ánh sáng các con hãy soi trước mặt người ta...",
+        note: "Tài liệu sẽ được BTC cập nhật sau.",
+        files: []
+    }
+];
 
 function runPageLoaders() {
     loadDashboardUser();
@@ -599,6 +635,12 @@ function runPageLoaders() {
     loadMyQuestionsDemo();
     loadAdminQuestionsDemo();
     showAdminShortcutDemo();
+    loadEncouragementListDemo();
+    loadDashboardEncouragementCount();
+    loadDirectoryEncouragementCounts();
+    loadAdminEncouragementStats();
+    loadTodayEncouragementPreview();
+    loadStudyMaterialsDemo();
 }
 
 document.addEventListener("DOMContentLoaded", runPageLoaders);
@@ -616,6 +658,10 @@ function submitQuestionDemo() {
     const session = document.getElementById("questionSession").value;
     const questionText = document.getElementById("questionText").value.trim();
     const message = document.getElementById("questionMessage");
+
+    const questionType = document.querySelector(
+        'input[name="questionType"]:checked'
+    ).value;
 
     const currentUser =
         JSON.parse(localStorage.getItem("currentUser")) ||
@@ -635,13 +681,16 @@ function submitQuestionDemo() {
     const questions = getStoredQuestionsDemo();
 
     questions.unshift({
-        session: session,
-        text: questionText,
-        userFullName: currentUser.fullName,
-        username: currentUser.username,
-        groupName: currentUser.groupName,
-        createdAt: new Date().toLocaleString("vi-VN"),
-        status: "Mới"
+    session: session,
+    text: questionText,
+    questionType: questionType,
+    typeLabel: questionType === "private" ? "🔒 Riêng tư" : "🌍 Công khai",
+    userFullName: currentUser.fullName,
+    username: currentUser.username,
+    groupName: currentUser.groupName,
+    createdAt: new Date().toLocaleString("vi-VN"),
+    status: "Mới",
+    adminReply: ""
     });
 
     saveStoredQuestionsDemo(questions);
@@ -649,7 +698,14 @@ function submitQuestionDemo() {
     document.getElementById("questionText").value = "";
 
     message.style.color = "green";
-    message.innerText = "Đã gửi câu hỏi thành công!";
+
+    if (questionType === "private") {
+        message.innerText =
+            "🔒 Đã gửi câu hỏi riêng tư. BTC sẽ chuyển đến Diễn giả và phản hồi lại cho bạn trong thời gian sớm nhất.";
+    } else {
+        message.innerText =
+            "🌍 Đã gửi câu hỏi công khai. BTC và Diễn giả sẽ cố gắng giải đáp câu hỏi của bạn trước Ban Thanh Niên trong phần giải đáp thắc mắc.";
+    }
 
     loadMyQuestionsDemo();
 }
@@ -678,11 +734,20 @@ function loadMyQuestionsDemo() {
     }
 
     list.innerHTML = questions.map(q => `
-        <div class="question-card">
-            <h3>${q.session}</h3>
-            <p>${q.text}</p>
-            <p class="question-meta">Trạng thái: ${q.status} · ${q.createdAt}</p>
-        </div>
+    <div class="question-card">
+        <h3>${q.session}</h3>
+        <p><strong>Loại:</strong> ${q.typeLabel || "🔒 Riêng tư"}</p>
+        <p>${q.text}</p>
+        <p class="question-meta">Trạng thái: ${q.status} · ${q.createdAt}</p>
+        ${
+            q.adminReply
+            ? `
+                <p><strong>Phản hồi từ BTC:</strong> ${q.adminReply}</p>
+                <p class="question-meta">Thời gian phản hồi: ${q.answeredAt || "Chưa có thông tin"}</p>
+            `
+            : ""
+        }
+    </div>
     `).join("");
 }
 
@@ -700,13 +765,33 @@ function loadAdminQuestionsDemo() {
         return;
     }
 
-    list.innerHTML = questions.map(q => `
-        <div class="question-card">
-            <h3>${q.session}</h3>
-            <p><strong>${q.userFullName}</strong> (${q.username}) · Nhóm ${q.groupName}</p>
-            <p>${q.text}</p>
-            <p class="question-meta">Trạng thái: ${q.status} · ${q.createdAt}</p>
-        </div>
+    list.innerHTML = questions.map((q, index) => `
+    <div class="question-card">
+        <h3>${q.session}</h3>
+        <p><strong>${q.userFullName}</strong> (${q.username}) · Nhóm ${q.groupName}</p>
+        <p><strong>Loại:</strong> ${q.typeLabel || "🔒 Riêng tư"}</p>
+        <p>${q.text}</p>
+        <p class="question-meta">Trạng thái: ${q.status} · ${q.createdAt}</p>
+
+        ${
+            q.adminReply
+            ? `
+                <p><strong>Phản hồi từ BTC:</strong> ${q.adminReply}</p>
+                <p class="question-meta">Thời gian phản hồi: ${q.answeredAt || "Chưa có thông tin"}</p>
+            `
+            : `
+                <textarea
+                    class="form-input question-reply-box"
+                    id="reply_${index}"
+                    placeholder="Nhập phản hồi từ BTC / Diễn giả..."
+                ></textarea>
+
+                <button class="profile-btn" onclick="replyQuestionDemo(${index})">
+                    Gửi phản hồi
+                </button>
+            `
+        }
+    </div>
     `).join("");
 }
 
@@ -731,3 +816,508 @@ function showAdminShortcutDemo() {
 
 //hết
 
+//hàm phản hồi về học viên
+function replyQuestionDemo(index) {
+    const questions = getStoredQuestionsDemo();
+    const replyInput = document.getElementById("reply_" + index);
+
+    if (!replyInput) {
+        return;
+    }
+
+    const replyText = replyInput.value.trim();
+
+    if (!replyText) {
+        alert("Vui lòng nhập nội dung phản hồi.");
+        return;
+    }
+
+    questions[index].adminReply = replyText;
+    questions[index].status = "Đã trả lời";
+    questions[index].answeredAt = new Date().toLocaleString("vi-VN");
+
+    saveStoredQuestionsDemo(questions);
+    loadAdminQuestionsDemo();
+}// hết
+
+
+function getStoredEncouragementsDemo() {
+    const messages =
+        JSON.parse(localStorage.getItem("encouragementMessagesDemo")) || [];
+
+    const fixedMessages = messages.map((item, index) => {
+        return {
+            ...item,
+            id: item.id || Date.now() + index,
+            isPinned: item.isPinned || false
+        };
+    });
+
+    localStorage.setItem(
+        "encouragementMessagesDemo",
+        JSON.stringify(fixedMessages)
+    );
+
+    return fixedMessages;
+}
+
+function saveStoredEncouragementsDemo(messages) {
+    localStorage.setItem("encouragementMessagesDemo", JSON.stringify(messages));
+}
+
+function sendEncouragementDemo() {
+    const currentUser =
+        JSON.parse(localStorage.getItem("currentUser")) ||
+        demoUsers.find(user => user.username === localStorage.getItem("currentUsername"));
+
+    
+
+    if (!currentUser) {
+        window.location.href = "index.html";
+        return;
+    }
+
+    const receiverUsername = getProfileUsernameFromUrl();
+    const receiverUser = profileDemoUsers[receiverUsername];
+
+    const encourageText = document.getElementById("encourageText").value.trim();
+    const anonymous = document.getElementById("anonymousEncourage").checked;
+    const message = document.getElementById("encourageMessage");
+
+    if (currentUser.role === "admin") {
+        message.style.color = "red";
+        message.innerText = "Admin không gửi lời khích lệ trong chế độ học viên.";
+        return;
+        }
+
+    if (!receiverUser) {
+        message.style.color = "red";
+        message.innerText = "Không tìm thấy người nhận.";
+        return;
+    }
+
+    if (currentUser.username === receiverUsername) {
+        message.style.color = "red";
+        message.innerText = "Bạn không thể tự gửi lời khích lệ cho chính mình.";
+        return;
+    }
+
+    if (!encourageText) {
+        message.style.color = "red";
+        message.innerText = "Vui lòng nhập lời khích lệ.";
+        return;
+    }
+
+    const today = new Date().toDateString();
+    const messages = getStoredEncouragementsDemo();
+
+    const alreadySentToday = messages.find(item =>
+        item.fromUsername === currentUser.username &&
+        item.toUsername === receiverUsername &&
+        item.dateKey === today
+    );
+
+    if (alreadySentToday) {
+        message.style.color = "red";
+        message.innerText =
+            "Bạn đã gửi lời khích lệ cho thành viên này hôm nay. Bạn có thể gửi lại vào ngày mai nhé.";
+        return;
+    }
+
+    messages.unshift({
+    id: Date.now(),
+    fromUsername: currentUser.username,
+    fromFullName: currentUser.fullName,
+    toUsername: receiverUsername,
+    toFullName: receiverUser.fullName,
+    text: encourageText,
+    isAnonymous: anonymous,
+    createdAt: new Date().toLocaleString("vi-VN"),
+    dateKey: today,
+    isRead: false,
+    isPinned: false
+    });
+
+    saveStoredEncouragementsDemo(messages);
+
+    document.getElementById("encourageText").value = "";
+    document.getElementById("anonymousEncourage").checked = false;
+
+    message.style.color = "green";
+    message.innerText =
+        "💚 Cảm ơn bạn đã gửi lời khích lệ đến thành viên này Một lời động viên nho nhỏ có thể mang lại rất nhiều sự ấm áp đến người nhận được. Chúa ở cùng bạn luôn!";
+
+    loadEncouragementListDemo();
+}
+
+function loadEncouragementListDemo() {
+    const list = document.getElementById("encouragementList");
+
+    if (!list) {
+        return;
+    }
+
+    const profileUsername = getProfileUsernameFromUrl();
+
+    const currentUser =
+        JSON.parse(localStorage.getItem("currentUser")) ||
+        demoUsers.find(user => user.username === localStorage.getItem("currentUsername"));
+
+    let allMessages = getStoredEncouragementsDemo();
+
+    if (currentUser && currentUser.username === profileUsername) {
+        allMessages = allMessages.map(item => {
+            if (item.toUsername === currentUser.username) {
+                return {
+                    ...item,
+                    isRead: true
+                };
+            }
+
+            return item;
+        });
+
+        saveStoredEncouragementsDemo(allMessages);
+    }
+
+    const isOwner =
+    currentUser &&
+    currentUser.username === profileUsername;
+
+    if (!isOwner) {
+    list.innerHTML = `
+        <p class="empty-note">
+            Đây là hộp thư cá nhân của thành viên này. 
+            Bạn có thể gửi lời khích lệ, nhưng không thể xem nội dung họ đã nhận.
+        </p>
+    `;
+    return;
+}
+    
+    const messages = allMessages
+    .filter(item => item.toUsername === profileUsername)
+    .sort((a, b) => {
+        if (a.isPinned === b.isPinned) {
+            return 0;
+        }
+
+        return a.isPinned ? -1 : 1;
+    });
+
+    if (messages.length === 0) {
+        list.innerHTML = `
+            <p class="empty-note">Chưa có lời khích lệ nào.</p>
+        `;
+        return;
+    }
+
+    list.innerHTML = messages.map(item => {
+    const senderName = item.isAnonymous ? "Ẩn danh" : item.fromFullName;
+    const avatarText = item.isAnonymous
+        ? "🕵️‍♂️"
+        : item.fromFullName.charAt(0).toUpperCase();
+
+
+return `
+    <div class="encouragement-card encouragement-card-with-avatar ${item.isPinned ? "pinned-encouragement-card" : ""}">
+        <div class="encouragement-avatar">
+            ${avatarText}
+        </div>
+
+        <div class="encouragement-content">
+            <p>${item.isPinned ? "📌 " : "🌟 "}${item.text}</p>
+            <p class="encouragement-author">
+                — ${senderName}<br>
+                ${item.createdAt}
+            </p>
+
+            ${
+                isOwner
+                ? `
+                    <button
+                        class="pin-encouragement-btn"
+                        onclick="togglePinEncouragementDemo(${item.id})"
+                    >
+                        ${item.isPinned ? "Bỏ ghim" : "📌 Ghim"}
+                    </button>
+                `
+                : ""
+            }
+        </div>
+    </div>
+`;
+    }).join("");
+}
+
+function loadDashboardEncouragementCount() {
+    const countElement = document.getElementById("encouragementReceivedCount");
+    const statusText = document.getElementById("encouragementStatusText");
+
+    if (!countElement || !statusText) {
+        return;
+    }
+
+    const currentUser =
+        JSON.parse(localStorage.getItem("currentUser")) ||
+        demoUsers.find(user => user.username === localStorage.getItem("currentUsername"));
+
+    if (!currentUser) {
+        return;
+    }
+
+    const messages =
+        JSON.parse(localStorage.getItem("encouragementMessagesDemo")) || [];
+
+    const receivedMessages = messages.filter(
+        item => item.toUsername === currentUser.username
+    );
+
+    const unreadMessages = receivedMessages.filter(
+        item => item.isRead === false
+    );
+
+    countElement.innerText = receivedMessages.length;
+
+    if (unreadMessages.length > 0) {
+        statusText.innerText =
+            "Bạn có " + unreadMessages.length + " lời khích lệ mới ❤️";
+    } else {
+        statusText.innerText = "Lời khích lệ đã nhận";
+    }
+}
+
+function goToMyEncouragementBox() {
+    const currentUser =
+        JSON.parse(localStorage.getItem("currentUser")) ||
+        demoUsers.find(user => user.username === localStorage.getItem("currentUsername"));
+
+    if (!currentUser) {
+        window.location.href = "index.html";
+        return;
+    }
+
+    window.location.href = "profile.html?user=" + currentUser.username;
+}
+
+
+function loadDirectoryEncouragementCounts() {
+    const countElements = document.querySelectorAll(".encourage-count");
+
+    if (countElements.length === 0) {
+        return;
+    }
+
+    const messages = getStoredEncouragementsDemo();
+
+    countElements.forEach(element => {
+        const username = element.getAttribute("data-user");
+
+        const receivedCount = messages.filter(
+            item => item.toUsername === username
+        ).length;
+
+        element.innerText = "💌 " + receivedCount + " lời khích lệ";
+    });
+}
+
+
+//tổng hợp khích lệ của admin
+function loadAdminEncouragementStats() {
+    const totalElement = document.getElementById("totalEncouragements");
+    const todayElement = document.getElementById("todayEncouragements");
+    const anonymousElement = document.getElementById("anonymousEncouragements");
+    const topReceiversList = document.getElementById("topReceiversList");
+    const topSendersList = document.getElementById("topSendersList");
+
+    if (!totalElement) {
+        return;
+    }
+
+    const messages = getStoredEncouragementsDemo();
+    const today = new Date().toDateString();
+
+    const todayMessages = messages.filter(item => item.dateKey === today);
+    const anonymousMessages = messages.filter(item => item.isAnonymous);
+
+    totalElement.innerText = messages.length;
+    todayElement.innerText = todayMessages.length;
+    anonymousElement.innerText = anonymousMessages.length;
+
+    const receiverCounts = {};
+    const senderCounts = {};
+
+    messages.forEach(item => {
+        receiverCounts[item.toFullName] = (receiverCounts[item.toFullName] || 0) + 1;
+        senderCounts[item.fromFullName] = (senderCounts[item.fromFullName] || 0) + 1;
+    });
+
+    const topReceivers = Object.entries(receiverCounts)
+        .sort((a, b) => b[1] - a[1]);
+
+    const topSenders = Object.entries(senderCounts)
+        .sort((a, b) => b[1] - a[1]);
+
+    if (topReceivers.length === 0) {
+        topReceiversList.innerHTML = `<p class="empty-note">Chưa có dữ liệu khích lệ.</p>`;
+    } else {
+        topReceiversList.innerHTML = topReceivers.map((item, index) => `
+            <div class="question-card">
+                <h3>${index + 1}. ${item[0]}</h3>
+                <p>💌 ${item[1]} lời khích lệ đã nhận</p>
+            </div>
+        `).join("");
+    }
+
+    if (topSenders.length === 0) {
+        topSendersList.innerHTML = `<p class="empty-note">Chưa có dữ liệu khích lệ.</p>`;
+    } else {
+        topSendersList.innerHTML = topSenders.map((item, index) => `
+            <div class="question-card">
+                <h3>${index + 1}. ${item[0]}</h3>
+                <p>👏 ${item[1]} lời khích lệ đã gửi</p>
+            </div>
+        `).join("");
+    }
+}//hết
+
+
+//hàm ghim/bỏ ghim lời khích lệ
+function togglePinEncouragementDemo(messageId) {
+    const currentUser =
+        JSON.parse(localStorage.getItem("currentUser")) ||
+        demoUsers.find(user => user.username === localStorage.getItem("currentUsername"));
+
+    if (!currentUser) {
+        window.location.href = "index.html";
+        return;
+    }
+
+    const messages = getStoredEncouragementsDemo();
+
+    const updatedMessages = messages.map(item => {
+        if (
+            Number(item.id) === Number(messageId) &&
+            item.toUsername === currentUser.username
+        ) {
+            return {
+                ...item,
+                isPinned: !item.isPinned
+            };
+        }
+
+        return item;
+    });
+
+    saveStoredEncouragementsDemo(updatedMessages);
+
+    loadEncouragementListDemo();
+}//hết
+
+
+function loadTodayEncouragementPreview() {
+    const previewElement = document.getElementById("todayEncouragementPreview");
+
+    if (!previewElement) {
+        return;
+    }
+
+    const currentUser =
+        JSON.parse(localStorage.getItem("currentUser")) ||
+        demoUsers.find(user => user.username === localStorage.getItem("currentUsername"));
+
+    if (!currentUser) {
+        return;
+    }
+
+    const messages = getStoredEncouragementsDemo().filter(
+        item => item.toUsername === currentUser.username
+    );
+
+    if (messages.length === 0) {
+        previewElement.innerText =
+            "Bạn chưa có lời khích lệ nào. Hãy tiếp tục lan tỏa yêu thương nhé 💚";
+        return;
+    }
+
+    const today = new Date().toDateString();
+
+    const todayMessages = messages.filter(
+        item => item.dateKey === today
+    );
+
+    const selectedMessage =
+        todayMessages.length > 0
+            ? todayMessages[0]
+            : messages[0];
+
+    const senderName = selectedMessage.isAnonymous
+        ? "Ẩn danh"
+        : selectedMessage.fromFullName;
+
+    previewElement.innerHTML = `
+        <p class="today-encouragement-label">
+            ${todayMessages.length > 0 ? "Lời khích lệ hôm nay" : "Lời khích lệ gần đây"}
+        </p>
+        <p class="today-encouragement-text">
+            “${selectedMessage.text}”
+        </p>
+        <p class="today-encouragement-author">
+            — ${senderName}
+        </p>
+    `;
+}
+
+
+function loadStudyMaterialsDemo() {
+    const list = document.getElementById("studyMaterialsList");
+
+    if (!list) {
+        return;
+    }
+
+    if (studyMaterialsDemo.length === 0) {
+        list.innerHTML = `
+            <p class="empty-note">Chưa có tài liệu học tập nào.</p>
+        `;
+        return;
+    }
+
+    list.innerHTML = studyMaterialsDemo.map(item => `
+        <div class="material-session-card">
+            <div class="material-session-header">
+                <span class="material-session-badge">${item.session}</span>
+                <div>
+                    <h2>${item.title}</h2>
+                    <p>${item.note}</p>
+                </div>
+            </div>
+
+            <div class="memory-verse-box">
+                <p class="memory-verse-label">📖 Câu gốc</p>
+                <h3>${item.bibleVerse}</h3>
+                <p>“${item.verseText}”</p>
+            </div>
+
+            <div class="material-files-list">
+                ${
+                    item.files.length === 0
+                    ? `<p class="empty-note">Tài liệu của buổi này sẽ được cập nhật sau.</p>`
+                    : item.files.map(file => `
+                        <div class="material-file-card">
+                            <div class="material-file-icon">${file.icon}</div>
+
+                            <div class="material-file-info">
+                                <h3>${file.name}</h3>
+                                <p>${file.type} · ${file.size}</p>
+                            </div>
+
+                            <a class="material-open-btn" href="${file.url}">
+                                Mở
+                            </a>
+                        </div>
+                    `).join("")
+                }
+            </div>
+        </div>
+    `).join("");
+}

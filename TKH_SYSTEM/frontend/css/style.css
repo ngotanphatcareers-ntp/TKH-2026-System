@@ -691,3 +691,281 @@ body {
 .sidebar a.admin-only.show-admin-link {
     display: block !important;
 }
+
+.question-type-box {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.question-type-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 14px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.question-type-option input {
+    width: 18px;
+    height: 18px;
+}
+
+.question-note {
+    background: #fff7ed;
+    border-left: 5px solid #f97316;
+    padding: 16px;
+    border-radius: 14px;
+    margin-bottom: 18px;
+    color: #7c2d12;
+    font-size: 14px;
+}
+
+.question-note p {
+    margin: 6px 0;
+}
+
+.question-reply-box {
+    margin-top: 12px;
+    min-height: 90px;
+    font-family: inherit;
+}
+
+.checkbox-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 15px 0;
+    font-weight: bold;
+}
+
+.section-divider {
+    margin: 30px 0;
+    border: none;
+    border-top: 1px solid #e5e7eb;
+}
+
+.encouragement-card {
+    background: #ffffff;
+    border-left: 5px solid #22c55e;
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.05);
+}
+
+.encouragement-author {
+    margin-top: 10px;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.encouragement-card-with-avatar {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    text-align: left;
+}
+
+.encouragement-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #dcfce7;
+    color: #166534;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.encouragement-content {
+    flex: 1;
+}
+
+.encouragement-content p {
+    margin-top: 0;
+}
+
+.pinned-encouragement-card {
+    border: 2px solid #f59e0b;
+    background: #fffbeb;
+}
+
+.pin-encouragement-btn {
+    margin-top: 10px;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 999px;
+    background: #f59e0b;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pin-encouragement-btn:hover {
+    background: #d97706;
+}
+
+.encouragement-today-card {
+    min-height: 260px;
+}
+
+.today-encouragement-preview {
+    margin: 16px 0;
+    padding: 14px;
+    border-radius: 14px;
+    background: #f0fdf4;
+    color: #166534;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.today-encouragement-label {
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.today-encouragement-text {
+    font-style: italic;
+    margin-bottom: 8px;
+}
+
+.today-encouragement-author {
+    font-size: 13px;
+    color: #15803d;
+}
+
+
+.learning-hub-intro {
+    background: linear-gradient(135deg, #ecfdf5, #eff6ff);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 24px;
+    border: 1px solid #d1fae5;
+}
+
+.learning-hub-intro h2 {
+    color: #065f46;
+    margin-bottom: 8px;
+}
+
+.learning-hub-intro p {
+    color: #374151;
+    line-height: 1.6;
+}
+
+.materials-list {
+    display: grid;
+    gap: 22px;
+}
+
+.material-session-card {
+    background: white;
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    border: 1px solid #e5e7eb;
+}
+
+.material-session-header {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 18px;
+}
+
+.material-session-badge {
+    background: #16a34a;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.material-session-header h2 {
+    color: #111827;
+    margin-bottom: 6px;
+}
+
+.material-session-header p {
+    color: #6b7280;
+}
+
+.memory-verse-box {
+    background: #fffbeb;
+    border-left: 5px solid #f59e0b;
+    padding: 16px;
+    border-radius: 14px;
+    margin-bottom: 18px;
+}
+
+.memory-verse-label {
+    font-weight: 700;
+    color: #92400e;
+    margin-bottom: 6px;
+}
+
+.memory-verse-box h3 {
+    color: #78350f;
+    margin-bottom: 6px;
+}
+
+.material-files-list {
+    display: grid;
+    gap: 12px;
+}
+
+.material-file-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    border-radius: 14px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+}
+
+.material-file-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+}
+
+.material-file-info {
+    flex: 1;
+}
+
+.material-file-info h3 {
+    margin-bottom: 4px;
+    color: #111827;
+}
+
+.material-file-info p {
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.material-open-btn {
+    text-decoration: none;
+    background: #2563eb;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-weight: 600;
+}
+
+.material-open-btn:hover {
+    background: #1d4ed8;
+}

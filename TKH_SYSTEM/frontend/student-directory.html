@@ -17,8 +17,9 @@
     <a href="my-score.html">Điểm cá nhân</a>
     <a href="group-score.html">Điểm nhóm</a>
     <a href="schedule.html">Lịch học</a>
-    <a href="student-directory.html" class="active">Khích lệ</a>
+    <a href="student-directory.html" class="active">Hộp thư khích lệ</a>
     <a href="session-questions.html">Câu hỏi buổi học</a>
+    <a href="study-materials.html">Kho tài liệu</a>
     <a href="admin-dashboard.html" class="admin-only">Trang Admin</a>
     <a href="change-password.html">Đổi mật khẩu</a>
     <a href="../TKH-Bible-Challenge/index.html">Bible Challenge</a>
@@ -28,15 +29,15 @@
 
     <div class="topbar">
         <div>
-            <h1>Khích lệ thành viên</h1>
-            <p>Tìm kiếm thành viên và gửi sự khích lệ trong chương trình TKH.</p>
+            <h1>Hộp thư khích lệ</h1>
+            <p>Tìm kiếm thành viên để gửi hoặc xem những lời khích lệ trong chương trình TKH.</p>
         </div>
 
         <button onclick="logoutDemo()">Đăng xuất</button>
     </div>
 
     <section class="attendance-box">
-        <h2>Tìm thành viên</h2>
+        <h2>Tìm người nhận khích lệ</h2>
 
         <input
             type="text"
@@ -53,31 +54,31 @@
             <div class="student-avatar">P</div>
             <h3>Trịnh Trần Thiên Phú</h3>
             <p>tkh001 · Nhóm Giô-sép</p>
-            <p class="encourage-count">👏 12 lượt khích lệ</p>
-            <a href="profile.html?user=tkh001" class="profile-btn">Xem hồ sơ</a>
+            <p class="encourage-count" data-user="tkh001">💌 0 lời khích lệ</p>
+            <a href="profile.html?user=tkh001" class="profile-btn">Mở hộp thư</a>
         </div>
 
         <div class="student-card" data-name="ngô tấn phát tkh002">
             <div class="student-avatar">P</div>
             <h3>Ngô Tấn Phát</h3>
             <p>tkh002 · Nhóm Giô-sép</p>
-            <p class="encourage-count">👏 8 lượt khích lệ</p>
-            <a href="profile.html?user=tkh002" class="profile-btn">Xem hồ sơ</a>
+            <p class="encourage-count" data-user="tkh002">💌 0 lời khích lệ</p>
+            <a href="profile.html?user=tkh002" class="profile-btn">Mở hộp thư</a>
         </div>
 
         <div class="student-card" data-name="phạm bá nam tkh003">
             <div class="student-avatar">N</div>
             <h3>Phạm Bá Nam</h3>
             <p>tkh003 · Nhóm Đa-vít</p>
-            <p class="encourage-count">👏 15 lượt khích lệ</p>
-            <a href="profile.html?user=tkh003" class="profile-btn">Xem hồ sơ</a>
+            <p class="encourage-count" data-user="tkh002">💌 0 lời khích lệ</p>
+            <a href="profile.html?user=tkh003" class="profile-btn">Mở hộp thư</a>
         </div>
 
     </section>
 
 </main>
 
-<script src="js/app.js?v=10"></script>
+<script src="js/app.js?v=32"></script>
 
 </body>
 </html>

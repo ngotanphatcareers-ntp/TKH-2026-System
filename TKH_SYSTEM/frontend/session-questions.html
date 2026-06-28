@@ -17,8 +17,9 @@
     <a href="my-score.html">Điểm cá nhân</a>
     <a href="group-score.html">Điểm nhóm</a>
     <a href="schedule.html">Lịch học</a>
-    <a href="student-directory.html">Khích lệ</a>
+    <a href="student-directory.html">Hộp thư khích lệ</a>
     <a href="session-questions.html" class="active">Câu hỏi buổi học</a>
+    <a href="study-materials.html">Kho tài liệu</a>
     <a href="admin-dashboard.html" class="admin-only">Trang Admin</a>
     <a href="change-password.html">Đổi mật khẩu</a>
     <a href="../TKH-Bible-Challenge/index.html">Bible Challenge</a>
@@ -47,8 +48,35 @@
             <option value="Buổi 5">Buổi 5 - Phục vụ trong yêu thương</option>
         </select>
 
-        <label>Câu hỏi / ghi chú</label>
-        <textarea id="questionText" class="form-input question-textarea" placeholder="Nhập câu hỏi hoặc điều bạn muốn chia sẻ..."></textarea>
+        
+        
+        <label>Loại câu hỏi</label>
+
+<div class="question-type-box">
+    <label class="question-type-option">
+        <input type="radio" name="questionType" value="private" checked>
+        <span>🔒 Câu hỏi riêng tư</span>
+    </label>
+
+    <label class="question-type-option">
+        <input type="radio" name="questionType" value="public">
+        <span>🌍 Câu hỏi công khai</span>
+    </label>
+</div>
+
+<div class="question-note">
+    <p>
+        <strong>Lưu ý:</strong> Nếu chọn câu hỏi công khai, Ban Tổ Chức và Diễn giả
+        sẽ cố gắng giải đáp nhiều nhất có thể trước Ban Thanh Niên.
+    </p>
+    <p>
+        Do giới hạn thời gian, có thể không phải tất cả câu hỏi đều được trả lời trực tiếp.
+        Những câu hỏi chưa được giải đáp trước Ban Thanh Niên sẽ được BTC phản hồi lại sau chương trình thông qua chatbox của bạn.
+    </p>
+</div>
+
+<label>Câu hỏi / ghi chú</label>
+<textarea id="questionText" class="form-input question-textarea" placeholder="Nhập câu hỏi hoặc điều bạn muốn chia sẻ..."></textarea>
 
         <button class="checkin-btn" onclick="submitQuestionDemo()">
             Gửi câu hỏi

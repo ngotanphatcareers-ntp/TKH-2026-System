@@ -17,8 +17,9 @@
     <a href="my-score.html">Điểm cá nhân</a>
     <a href="group-score.html">Điểm nhóm</a>
     <a href="schedule.html">Lịch học</a>
-    <a href="student-directory.html" class="active">Khích lệ</a>
+    <a href="student-directory.html" class="active">Hộp thư khích lệ</a>
     <a href="session-questions.html">Câu hỏi buổi học</a>
+    <a href="study-materials.html">Kho tài liệu</a>
     <a href="admin-dashboard.html" class="admin-only">Trang Admin</a>
     <a href="change-password.html">Đổi mật khẩu</a>
     <a href="../TKH-Bible-Challenge/index.html">Bible Challenge</a>
@@ -42,21 +43,40 @@
         <p id="profileUsername">Mã tài khoản</p>
 
         <div class="encourage-panel">
-            <p class="encourage-total">
-                👏 <span id="encourageCount">0</span> lượt khích lệ
+        <h3>💌 Gửi lời khích lệ</h3>
+
+        <textarea
+            id="encourageText"
+            class="form-input question-textarea"
+            placeholder="Viết một lời động viên hoặc khích lệ dành cho thành viên này..."
+        ></textarea>
+
+        <label class="checkbox-line">
+            <input type="checkbox" id="anonymousEncourage">
+            Gửi ẩn danh
+        </label>
+
+        <button class="profile-btn" onclick="sendEncouragementDemo()">
+            Gửi lời khích lệ
+        </button>
+
+        <p id="encourageMessage"></p>
+
+        <hr class="section-divider">
+
+        <h3>💌 Những lời khích lệ đã nhận</h3>
+
+        <div id="encouragementList">
+            <p class="empty-note">
+                Chưa có lời khích lệ nào.
             </p>
-
-            <button class="encourage-btn" onclick="encourageUserDemo()">
-                👏 Khích lệ
-            </button>
-
-            <p id="encourageMessage"></p>
+        </div>
         </div>
     </section>
 
 </main>
 
-<script src="js/app.js?v=10"></script>
+<script src="js/app.js?v=36"></script>
 
 </body>
 </html>

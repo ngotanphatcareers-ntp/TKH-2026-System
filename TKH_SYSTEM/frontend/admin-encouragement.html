@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TKH 2026 - Thống kê khích lệ</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="app-page">
+
+<aside class="sidebar">
+    <h2>TKH Admin</h2>
+    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰ Menu</button>
+
+    <a href="admin-dashboard.html">Tổng quan Admin</a>
+    <a href="admin-members.html">Quản lý thành viên</a>
+    <a href="admin-groups.html">Quản lý nhóm</a>
+    <a href="admin-attendance.html">Quản lý điểm danh</a>
+    <a href="admin-session.html">Quản lý buổi học</a>
+    <a href="admin-score.html">Quản lý điểm số</a>
+    <a href="admin-schedule.html">Quản lý lịch học</a>
+    <a href="admin-questions.html">Câu hỏi học viên</a>
+    <a href="admin-encouragement.html" class="active">Thống kê khích lệ</a>
+    <a href="dashboard.html">Trang học viên</a>
+</aside>
+
+<main class="main-content">
+
+    <div class="topbar">
+        <div>
+            <h1>Thống kê Hộp thư khích lệ</h1>
+            <p>Theo dõi hoạt động gửi và nhận lời khích lệ trong TKH.</p>
+        </div>
+
+        <button onclick="logoutDemo()">Đăng xuất</button>
+    </div>
+
+    <section class="cards">
+        <div class="info-card">
+            <h3>💌 Tổng lời khích lệ</h3>
+            <p class="big-number" id="totalEncouragements">0</p>
+            <span>Toàn chương trình</span>
+        </div>
+
+        <div class="info-card">
+            <h3>❤️ Hôm nay</h3>
+            <p class="big-number" id="todayEncouragements">0</p>
+            <span>Lời khích lệ hôm nay</span>
+        </div>
+
+        <div class="info-card">
+            <h3>🎭 Ẩn danh</h3>
+            <p class="big-number" id="anonymousEncouragements">0</p>
+            <span>Tin nhắn ẩn danh</span>
+        </div>
+    </section>
+
+    <section class="attendance-box">
+        <h2>Thành viên nhận nhiều lời khích lệ nhất</h2>
+        <div id="topReceiversList" class="question-list">
+            <p class="empty-note">Chưa có dữ liệu khích lệ.</p>
+        </div>
+    </section>
+
+    <section class="attendance-box">
+        <h2>Thành viên gửi lời khích lệ tích cực nhất</h2>
+        <div id="topSendersList" class="question-list">
+            <p class="empty-note">Chưa có dữ liệu khích lệ.</p>
+        </div>
+    </section>
+
+</main>
+
+<script src="js/app.js?v=32"></script>
+
+</body>
+</html>

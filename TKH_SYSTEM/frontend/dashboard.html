@@ -16,8 +16,9 @@
         <a href="my-score.html">Điểm cá nhân</a>
         <a href="group-score.html">Điểm nhóm</a>
         <a href="schedule.html">Lịch học</a>
-        <a href="student-directory.html">Khích lệ</a>
+        <a href="student-directory.html">Hộp thư khích lệ</a>
         <a href="session-questions.html">Câu hỏi buổi học</a>
+        <a href="study-materials.html">Kho tài liệu</a>
         <a href="admin-dashboard.html" class="admin-only">Trang Admin</a>
         <a href="change-password.html">Đổi mật khẩu</a>
         <a href="../TKH-Bible-Challenge/index.html">Bible Challenge</a>
@@ -50,9 +51,24 @@
                 <p class="big-number">420</p>
                 <span>Nhóm Giô-sép</span>
             </div>
+
+            <div class="info-card encouragement-today-card">
+                <h3>💌 Hộp thư khích lệ</h3>
+                <p class="big-number" id="encouragementReceivedCount">0</p>
+                <span id="encouragementStatusText">Lời khích lệ đã nhận</span>
+
+                <div id="todayEncouragementPreview" class="today-encouragement-preview">
+                    Chưa có lời khích lệ nào.
+                </div>
+
+                <button class="profile-btn" onclick="goToMyEncouragementBox()">
+                    Xem hộp thư
+                </button>
+            </div>
+
         </section>
     </main>
 
-    <script src="js/app.js?v=3"></script>
+    <script src="js/app.js?v=35"></script>
 </body>
 </html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TKH 2026 - Kho tài liệu học tập</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="app-page">
+
+<aside class="sidebar">
+    <h2>TKH 2026</h2>
+    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰ Menu</button>
+
+    <a href="dashboard.html">Tổng quan</a>
+    <a href="attendance.html">Điểm danh</a>
+    <a href="my-score.html">Điểm cá nhân</a>
+    <a href="group-score.html">Điểm nhóm</a>
+    <a href="schedule.html">Lịch học</a>
+    <a href="student-directory.html">Hộp thư khích lệ</a>
+    <a href="session-questions.html">Câu hỏi buổi học</a>
+    <a href="study-materials.html" class="active">Kho tài liệu</a>
+    <a href="admin-dashboard.html" class="admin-only">Trang Admin</a>
+    <a href="change-password.html">Đổi mật khẩu</a>
+    <a href="../TKH-Bible-Challenge/index.html">Bible Challenge</a>
+</aside>
+
+<main class="main-content">
+
+    <div class="topbar">
+        <div>
+            <h1>📚 Kho tài liệu học tập</h1>
+            <p>Nơi lưu trữ bài học, câu gốc, slide và tài liệu ôn tập.</p>
+        </div>
+
+        <button onclick="logoutDemo()">Đăng xuất</button>
+    </div>
+
+    <section class="learning-hub-intro">
+        <h2>Learning Hub - TKH 2026</h2>
+        <p>
+            Các tài liệu sẽ được BTC cập nhật theo từng buổi học.
+            Học viên có thể mở lại bài học, xem câu gốc và tải tài liệu cần thiết.
+        </p>
+    </section>
+
+    <section id="studyMaterialsList" class="materials-list">
+        <p class="empty-note">Đang tải kho tài liệu...</p>
+    </section>
+
+</main>
+
+<script src="js/app.js?v=37"></script>
+
+</body>
+</html>
