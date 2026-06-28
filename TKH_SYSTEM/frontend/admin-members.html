@@ -18,6 +18,7 @@
         <a href="admin-session.html">Quản lý buổi học</a>
         <a href="admin-score.html">Quản lý điểm số</a>
         <a href="admin-schedule.html">Quản lý lịch học</a>
+        <a href="admin-study-materials.html">Kho tài liệu</a>
         <a href="dashboard.html">Trang học viên</a>
         <a href="admin-questions.html">Câu hỏi học viên</a>
         <a href="admin-encouragement.html">Thống kê khích lệ</a>
@@ -38,70 +39,79 @@
             <h2>Tác vụ thành viên</h2>
 
             <div class="admin-actions">
-                <button>Import Excel</button>
                 <button>Thêm thành viên</button>
                 <button>Xuất danh sách</button>
                 <button>Reset mật khẩu</button>
             </div>
         </div>
 
+
+        
+
+        <div class="form-section">
+    <h2>Import danh sách học viên</h2>
+
+    <p class="empty-note">
+        File Excel cần đúng format: Họ và tên, Giới tính, Ngày sinh, Điện thoại, Nhóm nhỏ.
+    </p>
+
+    <a
+        class="profile-btn"
+        href="templates/student-import-template.xlsx"
+        download
+    >
+        📥 Tải template Excel
+    </a>
+
+    <br><br>
+
+    <input
+        type="file"
+        id="studentExcelFile"
+        class="form-input"
+        accept=".xlsx,.xls"
+    >
+
+    <button class="profile-btn" onclick="importStudentsExcelDemo()">
+        Import học viên
+    </button>
+
+    <p id="studentImportMessage"></p>
+    </div>
+
+    
+
+
         <div class="attendance-box">
-            <h2>Danh sách thành viên</h2>
+    <h2>Danh sách thành viên</h2>
 
-            <table class="score-table">
-                <thead>
-                    <tr>
-                        <th>Mã</th>
-                        <th>Họ tên</th>
-                        <th>Tài khoản</th>
-                        <th>Nhóm</th>
-                        <th>Vai trò</th>
-                        <th>Trạng thái</th>
-                    </tr>
-                </thead>
+    <div class="table-wrapper">
+        <table class="score-table">
+            <thead>
+                <tr>
+                    <th>Mã TKH</th>
+                    <th>Họ và tên</th>
+                    <th>Giới tính</th>
+                    <th>Ngày sinh</th>
+                    <th>Điện thoại</th>
+                    <th>Nhóm nhỏ</th>
+                    <th>Vai trò</th>
+                    <th>Mật khẩu</th>
+                </tr>
+            </thead>
 
-                <tbody>
-                    <tr>
-                        <td>001</td>
-                        <td>Nguyễn Văn A</td>
-                        <td>user001</td>
-                        <td>Giô-sép</td>
-                        <td>Học viên</td>
-                        <td>Đang hoạt động</td>
-                    </tr>
-
-                    <tr>
-                        <td>002</td>
-                        <td>Trần Thị B</td>
-                        <td>user002</td>
-                        <td>Giô-sép</td>
-                        <td>Học viên</td>
-                        <td>Đang hoạt động</td>
-                    </tr>
-
-                    <tr>
-                        <td>003</td>
-                        <td>Lê Văn C</td>
-                        <td>user003</td>
-                        <td>Đa-vít</td>
-                        <td>Học viên</td>
-                        <td>Đang hoạt động</td>
-                    </tr>
-
-                    <tr>
-                        <td>004</td>
-                        <td>Phạm Thị D</td>
-                        <td>user004</td>
-                        <td>Ê-xơ-tê</td>
-                        <td>Học viên</td>
-                        <td>Đang hoạt động</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+            <tbody id="adminMembersTableBody">
+                <tr>
+                    <td colspan="8">Chưa có học viên nào được import.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 
     </main>
 
-    <script src="js/app.js?v=3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="js/app.js?v=49"></script>
 </body>
 </html>

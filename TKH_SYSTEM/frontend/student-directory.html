@@ -43,42 +43,18 @@
             type="text"
             id="studentSearch"
             class="form-input"
-            placeholder="Nhập tên hoặc mã tài khoản, ví dụ: tkh001"
+            placeholder="Nhập tên hoặc mã tài khoản, ví dụ: TKH001"
             onkeyup="filterStudentsDemo()"
         >
     </section>
 
-    <section class="student-grid">
-
-        <div class="student-card" data-name="trịnh trần thiên phú tkh001">
-            <div class="student-avatar">P</div>
-            <h3>Trịnh Trần Thiên Phú</h3>
-            <p>tkh001 · Nhóm Giô-sép</p>
-            <p class="encourage-count" data-user="tkh001">💌 0 lời khích lệ</p>
-            <a href="profile.html?user=tkh001" class="profile-btn">Mở hộp thư</a>
-        </div>
-
-        <div class="student-card" data-name="ngô tấn phát tkh002">
-            <div class="student-avatar">P</div>
-            <h3>Ngô Tấn Phát</h3>
-            <p>tkh002 · Nhóm Giô-sép</p>
-            <p class="encourage-count" data-user="tkh002">💌 0 lời khích lệ</p>
-            <a href="profile.html?user=tkh002" class="profile-btn">Mở hộp thư</a>
-        </div>
-
-        <div class="student-card" data-name="phạm bá nam tkh003">
-            <div class="student-avatar">N</div>
-            <h3>Phạm Bá Nam</h3>
-            <p>tkh003 · Nhóm Đa-vít</p>
-            <p class="encourage-count" data-user="tkh002">💌 0 lời khích lệ</p>
-            <a href="profile.html?user=tkh003" class="profile-btn">Mở hộp thư</a>
-        </div>
-
+    <section class="student-grid" id="studentDirectoryList">
+    <p class="empty-note">Đang tải danh sách học viên...</p>
     </section>
 
 </main>
 
-<script src="js/app.js?v=32"></script>
+<script src="js/app.js?v=53"></script>
 
 </body>
 </html>

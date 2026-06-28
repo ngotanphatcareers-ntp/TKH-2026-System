@@ -34,7 +34,16 @@ function loginDemo() {
     const password = document.getElementById("password").value.trim();
     const message = document.getElementById("loginMessage");
 
-    const user = demoUsers.find(item => item.username === username);
+    const importedStudents = getImportedStudentsDemo();
+
+    const adminUsers = demoUsers.filter(user => user.role === "admin");
+
+    const allUsers = [
+        ...adminUsers,
+        ...importedStudents
+    ];
+
+    const user = allUsers.find(item => item.username === username);
 
     if (!user) {
         message.style.color = "red";
@@ -52,8 +61,8 @@ function loginDemo() {
         return;
     }
 
-    localStorage.setItem("currentUser", JSON.stringify(user));
     localStorage.setItem("currentUsername", user.username);
+    localStorage.setItem("currentUser", JSON.stringify(user));
 
     message.style.color = "green";
     message.innerText = "Đăng nhập thành công!";
@@ -368,20 +377,10 @@ function toggleMobileMenu() {
 
 function loadDashboardUser() {
     if (!document.getElementById("welcomeName")) {
-    return;
+        return;
     }
 
-    const currentUsername = localStorage.getItem("currentUsername");
-
-    let currentUser = null;
-
-    if (currentUsername) {
-        currentUser = demoUsers.find(user => user.username === currentUsername);
-    }
-
-    if (!currentUser) {
-        currentUser = JSON.parse(localStorage.getItem("currentUser"));
-    }
+    const currentUser = getCurrentUserDemo();
 
     if (!currentUser) {
         window.location.href = "index.html";
@@ -451,10 +450,16 @@ function getProfileUsernameFromUrl() {
     const username = params.get("user");
 
     if (username) {
-        return username.toLowerCase().trim();
+        return username.trim();
     }
 
-    return "tkh001";
+    const currentUser = getCurrentUserDemo();
+
+    if (currentUser) {
+        return currentUser.username;
+    }
+
+    return "";
 }
 
 function loadProfileDemo() {
@@ -463,19 +468,23 @@ function loadProfileDemo() {
     }
 
     const profileUsername = getProfileUsernameFromUrl();
-    const profileUser = profileDemoUsers[profileUsername];
+    const profileUser = findStudentByUsernameDemo(profileUsername);
 
     if (!profileUser) {
         document.getElementById("profileName").innerText = "Không tìm thấy thành viên";
+        document.getElementById("profileGroup").innerText = "";
+        document.getElementById("profileAvatar").innerText = "?";
+        document.getElementById("profileFullName").innerText = "Không tìm thấy thành viên";
+        document.getElementById("profileUsername").innerText = "";
         return;
     }
 
     document.getElementById("profileName").innerText = "Hồ sơ: " + profileUser.fullName;
     document.getElementById("profileGroup").innerText = "Nhóm: " + profileUser.groupName;
-    document.getElementById("profileAvatar").innerText = profileUser.initial;
+    document.getElementById("profileAvatar").innerText = getStudentAvatarInitialDemo(profileUser);
     document.getElementById("profileFullName").innerText = profileUser.fullName;
     document.getElementById("profileUsername").innerText =
-        profileUser.username + " · " + profileUser.groupName;
+        profileUser.username + " · Nhóm " + profileUser.groupName;
 }
 
 // function encourageUserDemo() {
@@ -628,6 +637,22 @@ const studyMaterialsDemo = [
     }
 ];
 
+
+function getStoredStudyMaterialsDemo() {
+    const storedMaterials =
+        JSON.parse(localStorage.getItem("studyMaterialsDemo")) || [];
+
+    if (storedMaterials.length > 0) {
+        return storedMaterials;
+    }
+
+    return studyMaterialsDemo;
+}
+
+function saveStoredStudyMaterialsDemo(materials) {
+    localStorage.setItem("studyMaterialsDemo", JSON.stringify(materials));
+}
+
 function runPageLoaders() {
     loadDashboardUser();
     loadProfileDemo();
@@ -641,6 +666,11 @@ function runPageLoaders() {
     loadAdminEncouragementStats();
     loadTodayEncouragementPreview();
     loadStudyMaterialsDemo();
+    loadAdminStudyMaterialsDemo();
+    loadAdminMembersTableDemo();
+    loadStudentDirectoryDemo();
+    loadGroupScoreDemo();
+    loadGroupRankingDemo();
 }
 
 document.addEventListener("DOMContentLoaded", runPageLoaders);
@@ -878,7 +908,7 @@ function sendEncouragementDemo() {
     }
 
     const receiverUsername = getProfileUsernameFromUrl();
-    const receiverUser = profileDemoUsers[receiverUsername];
+    const receiverUser = findStudentByUsernameDemo(receiverUsername);
 
     const encourageText = document.getElementById("encourageText").value.trim();
     const anonymous = document.getElementById("anonymousEncourage").checked;
@@ -896,7 +926,7 @@ function sendEncouragementDemo() {
         return;
     }
 
-    if (currentUser.username === receiverUsername) {
+    if (currentUser.username.toLowerCase() === receiverUsername.toLowerCase()) {
         message.style.color = "red";
         message.innerText = "Bạn không thể tự gửi lời khích lệ cho chính mình.";
         return;
@@ -912,9 +942,9 @@ function sendEncouragementDemo() {
     const messages = getStoredEncouragementsDemo();
 
     const alreadySentToday = messages.find(item =>
-        item.fromUsername === currentUser.username &&
-        item.toUsername === receiverUsername &&
-        item.dateKey === today
+    item.fromUsername.toLowerCase() === currentUser.username.toLowerCase() &&
+    item.toUsername.toLowerCase() === receiverUser.username.toLowerCase() &&
+    item.dateKey === today
     );
 
     if (alreadySentToday) {
@@ -928,7 +958,7 @@ function sendEncouragementDemo() {
     id: Date.now(),
     fromUsername: currentUser.username,
     fromFullName: currentUser.fullName,
-    toUsername: receiverUsername,
+    toUsername: receiverUser.username,
     toFullName: receiverUser.fullName,
     text: encourageText,
     isAnonymous: anonymous,
@@ -965,9 +995,14 @@ function loadEncouragementListDemo() {
 
     let allMessages = getStoredEncouragementsDemo();
 
-    if (currentUser && currentUser.username === profileUsername) {
+    if (
+    currentUser &&
+    currentUser.username.toLowerCase() === profileUsername.toLowerCase()
+) {
         allMessages = allMessages.map(item => {
-            if (item.toUsername === currentUser.username) {
+            if (
+                item.toUsername.toLowerCase() === currentUser.username.toLowerCase()
+            ) {
                 return {
                     ...item,
                     isRead: true
@@ -982,7 +1017,7 @@ function loadEncouragementListDemo() {
 
     const isOwner =
     currentUser &&
-    currentUser.username === profileUsername;
+    currentUser.username.toLowerCase() === profileUsername.toLowerCase();
 
     if (!isOwner) {
     list.innerHTML = `
@@ -995,7 +1030,7 @@ function loadEncouragementListDemo() {
 }
     
     const messages = allMessages
-    .filter(item => item.toUsername === profileUsername)
+    .filter(item => item.toUsername.toLowerCase() === profileUsername.toLowerCase())
     .sort((a, b) => {
         if (a.isPinned === b.isPinned) {
             return 0;
@@ -1069,7 +1104,9 @@ function loadDashboardEncouragementCount() {
         JSON.parse(localStorage.getItem("encouragementMessagesDemo")) || [];
 
     const receivedMessages = messages.filter(
-        item => item.toUsername === currentUser.username
+    item =>
+        item.toUsername.toLowerCase() ===
+        currentUser.username.toLowerCase()
     );
 
     const unreadMessages = receivedMessages.filter(
@@ -1087,9 +1124,7 @@ function loadDashboardEncouragementCount() {
 }
 
 function goToMyEncouragementBox() {
-    const currentUser =
-        JSON.parse(localStorage.getItem("currentUser")) ||
-        demoUsers.find(user => user.username === localStorage.getItem("currentUsername"));
+    const currentUser = getCurrentUserDemo();
 
     if (!currentUser) {
         window.location.href = "index.html";
@@ -1113,7 +1148,8 @@ function loadDirectoryEncouragementCounts() {
         const username = element.getAttribute("data-user");
 
         const receivedCount = messages.filter(
-            item => item.toUsername === username
+            item =>
+                item.toUsername.toLowerCase() === username.toLowerCase()
         ).length;
 
         element.innerText = "💌 " + receivedCount + " lời khích lệ";
@@ -1197,7 +1233,7 @@ function togglePinEncouragementDemo(messageId) {
     const updatedMessages = messages.map(item => {
         if (
             Number(item.id) === Number(messageId) &&
-            item.toUsername === currentUser.username
+            item.toUsername.toLowerCase() === currentUser.username.toLowerCase()
         ) {
             return {
                 ...item,
@@ -1230,7 +1266,8 @@ function loadTodayEncouragementPreview() {
     }
 
     const messages = getStoredEncouragementsDemo().filter(
-        item => item.toUsername === currentUser.username
+        item =>
+            item.toUsername.toLowerCase() === currentUser.username.toLowerCase()
     );
 
     if (messages.length === 0) {
@@ -1275,14 +1312,16 @@ function loadStudyMaterialsDemo() {
         return;
     }
 
-    if (studyMaterialsDemo.length === 0) {
+    const materials = getStoredStudyMaterialsDemo();
+
+    if (materials.length === 0) {
         list.innerHTML = `
             <p class="empty-note">Chưa có tài liệu học tập nào.</p>
         `;
         return;
     }
 
-    list.innerHTML = studyMaterialsDemo.map(item => `
+    list.innerHTML = materials.map(item => `
         <div class="material-session-card">
             <div class="material-session-header">
                 <span class="material-session-badge">${item.session}</span>
@@ -1308,11 +1347,11 @@ function loadStudyMaterialsDemo() {
 
                             <div class="material-file-info">
                                 <h3>${file.name}</h3>
-                                <p>${file.type} · ${file.size}</p>
+                                <p>${file.type}</p>
                             </div>
 
-                            <a class="material-open-btn" href="${file.url}">
-                                Mở
+                            <a class="material-open-btn" href="${file.url}" target="_blank">
+                                ${getMaterialOpenButtonTextDemo(file.type)}
                             </a>
                         </div>
                     `).join("")
@@ -1320,4 +1359,683 @@ function loadStudyMaterialsDemo() {
             </div>
         </div>
     `).join("");
+}
+
+
+function getMaterialIconDemo(fileType) {
+    if (fileType === "PDF") {
+        return "📄";
+    }
+
+    if (fileType === "PowerPoint") {
+        return "🖼️";
+    }
+
+    if (fileType === "Word") {
+        return "📝";
+    }
+
+    if (fileType === "Google Drive") {
+        return "📁";
+    }
+
+    if (fileType === "YouTube") {
+        return "🎥";
+    }
+
+    if (fileType === "Audio") {
+        return "🎵";
+    }
+
+    return "🔗";
+}
+
+function getMaterialOpenButtonTextDemo(fileType) {
+    if (fileType === "PDF") {
+        return "Mở PDF";
+    }
+
+    if (fileType === "PowerPoint") {
+        return "Mở Slide";
+    }
+
+    if (fileType === "Word") {
+        return "Mở Word";
+    }
+
+    if (fileType === "Google Drive") {
+        return "Mở Drive";
+    }
+
+    if (fileType === "YouTube") {
+        return "Xem Video";
+    }
+
+    if (fileType === "Audio") {
+        return "Nghe Audio";
+    }
+
+    return "Mở Link";
+}
+
+let editingMaterialIndex = null;
+
+//hàm thêm tài liệu
+function addStudyMaterialDemo() {
+    const session = document.getElementById("materialSession").value.trim();
+    const title = document.getElementById("materialTitle").value.trim();
+    const bibleVerse = document.getElementById("materialBibleVerse").value.trim();
+    const verseText = document.getElementById("materialVerseText").value.trim();
+    const note = document.getElementById("materialNote").value.trim();
+
+    const fileName = document.getElementById("materialFileName").value.trim();
+    const fileType = document.getElementById("materialFileType").value;
+    
+    const fileUrl = document.getElementById("materialFileUrl").value.trim();
+
+    const message = document.getElementById("materialMessage");
+
+    if (!session || !title || !bibleVerse || !verseText || !note) {
+        message.style.color = "red";
+        message.innerText = "Vui lòng nhập đầy đủ thông tin buổi học.";
+        return;
+    }
+
+    if (!fileName || !fileType || !fileUrl) {
+    message.style.color = "red";
+    message.innerText = "Vui lòng nhập đầy đủ thông tin tài liệu.";
+    return;
+    }
+
+    const materials = getStoredStudyMaterialsDemo();
+
+const existingSession = materials.find(
+    item => item.session.toLowerCase() === session.toLowerCase()
+);
+
+const newFile = {
+    icon: getMaterialIconDemo(fileType),
+    name: fileName,
+    type: fileType,
+    url: fileUrl,
+    updatedAt: new Date().toLocaleString("vi-VN")
+};
+
+if (editingMaterialIndex !== null) {
+    materials[editingMaterialIndex] = {
+        session: session,
+        title: title,
+        bibleVerse: bibleVerse,
+        verseText: verseText,
+        note: note,
+        files: [newFile],
+        updatedAt: new Date().toLocaleString("vi-VN")
+    };
+
+    saveStoredStudyMaterialsDemo(materials);
+
+    message.style.color = "green";
+    message.innerText = "Đã cập nhật tài liệu học tập thành công!";
+
+    resetStudyMaterialFormDemo();
+    loadAdminStudyMaterialsDemo();
+    loadStudyMaterialsDemo();
+
+    return;
+}
+
+    
+
+    if (existingSession) {
+        existingSession.files.push(newFile);
+        existingSession.note = note;
+        existingSession.title = title;
+        existingSession.bibleVerse = bibleVerse;
+        existingSession.verseText = verseText;
+    } else {
+        materials.push({
+            session: session,
+            title: title,
+            bibleVerse: bibleVerse,
+            verseText: verseText,
+            note: note,
+            files: [newFile]
+        });
+    }
+
+    saveStoredStudyMaterialsDemo(materials);
+
+    message.style.color = "green";
+    message.innerText = "Đã thêm tài liệu học tập thành công!";
+
+    resetStudyMaterialFormDemo();
+
+    loadAdminStudyMaterialsDemo();
+}//hết
+
+
+//hiển thị danh sách admin
+function loadAdminStudyMaterialsDemo() {
+    const list = document.getElementById("adminStudyMaterialsList");
+
+    if (!list) {
+        return;
+    }
+
+    const materials = getStoredStudyMaterialsDemo();
+
+    if (materials.length === 0) {
+        list.innerHTML = `<p class="empty-note">Chưa có tài liệu học tập nào.</p>`;
+        return;
+    }
+
+    list.innerHTML = materials.map((item, index) => `
+        <div class="material-session-card">
+            <div class="material-session-header">
+                <span class="material-session-badge">${item.session}</span>
+                <div>
+                    <h2>${item.title}</h2>
+                    <p>${item.note}</p>
+                    <p class="question-meta">
+                        ${item.files.length} file tài liệu
+                    </p>
+                </div>
+            </div>
+
+            <div class="material-files-list">
+                ${
+                    item.files.length === 0
+                    ? `<p class="empty-note">Chưa có file nào.</p>`
+                    : item.files.map(file => `
+                        <div class="material-file-card">
+                            <div class="material-file-icon">${file.icon}</div>
+                            <div class="material-file-info">
+                                <h3>${file.name}</h3>
+                                <p>${file.type}</p>
+                            </div>
+                            <a class="material-open-btn" href="${file.url}" target="_blank">
+                                ${getMaterialOpenButtonTextDemo(file.type)}
+                            </a>
+                        </div>
+                    `).join("")
+                }
+            </div>
+
+            <div class="admin-material-actions">
+                <button class="edit-material-btn" onclick="editStudyMaterialDemo(${index})">
+                    ✏️ Sửa
+                </button>
+
+                <button class="delete-material-btn" onclick="deleteStudyMaterialDemo(${index})">
+                    🗑️ Xóa buổi học này
+                </button>
+            </div>
+        </div>
+    `).join("");
+}//hết
+
+//hàm xóa tài liệu
+function deleteStudyMaterialDemo(index) {
+    const confirmDelete = confirm(
+        "Bạn có chắc muốn xóa toàn bộ tài liệu của buổi học này không?"
+    );
+
+    if (!confirmDelete) {
+        return;
+    }
+
+    const materials = getStoredStudyMaterialsDemo();
+
+    materials.splice(index, 1);
+
+    saveStoredStudyMaterialsDemo(materials);
+
+    loadAdminStudyMaterialsDemo();
+    loadStudyMaterialsDemo();
+}//hết
+
+
+//hàm edit
+function editStudyMaterialDemo(index) {
+    const materials = getStoredStudyMaterialsDemo();
+    const material = materials[index];
+
+    if (!material) {
+        return;
+    }
+
+    const firstFile = material.files && material.files.length > 0
+        ? material.files[0]
+        : null;
+
+    editingMaterialIndex = index;
+
+    document.getElementById("materialSession").value = material.session;
+    document.getElementById("materialTitle").value = material.title;
+    document.getElementById("materialBibleVerse").value = material.bibleVerse;
+    document.getElementById("materialVerseText").value = material.verseText;
+    document.getElementById("materialNote").value = material.note;
+
+    if (firstFile) {
+        document.getElementById("materialFileName").value = firstFile.name;
+        document.getElementById("materialFileType").value = firstFile.type;
+        document.getElementById("materialFileUrl").value = firstFile.url;
+    }
+
+    document.getElementById("materialSubmitButton").innerText = "Lưu thay đổi";
+    document.getElementById("cancelEditMaterialButton").style.display = "inline-block";
+
+    const message = document.getElementById("materialMessage");
+    message.style.color = "#2563eb";
+    message.innerText = "Bạn đang chỉnh sửa tài liệu. Sau khi sửa xong, bấm Lưu thay đổi.";
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+}//hết
+
+//hàm reset chỉnh sửa
+function resetStudyMaterialFormDemo() {
+    editingMaterialIndex = null;
+
+    document.getElementById("materialSession").value = "";
+    document.getElementById("materialTitle").value = "";
+    document.getElementById("materialBibleVerse").value = "";
+    document.getElementById("materialVerseText").value = "";
+    document.getElementById("materialNote").value = "";
+    document.getElementById("materialFileName").value = "";
+    document.getElementById("materialFileType").value = "PDF";
+    document.getElementById("materialFileUrl").value = "";
+
+    const submitButton = document.getElementById("materialSubmitButton");
+    const cancelButton = document.getElementById("cancelEditMaterialButton");
+
+    if (submitButton) {
+        submitButton.innerText = "Thêm tài liệu";
+    }
+
+    if (cancelButton) {
+        cancelButton.style.display = "none";
+    }
+}
+
+function cancelEditStudyMaterialDemo() {
+    resetStudyMaterialFormDemo();
+
+    const message = document.getElementById("materialMessage");
+    message.style.color = "#6b7280";
+    message.innerText = "Đã hủy chỉnh sửa.";
+}//hết
+
+function getShortNameFromFullName(fullName) {
+    const parts = fullName.trim().split(" ");
+
+    return parts[parts.length - 1];
+}
+
+function generateStudentUsername(index) {
+    return "TKH" + String(index + 1).padStart(3, "0");
+}
+
+//hàm import
+function importStudentsExcelDemo() {
+    const fileInput = document.getElementById("studentExcelFile");
+    const message = document.getElementById("studentImportMessage");
+
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        message.style.color = "red";
+        message.innerText = "Vui lòng chọn file Excel để import.";
+        return;
+    }
+
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+
+        const rows = XLSX.utils.sheet_to_json(worksheet, {
+            defval: ""
+        });
+
+        if (rows.length === 0) {
+            message.style.color = "red";
+            message.innerText = "File Excel không có dữ liệu.";
+            return;
+        }
+
+        const importedStudents = [];
+
+        rows.forEach((row, index) => {
+            const fullName = String(row["Họ và tên"] || "").trim();
+            const gender = String(row["Giới tính"] || "").trim();
+            const birthDate = formatExcelDateDemo(
+                row["Ngày sinh"] ||
+                row["Ngày Sinh"] ||
+                ""
+            );
+            const phone = String(row["Điện thoại"] || "").trim();
+            const groupName = String(row["Nhóm nhỏ"] || "").trim();
+
+            if (!fullName || !gender || !birthDate || !phone || !groupName) {
+                return;
+            }
+
+            importedStudents.push({
+                username: generateStudentUsername(importedStudents.length),
+                defaultPassword: "123456",
+                role: "student",
+                fullName: fullName,
+                shortName: getShortNameFromFullName(fullName),
+                gender: gender,
+                birthDate: birthDate,
+                phone: phone,
+                groupName: groupName
+            });
+        });
+
+        if (importedStudents.length === 0) {
+            message.style.color = "red";
+            message.innerText = "Không có học viên hợp lệ để import.";
+            return;
+        }
+
+        localStorage.setItem(
+            "importedStudentsDemo",
+            JSON.stringify(importedStudents)
+        );
+
+        message.style.color = "green";
+        message.innerText =
+            "Đã import thành công " + importedStudents.length + " học viên.";
+
+        loadAdminMembersTableDemo();
+    };
+
+    reader.readAsArrayBuffer(file);
+}//hết
+
+//hàm hiển thị đã import
+function getImportedStudentsDemo() {
+    return JSON.parse(localStorage.getItem("importedStudentsDemo")) || [];
+}
+
+function getCurrentUserDemo() {
+    const currentUsername = localStorage.getItem("currentUsername");
+
+    if (!currentUsername) {
+        return null;
+    }
+
+    const importedStudents = getImportedStudentsDemo();
+
+    const importedUser = importedStudents.find(
+        user => user.username === currentUsername
+    );
+
+    if (importedUser) {
+        return importedUser;
+    }
+
+    const demoUser = demoUsers.find(
+        user => user.username === currentUsername
+    );
+
+    if (demoUser) {
+        return demoUser;
+    }
+
+    return JSON.parse(localStorage.getItem("currentUser"));
+}
+
+function loadImportedStudentsDemo() {
+    const list = document.getElementById("importedStudentsList");
+
+    if (!list) {
+        return;
+    }
+
+    const students = getImportedStudentsDemo();
+
+    if (students.length === 0) {
+        list.innerHTML = `<p class="empty-note">Chưa có học viên nào được import.</p>`;
+        return;
+    }
+
+    list.innerHTML = students.map(student => `
+        <div class="question-card">
+            <h3>${student.fullName}</h3>
+            <p><strong>Mã đăng nhập:</strong> ${student.username}</p>
+            <p><strong>Mật khẩu mặc định:</strong> 123456</p>
+            <p><strong>Giới tính:</strong> ${student.gender}</p>
+            <p><strong>Ngày sinh:</strong> ${student.birthDate}</p>
+            <p><strong>Điện thoại:</strong> ${student.phone}</p>
+            <p><strong>Nhóm nhỏ:</strong> ${student.groupName}</p>
+        </div>
+    `).join("");
+}//hết
+
+
+//hàm load bảng admin members
+function loadAdminMembersTableDemo() {
+    const tableBody = document.getElementById("adminMembersTableBody");
+
+    if (!tableBody) {
+        return;
+    }
+
+    const students = getImportedStudentsDemo();
+
+    if (students.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="8">Chưa có học viên nào được import.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    tableBody.innerHTML = students.map(student => `
+        <tr>
+            <td>${student.username}</td>
+            <td>${student.fullName}</td>
+            <td>${student.gender}</td>
+            <td>${student.birthDate}</td>
+            <td>${student.phone}</td>
+            <td>${student.groupName}</td>
+            <td>Học viên</td>
+            <td>123456</td>
+        </tr>
+    `).join("");
+}//hết
+
+
+//hàm đổi format date
+function formatExcelDateDemo(value) {
+    if (!value) {
+        return "";
+    }
+
+    if (typeof value === "number") {
+        const excelDate = XLSX.SSF.parse_date_code(value);
+
+        if (!excelDate) {
+            return String(value);
+        }
+
+        const day = String(excelDate.d).padStart(2, "0");
+        const month = String(excelDate.m).padStart(2, "0");
+        const year = excelDate.y;
+
+        return `${day}/${month}/${year}`;
+    }
+
+    return String(value).trim();
+}//hết
+
+function getStudentAvatarInitialDemo(student) {
+    const shortName =
+        student.shortName ||
+        getShortNameFromFullName(student.fullName);
+
+    return shortName.charAt(0).toUpperCase();
+}
+
+function loadStudentDirectoryDemo() {
+    const list = document.getElementById("studentDirectoryList");
+
+    if (!list) {
+        return;
+    }
+
+    const students = getImportedStudentsDemo();
+
+    if (students.length === 0) {
+        list.innerHTML = `
+            <p class="empty-note">
+                Chưa có danh sách học viên. Vui lòng import Excel trong trang Admin.
+            </p>
+        `;
+        return;
+    }
+
+    list.innerHTML = students.map(student => `
+        <div
+            class="student-card"
+            data-name="${student.fullName.toLowerCase()} ${student.username.toLowerCase()} ${student.groupName.toLowerCase()}"
+        >
+            <div class="student-avatar">
+                ${getStudentAvatarInitialDemo(student)}
+            </div>
+
+            <h3>${student.fullName}</h3>
+            <p>${student.username} · Nhóm ${student.groupName}</p>
+            <p class="encourage-count" data-user="${student.username}">
+                💌 0 lời khích lệ
+            </p>
+
+            <a href="profile.html?user=${student.username}" class="profile-btn">
+                Mở hộp thư
+            </a>
+        </div>
+    `).join("");
+
+    loadDirectoryEncouragementCounts();
+}
+
+
+//hàm tìm học viên
+function findStudentByUsernameDemo(username) {
+    if (!username) {
+        return null;
+    }
+
+    const students = getImportedStudentsDemo();
+
+    return students.find(
+        student => student.username.toLowerCase() === username.toLowerCase()
+    );
+}
+
+//hàm điểm nhóm
+function loadGroupScoreDemo() {
+    const myGroupName = document.getElementById("myGroupName");
+
+    if (!myGroupName) {
+        return;
+    }
+
+    const currentUser = getCurrentUserDemo();
+
+    if (!currentUser) {
+        window.location.href = "index.html";
+        return;
+    }
+
+    myGroupName.innerText = currentUser.groupName;
+}//hết
+
+
+const groupRankingDemo = [
+    {
+        groupName: "Ti-mô-thê",
+        score: 0
+    },
+    {
+        groupName: "Ca-lép",
+        score: 0
+    },
+    {
+        groupName: "Sa-ra",
+        score: 0
+    },
+    {
+        groupName: "Giô-na-than",
+        score: 0
+    },
+    {
+        groupName: "Nê-hê-mi",
+        score: 0
+    },
+    {
+        groupName: "Ma-ri",
+        score: 0
+    },
+    {
+        groupName: "Giê-rê-mi",
+        score: 0
+    },
+    {
+        groupName: "Ê-xơ-ra",
+        score: 0
+    }
+];
+
+
+function loadGroupRankingDemo() {
+    const tableBody = document.getElementById("groupRankingTableBody");
+
+    if (!tableBody) {
+        return;
+    }
+
+    const currentUser = getCurrentUserDemo();
+
+    if (!currentUser) {
+        window.location.href = "index.html";
+        return;
+    }
+
+    const sortedGroups = [...groupRankingDemo].sort(
+        (a, b) => b.score - a.score
+    );
+
+    tableBody.innerHTML = sortedGroups.map((group, index) => {
+        const isMyGroup =
+            group.groupName.toLowerCase() === currentUser.groupName.toLowerCase();
+
+        let status = "Đang thi đua";
+
+        if (index === 0) {
+            status = "Đang dẫn đầu";
+        }
+
+        if (isMyGroup) {
+            status = "Nhóm của bạn";
+        }
+
+        return `
+            <tr class="${isMyGroup ? "highlight-row" : ""}">
+                <td>#${index + 1}</td>
+                <td>${group.groupName}</td>
+                <td>${group.score}</td>
+                <td>${status}</td>
+            </tr>
+        `;
+    }).join("");
 }

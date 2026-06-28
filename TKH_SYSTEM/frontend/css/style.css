@@ -969,3 +969,55 @@ body {
 .material-open-btn:hover {
     background: #1d4ed8;
 }
+
+.delete-material-btn {
+    margin-top: 16px;
+    background: #fee2e2;
+    color: #b91c1c;
+    border: none;
+    padding: 9px 14px;
+    border-radius: 999px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.delete-material-btn:hover {
+    background: #fecaca;
+}
+
+
+.admin-material-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+}
+
+.edit-material-btn {
+    background: #dbeafe;
+    color: #1d4ed8;
+    border: none;
+    padding: 9px 14px;
+    border-radius: 999px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.edit-material-btn:hover {
+    background: #bfdbfe;
+}
+
+.cancel-edit-btn {
+    margin-left: 10px;
+    background: #e5e7eb;
+    color: #374151;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 999px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.cancel-edit-btn:hover {
+    background: #d1d5db;
+}
