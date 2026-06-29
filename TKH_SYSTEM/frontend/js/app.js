@@ -97,7 +97,23 @@ const CHURCH_LOCATION = {
     lng: 106.6643590819157
 };
 
-const CHECKIN_RADIUS_METERS = 200;
+const CHECKIN_RADIUS_METERS = 50;
+
+
+function loadAttendanceConfig() {
+
+    const radiusText =
+        document.getElementById("checkinRadiusText");
+
+    if (!radiusText) {
+        return;
+    }
+
+    radiusText.innerText =
+        "Chỉ điểm danh được khi bạn ở trong bán kính " +
+        CHECKIN_RADIUS_METERS +
+        "m từ Nhà Thờ Nguyễn Tri Phương.";
+}
 
 
 function saveAttendanceDemo() {
@@ -671,6 +687,7 @@ function runPageLoaders() {
     loadStudentDirectoryDemo();
     loadGroupScoreDemo();
     loadGroupRankingDemo();
+    loadAttendanceConfig();
 }
 
 document.addEventListener("DOMContentLoaded", runPageLoaders);
