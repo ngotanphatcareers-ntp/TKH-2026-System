@@ -854,6 +854,7 @@ function runPageLoaders() {
     loadAdminCheckinWindowStatusDemo();
     loadDeviceWarningDemo();
     loadAdminAttendanceTableDemo();
+    loadAdminAttendanceStatsDemo();
 }
 
 document.addEventListener("DOMContentLoaded", runPageLoaders);
@@ -2976,4 +2977,75 @@ function loadAdminAttendanceTableDemo() {
 
     `).join("");
 
+}
+
+function loadAdminAttendanceStatsDemo() {
+    const totalElement = document.getElementById("adminTotalStudents");
+    const checkedElement = document.getElementById("adminCheckedInStudents");
+    const absentElement = document.getElementById("adminAbsentStudents");
+    const percentElement = document.getElementById("adminCheckedInPercent");
+
+    const morningElement = document.getElementById("morningCheckinCount");
+    const breakElement = document.getElementById("breakCheckinCount");
+    const endElement = document.getElementById("endCheckinCount");
+    const devotionElement = document.getElementById("devotionCheckinCount");
+
+    if (!totalElement) {
+        return;
+    }
+
+    const students = getImportedStudentsDemo();
+    const attendanceHistory =
+        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+
+    const today = new Date().toDateString();
+    const session = attendanceCheckinConfigDemo.activeSession;
+
+    const todayRecords = attendanceHistory.filter(item =>
+        item.dateKey === today &&
+        item.session === session
+    );
+
+    const uniqueCheckedUsers = [];
+
+    todayRecords.forEach(item => {
+        const existed = uniqueCheckedUsers.find(
+            username =>
+                username.toLowerCase() === item.username.toLowerCase()
+        );
+
+        if (!existed) {
+            uniqueCheckedUsers.push(item.username);
+        }
+    });
+
+    const totalStudents = students.length;
+    const checkedCount = uniqueCheckedUsers.length;
+    const absentCount = totalStudents - checkedCount;
+
+    const checkedPercent =
+        totalStudents > 0
+            ? ((checkedCount / totalStudents) * 100).toFixed(1)
+            : "0.0";
+
+    totalElement.innerText = totalStudents;
+    checkedElement.innerText = checkedCount;
+    absentElement.innerText = absentCount;
+    percentElement.innerText = checkedPercent + "%";
+
+    morningElement.innerText = todayRecords.filter(
+        item => item.windowKey === "morning"
+    ).length;
+
+    breakElement.innerText = todayRecords.filter(
+        item => item.windowKey === "break"
+    ).length;
+
+    endElement.innerText = todayRecords.filter(
+        item => item.windowKey === "end"
+    ).length;
+
+    devotionElement.innerText = todayRecords.filter(
+        item => item.windowKey === "devotion"
+    ).length;
 }

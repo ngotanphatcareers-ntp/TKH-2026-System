@@ -39,22 +39,52 @@
 
         <div class="info-card">
             <h3>Tổng học viên</h3>
-            <p class="big-number">180</p>
+            <p class="big-number" id="adminTotalStudents">0</p>
             <span>Tất cả thành viên</span>
         </div>
 
         <div class="info-card">
             <h3>Đã điểm danh</h3>
-            <p class="big-number">142</p>
-            <span>78.9%</span>
+            <p class="big-number" id="adminCheckedInStudents">0</p>
+            <span id="adminCheckedInPercent">0%</span>
         </div>
 
         <div class="info-card">
             <h3>Chưa điểm danh</h3>
-            <p class="big-number">38</p>
+            <p class="big-number" id="adminAbsentStudents">0</p>
             <span>Cần theo dõi</span>
         </div>
 
+    </div>
+
+    <div class="attendance-box">
+        <h2>Thống kê theo khung điểm danh</h2>
+
+        <div class="cards">
+            <div class="info-card">
+                <h3>Đầu giờ</h3>
+                <p class="big-number" id="morningCheckinCount">0</p>
+                <span>Học viên</span>
+            </div>
+
+            <div class="info-card">
+                <h3>Giờ ra chơi</h3>
+                <p class="big-number" id="breakCheckinCount">0</p>
+                <span>Học viên</span>
+            </div>
+
+            <div class="info-card">
+                <h3>Cuối giờ</h3>
+                <p class="big-number" id="endCheckinCount">0</p>
+                <span>Học viên</span>
+            </div>
+
+            <div class="info-card">
+                <h3>Tĩnh nguyện</h3>
+                <p class="big-number" id="devotionCheckinCount">0</p>
+                <span>Học viên</span>
+            </div>
+        </div>
     </div>
 
 
@@ -133,7 +163,7 @@
 
 </main>
 
-<script src="js/app.js?v=69"></script>
+<script src="js/app.js?v=70"></script>
 
 </body>
 </html>
