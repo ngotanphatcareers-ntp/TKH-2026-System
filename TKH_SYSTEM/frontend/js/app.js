@@ -184,6 +184,25 @@ function saveAttendanceDemo(distance) {
         item.session === session
     );
 
+    const mainAttendanceRecords = myTodayRecords.filter(
+    item => item.windowKey !== "devotion"
+    );
+
+    const currentMainAttendancePoints = mainAttendanceRecords.reduce(
+        (total, item) => total + Number(item.points || 0),
+        0
+    );
+
+    if (
+        checkinWindow.key !== "devotion" &&
+        currentMainAttendancePoints + Number(checkinWindow.points) > 10
+    ) {
+        return {
+            success: false,
+            message: "Tổng điểm điểm danh của buổi học này đã đạt giới hạn tối đa 10 điểm."
+        };
+    }
+        
     const alreadySameWindow = myTodayRecords.find(
         item => item.windowKey === checkinWindow.key
     );
@@ -222,6 +241,7 @@ function saveAttendanceDemo(distance) {
         windowLabel: checkinWindow.label,
         points: checkinWindow.points,
         distance: formatDistance(distance),
+        deviceId: getDeviceIdDemo(),
         dateKey: today,
         checkInTime: new Date().toLocaleString("vi-VN")
     });
@@ -832,6 +852,7 @@ function runPageLoaders() {
     loadMyPersonalRankDemo();
     loadActiveCheckinWindowDemo();
     loadAdminCheckinWindowStatusDemo();
+    loadDeviceWarningDemo();
 }
 
 document.addEventListener("DOMContentLoaded", runPageLoaders);
@@ -2829,4 +2850,79 @@ function addAttendanceScoreDemo(currentUser, checkinWindow) {
     });
 
     saveStoredScoresDemo(scores);
+}
+
+function getDeviceIdDemo() {
+    let deviceId = localStorage.getItem("tkhDeviceIdDemo");
+
+    if (!deviceId) {
+        deviceId =
+            "DEVICE-" +
+            Date.now() +
+            "-" +
+            Math.random().toString(36).substring(2, 8);
+
+        localStorage.setItem("tkhDeviceIdDemo", deviceId);
+    }
+
+    return deviceId;
+}
+
+function loadDeviceWarningDemo() {
+    const warningList = document.getElementById("deviceWarningList");
+
+    if (!warningList) {
+        return;
+    }
+
+    const attendanceHistory =
+        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+
+    const deviceMap = {};
+
+    attendanceHistory.forEach(item => {
+        if (!item.deviceId) {
+            return;
+        }
+
+        if (!deviceMap[item.deviceId]) {
+            deviceMap[item.deviceId] = [];
+        }
+
+        const existedUser = deviceMap[item.deviceId].find(
+            user => user.username === item.username
+        );
+
+        if (!existedUser) {
+            deviceMap[item.deviceId].push({
+                username: item.username,
+                fullName: item.fullName,
+                groupName: item.groupName
+            });
+        }
+    });
+
+    const suspiciousDevices = Object.entries(deviceMap)
+        .filter(([deviceId, users]) => users.length >= 2);
+
+    if (suspiciousDevices.length === 0) {
+        warningList.innerHTML = `
+            <p class="empty-note">Chưa phát hiện thiết bị điểm danh nhiều tài khoản.</p>
+        `;
+        return;
+    }
+
+    warningList.innerHTML = suspiciousDevices.map(([deviceId, users]) => `
+        <div class="question-card warning-card">
+            <h3>⚠️ Thiết bị có ${users.length} tài khoản điểm danh</h3>
+            <p class="question-meta">Mã thiết bị: ${deviceId}</p>
+
+            ${users.map(user => `
+                <p>
+                    <strong>${user.fullName}</strong>
+                    (${user.username}) · Nhóm ${user.groupName}
+                </p>
+            `).join("")}
+        </div>
+    `).join("");
 }
