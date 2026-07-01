@@ -853,6 +853,7 @@ function runPageLoaders() {
     loadActiveCheckinWindowDemo();
     loadAdminCheckinWindowStatusDemo();
     loadDeviceWarningDemo();
+    loadAdminAttendanceTableDemo();
 }
 
 document.addEventListener("DOMContentLoaded", runPageLoaders);
@@ -2925,4 +2926,54 @@ function loadDeviceWarningDemo() {
             `).join("")}
         </div>
     `).join("");
+}
+
+function loadAdminAttendanceTableDemo() {
+
+    const tableBody =
+        document.getElementById("adminAttendanceTableBody");
+
+    if (!tableBody) {
+        return;
+    }
+
+    const attendanceHistory =
+        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+
+    if (attendanceHistory.length === 0) {
+
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="7">
+                    Chưa có học viên nào điểm danh.
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    tableBody.innerHTML =
+        attendanceHistory.map(item => `
+
+        <tr>
+
+            <td>${item.fullName}</td>
+
+            <td>${item.groupName}</td>
+
+            <td>${item.windowLabel}</td>
+
+            <td>${item.checkInTime}</td>
+
+            <td>${item.distance}</td>
+
+            <td>+${item.points}</td>
+
+            <td>${item.status}</td>
+
+        </tr>
+
+    `).join("");
+
 }
