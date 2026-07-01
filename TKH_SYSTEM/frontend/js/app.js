@@ -855,6 +855,7 @@ function runPageLoaders() {
     loadDeviceWarningDemo();
     loadAdminAttendanceTableDemo();
     loadAdminAttendanceStatsDemo();
+    loadAdminDashboardSummaryDemo();
 }
 
 document.addEventListener("DOMContentLoaded", runPageLoaders);
@@ -3048,4 +3049,73 @@ function loadAdminAttendanceStatsDemo() {
     devotionElement.innerText = todayRecords.filter(
         item => item.windowKey === "devotion"
     ).length;
+}
+
+function loadAdminDashboardSummaryDemo() {
+    const totalStudentsElement =
+        document.getElementById("adminDashboardTotalStudents");
+
+    const checkedInElement =
+        document.getElementById("adminDashboardCheckedIn");
+
+    const checkedPercentElement =
+        document.getElementById("adminDashboardCheckedInPercent");
+
+    const currentSessionElement =
+        document.getElementById("adminDashboardCurrentSession");
+
+    const checkinStatusElement =
+        document.getElementById("adminDashboardCheckinStatus");
+
+    if (!totalStudentsElement) {
+        return;
+    }
+
+    const students = getImportedStudentsDemo();
+    const attendanceHistory =
+        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+
+    const today = new Date().toDateString();
+    const session = attendanceCheckinConfigDemo.activeSession;
+
+    const todayRecords = attendanceHistory.filter(item =>
+        item.dateKey === today &&
+        item.session === session
+    );
+
+    const uniqueCheckedUsers = [];
+
+    todayRecords.forEach(item => {
+        const existed = uniqueCheckedUsers.find(
+            username =>
+                username.toLowerCase() === item.username.toLowerCase()
+        );
+
+        if (!existed) {
+            uniqueCheckedUsers.push(item.username);
+        }
+    });
+
+    const totalStudents = students.length;
+    const checkedCount = uniqueCheckedUsers.length;
+
+    const checkedPercent =
+        totalStudents > 0
+            ? ((checkedCount / totalStudents) * 100).toFixed(1)
+            : "0.0";
+
+    totalStudentsElement.innerText = totalStudents;
+    checkedInElement.innerText = checkedCount;
+    checkedPercentElement.innerText = checkedPercent + "% thành viên";
+
+    currentSessionElement.innerText = session;
+
+    const openWindows = getOpenCheckinWindowsDemo();
+
+    if (openWindows.length === 0) {
+        checkinStatusElement.innerText = "Trạng thái: Chưa mở điểm danh";
+    } else {
+        checkinStatusElement.innerText =
+            "Đang mở: " + openWindows.map(item => item.label).join(", ");
+    }
 }
