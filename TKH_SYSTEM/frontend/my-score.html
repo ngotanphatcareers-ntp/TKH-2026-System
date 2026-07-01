@@ -39,19 +39,19 @@
 
             <div class="info-card">
                 <h3>Tổng điểm</h3>
-                <p class="big-number">85</p>
+                <p class="big-number" id="myTotalScore">0</p>
                 <span>Điểm hiện tại</span>
             </div>
 
             <div class="info-card">
-                <h3>Xếp hạng nhóm</h3>
-                <p class="big-number">#3</p>
-                <span>Trong nhóm Giô-sép</span>
+                <h3>Thứ hạng cá nhân</h3>
+                <p class="big-number" id="myPersonalRank">-</p>
+                <span id="myPersonalRankText">Trong toàn chương trình</span>
             </div>
 
             <div class="info-card">
                 <h3>Điểm chuyên cần</h3>
-                <p class="big-number">25</p>
+                <p class="big-number" id="myAttendanceScore">0</p>
                 <span>Từ các buổi điểm danh</span>
             </div>
 
@@ -70,23 +70,9 @@
                     </tr>
                 </thead>
 
-                <tbody>
+                <tbody id="myScoreHistoryBody">
                     <tr>
-                        <td>01/06/2026</td>
-                        <td>Trả bài cũ</td>
-                        <td>+10</td>
-                    </tr>
-
-                    <tr>
-                        <td>03/06/2026</td>
-                        <td>Điểm danh</td>
-                        <td>+5</td>
-                    </tr>
-
-                    <tr>
-                        <td>08/06/2026</td>
-                        <td>Trò chơi nhóm</td>
-                        <td>+15</td>
+                        <td colspan="3">Chưa có lịch sử điểm.</td>
                     </tr>
                 </tbody>
 
@@ -94,9 +80,33 @@
 
         </div>
 
+    
+    <div class="attendance-box">
+        <h2>🏆 Top 10 cá nhân xuất sắc</h2>
+        <p class="empty-note">
+            Bảng xếp hạng chỉ hiển thị thứ hạng.
+        </p>
+
+        <table class="score-table">
+            <thead>
+                <tr>
+                    <th>Hạng</th>
+                    <th>Học viên</th>
+                    <th>Nhóm</th>
+                </tr>
+            </thead>
+
+            <tbody id="topPersonalRankingBody">
+                <tr>
+                    <td colspan="3">Chưa có dữ liệu xếp hạng.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+        
     </main>
 
-    <script src="js/app.js?v=3"></script>
+    <script src="js/app.js?v=66"></script>
 
 </body>
 </html>

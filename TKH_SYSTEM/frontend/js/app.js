@@ -97,7 +97,42 @@ const CHURCH_LOCATION = {
     lng: 106.6643590819157
 };
 
-const CHECKIN_RADIUS_METERS = 50;
+
+const attendanceCheckinConfigDemo = {
+    activeSession: "Buổi học hiện tại",
+
+    windows: {
+        devotion: {
+            label: "Tĩnh nguyện",
+            mode: "auto",
+            startTime: "05:30",
+            endTime: "06:00",
+            points: 2,
+            note: "Điểm challenge tĩnh nguyện"
+        },
+        morning: {
+            label: "Đầu giờ",
+            mode: "manual",
+            points: 5,
+            note: "Điểm danh đầu giờ"
+        },
+        break: {
+            label: "Giờ ra chơi",
+            mode: "manual",
+            points: 3,
+            note: "Dành cho học viên đến trễ"
+        },
+        end: {
+            label: "Cuối giờ",
+            mode: "manual",
+            points: 5,
+            note: "Điểm danh cuối giờ"
+        }
+    }
+};
+
+
+const CHECKIN_RADIUS_METERS = 500000;
 
 
 function loadAttendanceConfig() {
@@ -116,39 +151,78 @@ function loadAttendanceConfig() {
 }
 
 
-function saveAttendanceDemo() {
-
-    const currentUser =
-        JSON.parse(localStorage.getItem("currentUser")) ||
-        demoUsers.find(
-            user => user.username === localStorage.getItem("currentUsername")
-        );
+function saveAttendanceDemo(distance) {
+    const currentUser = getCurrentUserDemo();
 
     if (!currentUser) {
-        return;
+        return {
+            success: false,
+            message: "Không tìm thấy tài khoản đăng nhập."
+        };
     }
+
+    const openWindows = getOpenCheckinWindowsDemo();
+
+    if (openWindows.length === 0) {
+        return {
+            success: false,
+            message: "Hiện chưa có khung điểm danh nào đang mở."
+        };
+    }
+
+    const checkinWindow = openWindows[0];
 
     const attendanceHistory =
         JSON.parse(localStorage.getItem("attendanceHistory")) || [];
 
     const today = new Date().toDateString();
+    const session = attendanceCheckinConfigDemo.activeSession;
 
-    const alreadyChecked =
-    attendanceHistory.find(
-        item =>
-            item.username === currentUser.username &&
-            new Date(item.checkInTime).toDateString() === today
+    const myTodayRecords = attendanceHistory.filter(item =>
+        item.username.toLowerCase() === currentUser.username.toLowerCase() &&
+        item.dateKey === today &&
+        item.session === session
     );
 
-    if (alreadyChecked) {
-    return;
+    const alreadySameWindow = myTodayRecords.find(
+        item => item.windowKey === checkinWindow.key
+    );
+
+    if (alreadySameWindow) {
+        return {
+            success: false,
+            message: "Bạn đã điểm danh khung " + checkinWindow.label + " rồi."
+        };
     }
 
-attendanceHistory.unshift({
+    const hasMorning = myTodayRecords.some(item => item.windowKey === "morning");
+    const hasBreak = myTodayRecords.some(item => item.windowKey === "break");
+
+    if (checkinWindow.key === "break" && hasMorning) {
+        return {
+            success: false,
+            message: "Bạn đã điểm danh đầu giờ rồi nên không thể điểm danh giờ ra chơi."
+        };
+    }
+
+    if (checkinWindow.key === "morning" && hasBreak) {
+        return {
+            success: false,
+            message: "Bạn đã điểm danh giờ ra chơi rồi nên không thể điểm danh đầu giờ."
+        };
+    }
+
+    attendanceHistory.unshift({
         username: currentUser.username,
         fullName: currentUser.fullName,
-        session: "Buổi học hiện tại",
+        groupName: currentUser.groupName,
+        session: session,
         status: "Có mặt",
+        windowKey: checkinWindow.key,
+        windowLabel: checkinWindow.label,
+        points: checkinWindow.points,
+        distance: formatDistance(distance),
+        dateKey: today,
         checkInTime: new Date().toLocaleString("vi-VN")
     });
 
@@ -156,6 +230,18 @@ attendanceHistory.unshift({
         "attendanceHistory",
         JSON.stringify(attendanceHistory)
     );
+
+    addAttendanceScoreDemo(currentUser, checkinWindow);
+
+    return {
+        success: true,
+        message:
+            "Điểm danh thành công khung " +
+            checkinWindow.label +
+            ". Bạn được +" +
+            checkinWindow.points +
+            " điểm."
+    };
 }
 
 
@@ -211,8 +297,21 @@ function checkInDemo() {
                 gpsMessage.style.color = "green";
                 gpsMessage.innerText = "✅ Bạn đang trong khu vực điểm danh.";
 
-                saveAttendanceDemo();
-                loadAttendanceHistoryDemo();
+                const checkinResult = saveAttendanceDemo(distance);
+
+            if (!checkinResult.success) {
+                statusCard.className = "status-card status-fail";
+                statusCard.innerText = "Không thể điểm danh";
+
+                gpsMessage.style.color = "red";
+                gpsMessage.innerText = checkinResult.message;
+                return;
+            }
+
+            gpsMessage.style.color = "green";
+            gpsMessage.innerText = "✅ " + checkinResult.message;
+
+            loadAttendanceHistoryDemo();
             } else {
                 statusCard.className = "status-card status-fail";
                 statusCard.innerText = "Ngoài khu vực điểm danh";
@@ -322,13 +421,15 @@ localStorage.setItem(
 
 
 function addScoreDemo() {
+    const username = document.getElementById("scoreUser").value;
+    const scoreType = document.getElementById("scoreType").value;
     const scoreValue = document.getElementById("scoreValue").value.trim();
     const scoreReason = document.getElementById("scoreReason").value.trim();
     const message = document.getElementById("scoreMessage");
 
-    if (!scoreValue || !scoreReason) {
+    if (!username || !scoreValue || !scoreReason) {
         message.style.color = "red";
-        message.innerText = "Vui lòng nhập số điểm và lý do.";
+        message.innerText = "Vui lòng chọn học viên, nhập điểm và lý do.";
         return;
     }
 
@@ -338,8 +439,37 @@ function addScoreDemo() {
         return;
     }
 
+    const student = findStudentByUsernameDemo(username);
+
+    if (!student) {
+        message.style.color = "red";
+        message.innerText = "Không tìm thấy học viên.";
+        return;
+    }
+
+    const scores = getStoredScoresDemo();
+
+    scores.unshift({
+        id: Date.now(),
+        username: student.username,
+        fullName: student.fullName,
+        groupName: student.groupName,
+        scoreType: scoreType,
+        scoreTypeLabel: getScoreTypeLabelDemo(scoreType),
+        scoreValue: Number(scoreValue),
+        reason: scoreReason,
+        createdAt: new Date().toLocaleString("vi-VN")
+    });
+
+    saveStoredScoresDemo(scores);
+
+    document.getElementById("scoreValue").value = "";
+    document.getElementById("scoreReason").value = "";
+
     message.style.color = "green";
-    message.innerText = "Đã lưu điểm demo thành công!";
+    message.innerText = "Đã lưu điểm thành công cho " + student.fullName + ".";
+
+    loadAdminScoreHistoryDemo();
 }
 
 //quản lý buổi học
@@ -585,15 +715,18 @@ function loadAttendanceHistoryDemo() {
     }
 
     historyContainer.innerHTML =
-        myHistory.map(item => `
-            <div class="question-card">
-                <h3>${item.session}</h3>
-                <p>Trạng thái: ${item.status}</p>
-                <p class="question-meta">
-                    ${item.checkInTime}
-                </p>
-            </div>
-        `).join("");
+    myHistory.map(item => `
+        <div class="question-card">
+            <h3>${item.session}</h3>
+            <p><strong>Khung:</strong> ${item.windowLabel || "Điểm danh"}</p>
+            <p><strong>Trạng thái:</strong> ${item.status}</p>
+            <p><strong>Điểm:</strong> +${item.points || 0}</p>
+            <p><strong>Khoảng cách:</strong> ${item.distance || "-"}</p>
+            <p class="question-meta">
+                ${item.checkInTime}
+            </p>
+        </div>
+    `).join("");
 }//hết
 
 const studyMaterialsDemo = [
@@ -688,6 +821,17 @@ function runPageLoaders() {
     loadGroupScoreDemo();
     loadGroupRankingDemo();
     loadAttendanceConfig();
+    loadScoreStudentOptionsDemo();
+    loadAdminScoreHistoryDemo();
+    loadMyScoreDemo();
+    loadDashboardPersonalScoreDemo();
+    loadMyGroupSummaryDemo();
+    loadTopGroupRankingDemo();
+    loadMyGroupRankDemo();
+    loadTopPersonalRankingDemo();
+    loadMyPersonalRankDemo();
+    loadActiveCheckinWindowDemo();
+    loadAdminCheckinWindowStatusDemo();
 }
 
 document.addEventListener("DOMContentLoaded", runPageLoaders);
@@ -2015,7 +2159,9 @@ const groupRankingDemo = [
 
 
 function loadGroupRankingDemo() {
-    const tableBody = document.getElementById("groupRankingTableBody");
+
+    const tableBody =
+        document.getElementById("groupRankingTableBody");
 
     if (!tableBody) {
         return;
@@ -2024,17 +2170,50 @@ function loadGroupRankingDemo() {
     const currentUser = getCurrentUserDemo();
 
     if (!currentUser) {
-        window.location.href = "index.html";
         return;
     }
 
-    const sortedGroups = [...groupRankingDemo].sort(
-        (a, b) => b.score - a.score
-    );
+    const students = getImportedStudentsDemo();
+    const scores = getStoredScoresDemo();
 
-    tableBody.innerHTML = sortedGroups.map((group, index) => {
+    // copy danh sách nhóm
+    const groups = groupRankingDemo.map(group => ({
+        groupName: group.groupName,
+        score: 0
+    }));
+
+    // cộng điểm từng học viên vào nhóm
+    scores.forEach(score => {
+
+        const student = students.find(
+            item => item.username === score.username
+        );
+
+        if (!student) {
+            return;
+        }
+
+        const group = groups.find(
+            item =>
+                item.groupName.toLowerCase() ===
+                student.groupName.toLowerCase()
+        );
+
+        if (!group) {
+            return;
+        }
+
+        group.score += Number(score.scoreValue);
+
+    });
+
+    groups.sort((a, b) => b.score - a.score);
+
+    tableBody.innerHTML = groups.map((group, index) => {
+
         const isMyGroup =
-            group.groupName.toLowerCase() === currentUser.groupName.toLowerCase();
+            group.groupName.toLowerCase() ===
+            currentUser.groupName.toLowerCase();
 
         let status = "Đang thi đua";
 
@@ -2054,5 +2233,600 @@ function loadGroupRankingDemo() {
                 <td>${status}</td>
             </tr>
         `;
+
     }).join("");
+
+}
+
+function getStoredScoresDemo() {
+    return JSON.parse(localStorage.getItem("studentScoresDemo")) || [];
+}
+
+function saveStoredScoresDemo(scores) {
+    localStorage.setItem("studentScoresDemo", JSON.stringify(scores));
+}
+
+function loadScoreStudentOptionsDemo() {
+    const select = document.getElementById("scoreUser");
+
+    if (!select) {
+        return;
+    }
+
+    const students = getImportedStudentsDemo();
+
+    if (students.length === 0) {
+        select.innerHTML = `
+            <option value="">Chưa có học viên. Vui lòng import Excel trước.</option>
+        `;
+        return;
+    }
+
+    select.innerHTML = `
+        <option value="">Chọn học viên</option>
+        ${
+            students.map(student => `
+                <option value="${student.username}">
+                    ${student.fullName} - ${student.groupName} (${student.username})
+                </option>
+            `).join("")
+        }
+    `;
+}
+
+
+//hàm tên loại điểm và lịch sử điểm
+function getScoreTypeLabelDemo(scoreType) {
+    if (scoreType === "bible_challenge") {
+        return "Trả bài cũ / Bible Challenge";
+    }
+
+    if (scoreType === "attendance") {
+        return "Điểm danh";
+    }
+
+    if (scoreType === "memory_verse") {
+        return "Thuộc câu gốc";
+    }
+
+    if (scoreType === "game") {
+        return "Trò chơi";
+    }
+
+    if (scoreType === "late") {
+        return "Đi trễ";
+    }
+
+    return "Thủ công";
+}
+
+function loadAdminScoreHistoryDemo() {
+    const tableBody = document.getElementById("adminScoreHistoryBody");
+
+    if (!tableBody) {
+        return;
+    }
+
+    const scores = getStoredScoresDemo();
+
+    if (scores.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="6">Chưa có lịch sử điểm.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    tableBody.innerHTML = scores.map(item => `
+        <tr>
+            <td>${item.createdAt}</td>
+            <td>${item.fullName}</td>
+            <td>${item.groupName}</td>
+            <td>${item.scoreTypeLabel}</td>
+            <td>${item.scoreValue > 0 ? "+" : ""}${item.scoreValue}</td>
+            <td>${item.reason}</td>
+        </tr>
+    `).join("");
+}//hết
+
+
+function getScoresByUsernameDemo(username) {
+    const scores = getStoredScoresDemo();
+
+    return scores.filter(
+        item => item.username.toLowerCase() === username.toLowerCase()
+    );
+}
+
+function getTotalScoreByUsernameDemo(username) {
+    const scores = getScoresByUsernameDemo(username);
+
+    return scores.reduce(
+        (total, item) => total + Number(item.scoreValue),
+        0
+    );
+}
+
+function loadMyScoreDemo() {
+    const totalScoreElement = document.getElementById("myTotalScore");
+    const attendanceScoreElement = document.getElementById("myAttendanceScore");
+    const historyBody = document.getElementById("myScoreHistoryBody");
+    const groupRankText = document.getElementById("myGroupRankText");
+
+    if (!totalScoreElement || !attendanceScoreElement || !historyBody) {
+        return;
+    }
+
+    const currentUser = getCurrentUserDemo();
+
+    if (!currentUser) {
+        window.location.href = "index.html";
+        return;
+    }
+
+    const myScores = getScoresByUsernameDemo(currentUser.username);
+
+    const totalScore = myScores.reduce(
+        (total, item) => total + Number(item.scoreValue),
+        0
+    );
+
+    const attendanceScore = myScores
+        .filter(item => item.scoreType === "attendance")
+        .reduce((total, item) => total + Number(item.scoreValue), 0);
+
+    totalScoreElement.innerText = totalScore;
+    attendanceScoreElement.innerText = attendanceScore;
+
+    if (groupRankText) {
+        groupRankText.innerText = "Trong nhóm " + currentUser.groupName;
+    }
+
+    if (myScores.length === 0) {
+        historyBody.innerHTML = `
+            <tr>
+                <td colspan="3">Chưa có lịch sử điểm.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    historyBody.innerHTML = myScores.map(item => `
+        <tr>
+            <td>${item.createdAt}</td>
+            <td>${item.reason}</td>
+            <td>${item.scoreValue > 0 ? "+" : ""}${item.scoreValue}</td>
+        </tr>
+    `).join("");
+}
+
+function loadDashboardPersonalScoreDemo() {
+    const scoreElement = document.getElementById("dashboardPersonalScore");
+
+    if (!scoreElement) {
+        return;
+    }
+
+    const currentUser = getCurrentUserDemo();
+
+    if (!currentUser) {
+        return;
+    }
+
+    const totalScore = getTotalScoreByUsernameDemo(currentUser.username);
+
+    scoreElement.innerText = totalScore;
+}
+
+
+function getGroupTotalScoreDemo(groupName) {
+
+    const students = getImportedStudentsDemo();
+    const scores = getStoredScoresDemo();
+
+    let total = 0;
+
+    scores.forEach(score => {
+
+        const student = students.find(
+            item => item.username === score.username
+        );
+
+        if (!student) {
+            return;
+        }
+
+        if (
+            student.groupName.toLowerCase() ===
+            groupName.toLowerCase()
+        ) {
+            total += Number(score.scoreValue);
+        }
+
+    });
+
+    return total;
+
+}
+
+function loadMyGroupSummaryDemo() {
+
+    const groupName =
+        document.getElementById("myGroupName");
+
+    const totalScore =
+        document.getElementById("myGroupTotalScore");
+
+    if (!groupName || !totalScore) {
+        return;
+    }
+
+    const currentUser = getCurrentUserDemo();
+
+    if (!currentUser) {
+        return;
+    }
+
+    groupName.innerText =
+        currentUser.groupName;
+
+    totalScore.innerText =
+        getGroupTotalScoreDemo(currentUser.groupName);
+
+}
+
+function getPersonalRankingDemo() {
+    const students = getImportedStudentsDemo();
+
+    const ranking = students.map(student => {
+        return {
+            username: student.username,
+            fullName: student.fullName,
+            groupName: student.groupName,
+            totalScore: getTotalScoreByUsernameDemo(student.username)
+        };
+    });
+
+    ranking.sort((a, b) => b.totalScore - a.totalScore);
+
+    return ranking;
+}
+
+function loadTopPersonalRankingDemo() {
+    const tableBody = document.getElementById("topPersonalRankingBody");
+
+    if (!tableBody) {
+        return;
+    }
+
+    const ranking = getPersonalRankingDemo()
+        .filter(item => item.totalScore > 0)
+        .slice(0, 10);
+
+    if (ranking.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="3">Chưa có dữ liệu xếp hạng.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    tableBody.innerHTML = ranking.map((item, index) => `
+        <tr>
+            <td>#${index + 1}</td>
+            <td>${item.fullName}</td>
+            <td>${item.groupName}</td>
+        </tr>
+    `).join("");
+}
+
+
+function loadMyPersonalRankDemo() {
+    const rankElement = document.getElementById("myPersonalRank");
+    const rankTextElement = document.getElementById("myPersonalRankText");
+
+    if (!rankElement || !rankTextElement) {
+        return;
+    }
+
+    const currentUser = getCurrentUserDemo();
+
+    if (!currentUser) {
+        window.location.href = "index.html";
+        return;
+    }
+
+    const ranking = getPersonalRankingDemo();
+
+    const myIndex = ranking.findIndex(
+        item =>
+            item.username.toLowerCase() ===
+            currentUser.username.toLowerCase()
+    );
+
+    if (myIndex === -1) {
+        rankElement.innerText = "-";
+        rankTextElement.innerText = "Chưa có dữ liệu xếp hạng";
+        return;
+    }
+
+    rankElement.innerText = "#" + (myIndex + 1);
+    rankTextElement.innerText =
+        "Trong " + ranking.length + " học viên";
+}
+
+
+function getGroupRankingWithScoresDemo() {
+    const students = getImportedStudentsDemo();
+    const scores = getStoredScoresDemo();
+
+    const groups = groupRankingDemo.map(group => ({
+        groupName: group.groupName,
+        score: 0
+    }));
+
+    scores.forEach(score => {
+        const student = students.find(
+            item => item.username.toLowerCase() === score.username.toLowerCase()
+        );
+
+        if (!student) {
+            return;
+        }
+
+        const group = groups.find(
+            item =>
+                item.groupName.toLowerCase() ===
+                student.groupName.toLowerCase()
+        );
+
+        if (!group) {
+            return;
+        }
+
+        group.score += Number(score.scoreValue);
+    });
+
+    groups.sort((a, b) => b.score - a.score);
+
+    return groups;
+}
+
+function loadTopGroupRankingDemo() {
+    const list = document.getElementById("topGroupRankingList");
+
+    if (!list) {
+        return;
+    }
+
+    const topGroups = getGroupRankingWithScoresDemo().slice(0, 3);
+
+    if (topGroups.length === 0) {
+        list.innerHTML = `<p class="empty-note">Chưa có dữ liệu nhóm.</p>`;
+        return;
+    }
+
+    list.innerHTML = topGroups.map((group, index) => `
+        <div class="question-card">
+            <h3>#${index + 1} ${group.groupName}</h3>
+            <p>⭐ ${group.score} điểm</p>
+        </div>
+    `).join("");
+}
+
+function loadMyGroupRankDemo() {
+    const rankElement = document.getElementById("myGroupRankNumber");
+
+    if (!rankElement) {
+        return;
+    }
+
+    const currentUser = getCurrentUserDemo();
+
+    if (!currentUser) {
+        return;
+    }
+
+    const ranking = getGroupRankingWithScoresDemo();
+
+    const myGroupIndex = ranking.findIndex(
+        group =>
+            group.groupName.toLowerCase() ===
+            currentUser.groupName.toLowerCase()
+    );
+
+    if (myGroupIndex === -1) {
+        rankElement.innerText = "-";
+        return;
+    }
+
+    rankElement.innerText = "#" + (myGroupIndex + 1);
+}
+
+function getOpenCheckinWindowsDemo() {
+    const openWindows = [];
+
+    const devotionWindow = attendanceCheckinConfigDemo.windows.devotion;
+
+    if (isAutoCheckinWindowOpenDemo(devotionWindow)) {
+        openWindows.push({
+            key: "devotion",
+            ...devotionWindow
+        });
+    }
+
+    const manualWindowKey = getManualCheckinWindowDemo();
+
+    if (manualWindowKey) {
+        const manualWindow = attendanceCheckinConfigDemo.windows[manualWindowKey];
+
+        if (manualWindow) {
+            openWindows.push({
+                key: manualWindowKey,
+                ...manualWindow
+            });
+        }
+    }
+
+    return openWindows;
+}
+
+function loadActiveCheckinWindowDemo() {
+    const box = document.getElementById("activeCheckinWindow");
+
+    if (!box) {
+        return;
+    }
+
+    const openWindows = getOpenCheckinWindowsDemo();
+
+    if (openWindows.length === 0) {
+        box.innerHTML = `
+            <p><strong>Hiện chưa mở điểm danh.</strong></p>
+            <p class="empty-note">Vui lòng chờ BTC mở khung điểm danh.</p>
+        `;
+        return;
+    }
+
+    box.innerHTML = openWindows.map(item => `
+        <div class="checkin-window-item">
+            <strong>✅ ${item.label}</strong>
+            <p>+${item.points} điểm · ${item.note}</p>
+        </div>
+    `).join("");
+}
+
+function getManualCheckinWindowDemo() {
+    return localStorage.getItem("manualCheckinWindowDemo") || "";
+}
+
+function saveManualCheckinWindowDemo(windowKey) {
+    localStorage.setItem("manualCheckinWindowDemo", windowKey);
+}
+
+function setManualCheckinWindowDemo(windowKey) {
+    const validWindows = ["morning", "break", "end"];
+
+    if (!validWindows.includes(windowKey)) {
+        return;
+    }
+
+    saveManualCheckinWindowDemo(windowKey);
+
+    const message = document.getElementById("adminCheckinWindowMessage");
+
+    if (message) {
+        message.style.color = "green";
+        message.innerText = "Đã mở khung điểm danh: " + getCheckinWindowLabelDemo(windowKey);
+    }
+
+    loadAdminCheckinWindowStatusDemo();
+    loadActiveCheckinWindowDemo();
+}
+
+function closeManualCheckinWindowsDemo() {
+    saveManualCheckinWindowDemo("");
+
+    const message = document.getElementById("adminCheckinWindowMessage");
+
+    if (message) {
+        message.style.color = "#6b7280";
+        message.innerText = "Đã đóng tất cả khung điểm danh buổi học.";
+    }
+
+    loadAdminCheckinWindowStatusDemo();
+    loadActiveCheckinWindowDemo();
+}
+
+function getCheckinWindowLabelDemo(windowKey) {
+    const windowConfig = attendanceCheckinConfigDemo.windows[windowKey];
+
+    if (!windowConfig) {
+        return "Không xác định";
+    }
+
+    return windowConfig.label;
+}
+
+function isAutoCheckinWindowOpenDemo(windowConfig) {
+    if (!windowConfig || windowConfig.mode !== "auto") {
+        return false;
+    }
+
+    const now = new Date();
+
+    const currentMinutes =
+        now.getHours() * 60 + now.getMinutes();
+
+    const startParts = windowConfig.startTime.split(":");
+    const endParts = windowConfig.endTime.split(":");
+
+    const startMinutes =
+        Number(startParts[0]) * 60 + Number(startParts[1]);
+
+    const endMinutes =
+        Number(endParts[0]) * 60 + Number(endParts[1]);
+
+    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+}
+
+function loadAdminCheckinWindowStatusDemo() {
+    const statusBox = document.getElementById("adminCheckinWindowStatus");
+
+    if (!statusBox) {
+        return;
+    }
+
+    const manualWindowKey = getManualCheckinWindowDemo();
+    const devotionWindow = attendanceCheckinConfigDemo.windows.devotion;
+    const isDevotionOpen = isAutoCheckinWindowOpenDemo(devotionWindow);
+
+    let manualStatus = "Chưa mở khung điểm danh buổi học.";
+
+    if (manualWindowKey) {
+        const manualWindow = attendanceCheckinConfigDemo.windows[manualWindowKey];
+
+        if (manualWindow) {
+            manualStatus =
+                "Đang mở: " + manualWindow.label + " (+" + manualWindow.points + " điểm)";
+        }
+    }
+
+    statusBox.innerHTML = `
+        <div class="checkin-window-item">
+            <strong>Khung buổi học:</strong>
+            <p>${manualStatus}</p>
+        </div>
+
+        <div class="checkin-window-item">
+            <strong>Tĩnh nguyện:</strong>
+            <p>
+                ${isDevotionOpen ? "Đang tự động mở" : "Đang đóng"}
+                · 05:30 - 06:00 · +${devotionWindow.points} điểm
+            </p>
+        </div>
+    `;
+}
+
+function addAttendanceScoreDemo(currentUser, checkinWindow) {
+    const scores = getStoredScoresDemo();
+
+    scores.unshift({
+        id: Date.now(),
+        username: currentUser.username,
+        fullName: currentUser.fullName,
+        groupName: currentUser.groupName,
+        scoreType: checkinWindow.key === "devotion" ? "devotion" : "attendance",
+        scoreTypeLabel:
+            checkinWindow.key === "devotion"
+                ? "Tĩnh nguyện"
+                : "Điểm danh",
+        scoreValue: Number(checkinWindow.points),
+        reason: "Điểm danh " + checkinWindow.label,
+        createdAt: new Date().toLocaleString("vi-VN")
+    });
+
+    saveStoredScoresDemo(scores);
 }
