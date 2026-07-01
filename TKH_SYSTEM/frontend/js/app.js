@@ -856,6 +856,7 @@ function runPageLoaders() {
     loadAdminAttendanceTableDemo();
     loadAdminAttendanceStatsDemo();
     loadAdminDashboardSummaryDemo();
+    loadAdminDashboardGroupStatsDemo();
 }
 
 document.addEventListener("DOMContentLoaded", runPageLoaders);
@@ -3118,4 +3119,67 @@ function loadAdminDashboardSummaryDemo() {
         checkinStatusElement.innerText =
             "Đang mở: " + openWindows.map(item => item.label).join(", ");
     }
+}
+
+function loadAdminDashboardGroupStatsDemo() {
+    const tableBody = document.getElementById("adminDashboardGroupStatsBody");
+
+    if (!tableBody) {
+        return;
+    }
+
+    const students = getImportedStudentsDemo();
+    const attendanceHistory =
+        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+
+    const today = new Date().toDateString();
+    const session = attendanceCheckinConfigDemo.activeSession;
+
+    const todayRecords = attendanceHistory.filter(item =>
+        item.dateKey === today &&
+        item.session === session
+    );
+
+    const groupStats = groupRankingDemo.map(group => {
+        const groupStudents = students.filter(
+            student =>
+                student.groupName.toLowerCase() ===
+                group.groupName.toLowerCase()
+        );
+
+        const checkedUsers = [];
+
+        todayRecords.forEach(record => {
+            const isSameGroup =
+                record.groupName &&
+                record.groupName.toLowerCase() ===
+                group.groupName.toLowerCase();
+
+            const alreadyCounted = checkedUsers.some(
+                username =>
+                    username.toLowerCase() ===
+                    record.username.toLowerCase()
+            );
+
+            if (isSameGroup && !alreadyCounted) {
+                checkedUsers.push(record.username);
+            }
+        });
+
+        return {
+            groupName: group.groupName,
+            totalMembers: groupStudents.length,
+            checkedIn: checkedUsers.length,
+            totalScore: getGroupTotalScoreDemo(group.groupName)
+        };
+    });
+
+    tableBody.innerHTML = groupStats.map(item => `
+        <tr>
+            <td>${item.groupName}</td>
+            <td>${item.totalMembers}</td>
+            <td>${item.checkedIn}</td>
+            <td>${item.totalScore}</td>
+        </tr>
+    `).join("");
 }
