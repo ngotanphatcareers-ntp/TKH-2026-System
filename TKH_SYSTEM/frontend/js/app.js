@@ -3268,16 +3268,22 @@ function loadAdminDashboardSummaryDemo() {
         JSON.parse(localStorage.getItem("attendanceHistory")) || [];
 
     const today = new Date().toDateString();
-    const currentSession = getCurrentSessionDemo();
+    const currentSession = getOpenSessionDemo();
 
-    const session = currentSession
-        ? currentSession.name
-        : attendanceCheckinConfigDemo.activeSession;
+    let todayRecords = [];
 
-    const todayRecords = attendanceHistory.filter(item =>
-        item.dateKey === today &&
-        item.session === session
-    );
+    if (currentSession) {
+        todayRecords = attendanceHistory.filter(item =>
+            item.dateKey === today &&
+            item.session === currentSession.name
+        );
+
+        currentSessionElement.innerText = currentSession.name;
+    } else {
+        currentSessionElement.innerText = "Chưa mở";
+    }
+
+    
 
     const uniqueCheckedUsers = [];
 
@@ -3328,16 +3334,14 @@ function loadAdminDashboardGroupStatsDemo() {
         JSON.parse(localStorage.getItem("attendanceHistory")) || [];
 
     const today = new Date().toDateString();
-    const currentSession = getCurrentSessionDemo();
+    const currentSession = getOpenSessionDemo();
 
-    const session = currentSession
-        ? currentSession.name
-        : attendanceCheckinConfigDemo.activeSession;
-
-    const todayRecords = attendanceHistory.filter(item =>
-        item.dateKey === today &&
-        item.session === session
-    );
+    const todayRecords = currentSession
+        ? attendanceHistory.filter(item =>
+            item.dateKey === today &&
+            item.session === currentSession.name
+        )
+        : [];
 
     const groupStats = groupRankingDemo.map(group => {
         const groupStudents = students.filter(
