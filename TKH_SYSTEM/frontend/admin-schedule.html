@@ -38,8 +38,12 @@
     <section class="attendance-box password-box">
         <h2>Thêm nội dung lịch học</h2>
 
-        <label>Ngày học</label>
-        <input type="date" id="scheduleDate">
+        <label>Buổi học</label>
+
+        <select
+            class="form-input"
+            id="scheduleSession">
+        </select>
 
         <label>Chủ đề</label>
         <input type="text" id="scheduleTitle" placeholder="Ví dụ: Yêu thương và phục vụ">
@@ -47,8 +51,8 @@
         <label>Câu gốc</label>
         <input type="text" id="bibleVerse" placeholder="Ví dụ: Giăng 13:34">
 
-        <label>Hoạt động</label>
-        <input type="text" id="scheduleActivity" placeholder="Ví dụ: Học Kinh Thánh, Bible Challenge">
+        <label>Mô tả</label>
+        <input type="text" id="scheduleActivity" placeholder="Ví dụ: Học Kinh Thánh, hoặc mô tả câu gốc/chủ đề">
 
         <button class="checkin-btn" onclick="createScheduleDemo()">
             Lưu lịch học
@@ -66,30 +70,13 @@
                     <th>Ngày</th>
                     <th>Chủ đề</th>
                     <th>Câu gốc</th>
-                    <th>Hoạt động</th>
+                    <th>Mô tả</th>
                 </tr>
             </thead>
 
-            <tbody>
+            <tbody id="adminScheduleTableBody">
                 <tr>
-                    <td>01/06/2026</td>
-                    <td>Khởi động Thánh Kinh Hè</td>
-                    <td>Thi Thiên 119:105</td>
-                    <td>Giới thiệu nhóm, sinh hoạt chung</td>
-                </tr>
-
-                <tr>
-                    <td>03/06/2026</td>
-                    <td>Đức tin và sự vâng lời</td>
-                    <td>Hê-bơ-rơ 11:1</td>
-                    <td>Học Kinh Thánh, trả bài cũ</td>
-                </tr>
-
-                <tr>
-                    <td>08/06/2026</td>
-                    <td>Yêu thương và phục vụ</td>
-                    <td>Giăng 13:34</td>
-                    <td>Thảo luận nhóm, Bible Challenge</td>
+                    <td colspan="4">Đang tải danh sách lịch học...</td>
                 </tr>
             </tbody>
         </table>
@@ -97,7 +84,7 @@
 
 </main>
 
-<script src="js/app.js?v=3"></script>
+<script src="js/app.js?v=87"></script>
 
 </body>
 </html>

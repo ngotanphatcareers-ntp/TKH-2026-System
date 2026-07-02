@@ -176,7 +176,11 @@ function saveAttendanceDemo(distance) {
         JSON.parse(localStorage.getItem("attendanceHistory")) || [];
 
     const today = new Date().toDateString();
-    const session = attendanceCheckinConfigDemo.activeSession;
+    const currentSession = getCurrentSessionDemo();
+
+    const session = currentSession
+        ? currentSession.name
+        : attendanceCheckinConfigDemo.activeSession;
 
     const myTodayRecords = attendanceHistory.filter(item =>
         item.username.toLowerCase() === currentUser.username.toLowerCase() &&
@@ -522,6 +526,20 @@ function createSessionDemo() {
 
     const sessions = getStoredSessionsDemo();
 
+
+    const duplicatedSession = sessions.find(session =>
+        session.name.trim().toLowerCase() === sessionName.toLowerCase() &&
+        session.date === sessionDate &&
+        session.startTime === sessionStart &&
+        session.endTime === sessionEnd
+    );
+
+    if (duplicatedSession) {
+        message.style.color = "red";
+        message.innerText = "Buổi học này đã tồn tại. Vui lòng kiểm tra lại.";
+        return;
+    }
+
     sessions.unshift({
         id: Date.now(),
         name: sessionName,
@@ -549,21 +567,117 @@ function createSessionDemo() {
 
 
 //quản lý lịch học
+function getStoredSchedulesDemo() {
+    return JSON.parse(localStorage.getItem("tkhSchedulesDemo")) || [];
+}
+
+function saveStoredSchedulesDemo(schedules) {
+    localStorage.setItem("tkhSchedulesDemo", JSON.stringify(schedules));
+}
+
 function createScheduleDemo() {
-    const scheduleDate = document.getElementById("scheduleDate").value;
+    const sessionId = document.getElementById("scheduleSession").value;
     const scheduleTitle = document.getElementById("scheduleTitle").value.trim();
     const bibleVerse = document.getElementById("bibleVerse").value.trim();
     const scheduleActivity = document.getElementById("scheduleActivity").value.trim();
     const message = document.getElementById("scheduleMessage");
 
-    if (!scheduleDate || !scheduleTitle || !bibleVerse || !scheduleActivity) {
+    if (!sessionId || !scheduleTitle || !bibleVerse || !scheduleActivity) {
         message.style.color = "red";
         message.innerText = "Vui lòng nhập đầy đủ thông tin lịch học.";
         return;
     }
+    //mới....
+    const sessions =
+        getStoredSessionsDemo();
+
+        const selectedSession =
+        sessions.find(
+            item =>
+                String(item.id) === String(sessionId)
+        );
+
+        if (!selectedSession) {
+            message.style.color = "red";
+            message.innerText = "Không tìm thấy buổi học.";
+
+            return;
+        }
+    //hết....
+
+    const schedules = getStoredSchedulesDemo();
+
+    const existingScheduleIndex = schedules.findIndex(
+    item => String(item.sessionId) === String(selectedSession.id)
+    );
+
+    if (existingScheduleIndex !== -1) {
+        const confirmUpdate = confirm(
+            "Buổi học này đã có lịch học. Bạn có muốn cập nhật lịch học hiện tại không?"
+        );
+
+        if (!confirmUpdate) {
+            return;
+        }
+
+        schedules[existingScheduleIndex] = {
+            ...schedules[existingScheduleIndex],
+            sessionId: selectedSession.id,
+            sessionName: selectedSession.name,
+            date: selectedSession.date,
+            title: scheduleTitle,
+            bibleVerse: bibleVerse,
+            activity: scheduleActivity,
+            updatedAt: new Date().toLocaleString("vi-VN")
+        };
+
+        saveStoredSchedulesDemo(schedules);
+
+        document.getElementById("scheduleTitle").value = "";
+        document.getElementById("bibleVerse").value = "";
+        document.getElementById("scheduleActivity").value = "";
+
+        message.style.color = "green";
+        message.innerText = "Đã cập nhật lịch học thành công!";
+
+        loadAdminSchedulesDemo();
+        loadStudentSchedulesDemo();
+
+        return;
+    }
+
+    schedules.unshift({
+
+    id: Date.now(),
+
+    sessionId: selectedSession.id,
+
+    sessionName: selectedSession.name,
+
+    date: selectedSession.date,
+
+    title: scheduleTitle,
+
+    bibleVerse: bibleVerse,
+
+    activity: scheduleActivity,
+
+    createdAt:
+        new Date().toLocaleString("vi-VN")
+
+    });
+
+    saveStoredSchedulesDemo(schedules);
+
+    
+    document.getElementById("scheduleTitle").value = "";
+    document.getElementById("bibleVerse").value = "";
+    document.getElementById("scheduleActivity").value = "";
 
     message.style.color = "green";
-    message.innerText = "Đã lưu lịch học demo thành công!";
+    message.innerText = "Đã lưu lịch học thành công!";
+
+    loadAdminSchedulesDemo();
 }//hết
 
 //mobile menu
@@ -892,6 +1006,9 @@ function runPageLoaders() {
     loadAdminDashboardExtraStatsDemo();
     loadAdminGroupsDemo();
     loadAdminSessionsDemo();
+    loadAdminSchedulesDemo();
+    loadStudentSchedulesDemo();
+    loadScheduleSessionOptionsDemo();
 }
 
 document.addEventListener("DOMContentLoaded", runPageLoaders);
@@ -3036,7 +3153,11 @@ function loadAdminAttendanceStatsDemo() {
         JSON.parse(localStorage.getItem("attendanceHistory")) || [];
 
     const today = new Date().toDateString();
-    const session = attendanceCheckinConfigDemo.activeSession;
+    const currentSession = getCurrentSessionDemo();
+
+    const session = currentSession
+        ? currentSession.name
+        : attendanceCheckinConfigDemo.activeSession;
 
     const todayRecords = attendanceHistory.filter(item =>
         item.dateKey === today &&
@@ -3112,7 +3233,11 @@ function loadAdminDashboardSummaryDemo() {
         JSON.parse(localStorage.getItem("attendanceHistory")) || [];
 
     const today = new Date().toDateString();
-    const session = attendanceCheckinConfigDemo.activeSession;
+    const currentSession = getCurrentSessionDemo();
+
+    const session = currentSession
+        ? currentSession.name
+        : attendanceCheckinConfigDemo.activeSession;
 
     const todayRecords = attendanceHistory.filter(item =>
         item.dateKey === today &&
@@ -3168,7 +3293,11 @@ function loadAdminDashboardGroupStatsDemo() {
         JSON.parse(localStorage.getItem("attendanceHistory")) || [];
 
     const today = new Date().toDateString();
-    const session = attendanceCheckinConfigDemo.activeSession;
+    const currentSession = getCurrentSessionDemo();
+
+    const session = currentSession
+        ? currentSession.name
+        : attendanceCheckinConfigDemo.activeSession;
 
     const todayRecords = attendanceHistory.filter(item =>
         item.dateKey === today &&
@@ -3614,7 +3743,9 @@ function closeSessionDemo(sessionId) {
 }
 
 function deleteSessionDemo(sessionId) {
-    const confirmDelete = confirm("Bạn có chắc muốn xóa buổi học này không?");
+    const confirmDelete = confirm(
+        "Bạn có chắc muốn xóa buổi học này không? Lịch học liên quan cũng sẽ bị xóa."
+    );
 
     if (!confirmDelete) {
         return;
@@ -3624,7 +3755,16 @@ function deleteSessionDemo(sessionId) {
         .filter(session => Number(session.id) !== Number(sessionId));
 
     saveStoredSessionsDemo(sessions);
+
+    const schedules = getStoredSchedulesDemo()
+        .filter(schedule => Number(schedule.sessionId) !== Number(sessionId));
+
+    saveStoredSchedulesDemo(schedules);
+
     loadAdminSessionsDemo();
+    loadAdminSchedulesDemo();
+    loadStudentSchedulesDemo();
+    loadScheduleSessionOptionsDemo();
 }
 
 function getCurrentSessionDemo() {
@@ -3669,4 +3809,120 @@ function getCurrentSessionDemo() {
     }
 
     return sessions[0];
+}
+
+function loadAdminSchedulesDemo() {
+    const tableBody = document.getElementById("adminScheduleTableBody");
+
+    if (!tableBody) {
+        return;
+    }
+
+    const schedules = getStoredSchedulesDemo();
+
+    if (schedules.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="4">Chưa có lịch học nào được tạo.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    tableBody.innerHTML = schedules.map(item => `
+        <tr>
+            <td>${formatSessionDateDemo(item.date)}</td>
+            <td>${item.title}</td>
+            <td>${item.bibleVerse}</td>
+            <td>${item.activity}</td>
+        </tr>
+    `).join("");
+}
+
+function loadStudentSchedulesDemo() {
+    const tableBody = document.getElementById("studentScheduleTableBody");
+
+    if (!tableBody) {
+        return;
+    }
+
+    const schedules = getStoredSchedulesDemo();
+
+    if (schedules.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="4">Chưa có lịch học nào được cập nhật.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    tableBody.innerHTML = schedules.map(item => `
+        <tr>
+            <td>${formatSessionDateDemo(item.date)}</td>
+            <td>${item.title}</td>
+            <td>${item.bibleVerse}</td>
+            <td>${item.activity}</td>
+        </tr>
+    `).join("");
+}
+
+function loadScheduleSessionOptionsDemo() {
+
+    const select =
+        document.getElementById(
+            "scheduleSession"
+        );
+
+    if (!select) {
+        return;
+    }
+
+    const sessions =
+        getStoredSessionsDemo();
+
+    if (sessions.length === 0) {
+
+        select.innerHTML = `
+            <option value="">
+                Chưa có buổi học
+            </option>
+        `;
+
+        return;
+    }
+
+    select.innerHTML = `
+        <option value="">
+            -- Chọn buổi học --
+        </option>
+    `;
+
+    sessions
+        .sort((a, b) => {
+
+            const dateA =
+                new Date(
+                    a.date + "T" + a.startTime
+                );
+
+            const dateB =
+                new Date(
+                    b.date + "T" + b.startTime
+                );
+
+            return dateA - dateB;
+
+        })
+        .forEach(session => {
+
+            select.innerHTML += `
+                <option value="${session.id}">
+                    ${session.name}
+                    (${formatSessionDateDemo(session.date)})
+                </option>
+            `;
+
+        });
+
 }
