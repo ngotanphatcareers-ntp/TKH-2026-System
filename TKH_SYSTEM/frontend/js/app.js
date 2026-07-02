@@ -3099,9 +3099,26 @@ function loadAdminAttendanceTableDemo() {
     }
 
     const attendanceHistory =
-        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+    JSON.parse(localStorage.getItem("attendanceHistory")) || [];
 
-    if (attendanceHistory.length === 0) {
+        const currentSession = getOpenSessionDemo();
+
+        if (!currentSession) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="7">
+                        Hiện chưa có buổi học nào đang mở.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        const sessionRecords = attendanceHistory.filter(
+            item => item.session === currentSession.name
+        );
+
+        if (sessionRecords.length === 0) {
 
         tableBody.innerHTML = `
             <tr>
@@ -3115,7 +3132,7 @@ function loadAdminAttendanceTableDemo() {
     }
 
     tableBody.innerHTML =
-        attendanceHistory.map(item => `
+        sessionRecords.map(item => `
 
         <tr>
 
