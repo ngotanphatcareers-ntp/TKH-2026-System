@@ -1009,6 +1009,7 @@ function runPageLoaders() {
     loadAdminSchedulesDemo();
     loadStudentSchedulesDemo();
     loadScheduleSessionOptionsDemo();
+    loadCurrentAttendanceSessionTextDemo();
 }
 
 document.addEventListener("DOMContentLoaded", runPageLoaders);
@@ -3925,4 +3926,26 @@ function loadScheduleSessionOptionsDemo() {
 
         });
 
+}
+
+function loadCurrentAttendanceSessionTextDemo() {
+    const sessionText = document.getElementById("currentAttendanceSessionText");
+
+    if (!sessionText) {
+        return;
+    }
+
+    const currentSession = getCurrentSessionDemo();
+
+    if (!currentSession) {
+        sessionText.innerText = "Chưa có buổi học đang mở.";
+        return;
+    }
+
+    sessionText.innerText =
+        currentSession.name +
+        " · " +
+        formatSessionDateDemo(currentSession.date) +
+        " · " +
+        currentSession.status;
 }
