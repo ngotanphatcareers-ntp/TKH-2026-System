@@ -3244,53 +3244,39 @@ function loadAdminAttendanceStatsDemo() {
 }
 
 function loadAdminDashboardSummaryDemo() {
-    const totalStudentsElement =
-        document.getElementById("adminDashboardTotalStudents");
-
-    const checkedInElement =
-        document.getElementById("adminDashboardCheckedIn");
-
-    const checkedPercentElement =
-        document.getElementById("adminDashboardCheckedInPercent");
-
-    const currentSessionElement =
-        document.getElementById("adminDashboardCurrentSession");
-
-    const checkinStatusElement =
-        document.getElementById("adminDashboardCheckinStatus");
+    const totalStudentsElement = document.getElementById("adminDashboardTotalStudents");
+    const checkedInElement = document.getElementById("adminDashboardCheckedIn");
+    const checkedPercentElement = document.getElementById("adminDashboardCheckedInPercent");
+    const currentSessionElement = document.getElementById("adminDashboardCurrentSession");
+    const checkinStatusElement = document.getElementById("adminDashboardCheckinStatus");
 
     if (!totalStudentsElement) {
         return;
     }
 
     const students = getImportedStudentsDemo();
-    const attendanceHistory =
-        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
-
+    const attendanceHistory = JSON.parse(localStorage.getItem("attendanceHistory")) || [];
     const today = new Date().toDateString();
     const currentSession = getOpenSessionDemo();
 
     let todayRecords = [];
 
     if (currentSession) {
+        currentSessionElement.innerText = currentSession.name;
+
         todayRecords = attendanceHistory.filter(item =>
             item.dateKey === today &&
             item.session === currentSession.name
         );
-
-        currentSessionElement.innerText = currentSession.name;
     } else {
         currentSessionElement.innerText = "Chưa mở";
     }
 
-    
-
     const uniqueCheckedUsers = [];
 
     todayRecords.forEach(item => {
-        const existed = uniqueCheckedUsers.find(
-            username =>
-                username.toLowerCase() === item.username.toLowerCase()
+        const existed = uniqueCheckedUsers.some(
+            username => username.toLowerCase() === item.username.toLowerCase()
         );
 
         if (!existed) {
@@ -3310,11 +3296,11 @@ function loadAdminDashboardSummaryDemo() {
     checkedInElement.innerText = checkedCount;
     checkedPercentElement.innerText = checkedPercent + "% thành viên";
 
-    currentSessionElement.innerText = session;
-
     const openWindows = getOpenCheckinWindowsDemo();
 
-    if (openWindows.length === 0) {
+    if (!currentSession) {
+        checkinStatusElement.innerText = "Trạng thái: Chưa mở buổi học";
+    } else if (openWindows.length === 0) {
         checkinStatusElement.innerText = "Trạng thái: Chưa mở điểm danh";
     } else {
         checkinStatusElement.innerText =
@@ -3330,8 +3316,7 @@ function loadAdminDashboardGroupStatsDemo() {
     }
 
     const students = getImportedStudentsDemo();
-    const attendanceHistory =
-        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+    const attendanceHistory = JSON.parse(localStorage.getItem("attendanceHistory")) || [];
 
     const today = new Date().toDateString();
     const currentSession = getOpenSessionDemo();
@@ -3344,10 +3329,9 @@ function loadAdminDashboardGroupStatsDemo() {
         : [];
 
     const groupStats = groupRankingDemo.map(group => {
-        const groupStudents = students.filter(
-            student =>
-                student.groupName.toLowerCase() ===
-                group.groupName.toLowerCase()
+        const groupStudents = students.filter(student =>
+            student.groupName &&
+            student.groupName.toLowerCase() === group.groupName.toLowerCase()
         );
 
         const checkedUsers = [];
@@ -3355,13 +3339,10 @@ function loadAdminDashboardGroupStatsDemo() {
         todayRecords.forEach(record => {
             const isSameGroup =
                 record.groupName &&
-                record.groupName.toLowerCase() ===
-                group.groupName.toLowerCase();
+                record.groupName.toLowerCase() === group.groupName.toLowerCase();
 
             const alreadyCounted = checkedUsers.some(
-                username =>
-                    username.toLowerCase() ===
-                    record.username.toLowerCase()
+                username => username.toLowerCase() === record.username.toLowerCase()
             );
 
             if (isSameGroup && !alreadyCounted) {
