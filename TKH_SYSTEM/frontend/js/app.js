@@ -176,11 +176,16 @@ function saveAttendanceDemo(distance) {
         JSON.parse(localStorage.getItem("attendanceHistory")) || [];
 
     const today = new Date().toDateString();
-    const currentSession = getCurrentSessionDemo();
+    const currentSession = getOpenSessionDemo();
 
-    const session = currentSession
-        ? currentSession.name
-        : attendanceCheckinConfigDemo.activeSession;
+    if (!currentSession) {
+        return {
+            success: false,
+            message: "Hiện chưa có buổi học nào đang mở để điểm danh."
+        };
+    }
+
+    const session = currentSession.name;
 
     const myTodayRecords = attendanceHistory.filter(item =>
         item.username.toLowerCase() === currentUser.username.toLowerCase() &&
@@ -3935,7 +3940,7 @@ function loadCurrentAttendanceSessionTextDemo() {
         return;
     }
 
-    const currentSession = getCurrentSessionDemo();
+    const currentSession = getOpenSessionDemo();
 
     if (!currentSession) {
         sessionText.innerText = "Chưa có buổi học đang mở.";
@@ -3948,4 +3953,12 @@ function loadCurrentAttendanceSessionTextDemo() {
         formatSessionDateDemo(currentSession.date) +
         " · " +
         currentSession.status;
+}
+
+function getOpenSessionDemo() {
+    const sessions = getStoredSessionsDemo();
+
+    return sessions.find(
+        session => session.status === "Đang mở"
+    ) || null;
 }
