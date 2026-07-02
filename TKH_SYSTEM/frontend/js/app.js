@@ -3176,11 +3176,23 @@ function loadAdminAttendanceStatsDemo() {
         JSON.parse(localStorage.getItem("attendanceHistory")) || [];
 
     const today = new Date().toDateString();
-    const currentSession = getCurrentSessionDemo();
+    const currentSession = getOpenSessionDemo();
 
-    const session = currentSession
-        ? currentSession.name
-        : attendanceCheckinConfigDemo.activeSession;
+    if (!currentSession) {
+        totalElement.innerText = students.length;
+        checkedElement.innerText = 0;
+        absentElement.innerText = students.length;
+        percentElement.innerText = "0%";
+
+        morningElement.innerText = 0;
+        breakElement.innerText = 0;
+        endElement.innerText = 0;
+        devotionElement.innerText = 0;
+
+        return;
+    }
+
+    const session = currentSession.name;
 
     const todayRecords = attendanceHistory.filter(item =>
         item.dateKey === today &&
