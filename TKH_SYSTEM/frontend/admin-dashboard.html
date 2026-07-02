@@ -55,14 +55,49 @@
             </div>
         </div>
 
+        <div class="cards">
+            <div class="info-card">
+                <h3>Tổng điểm đã cộng</h3>
+                <p class="big-number" id="adminDashboardTotalScore">0</p>
+                <span>Toàn chương trình</span>
+            </div>
+
+            <div class="info-card">
+                <h3>Câu hỏi mới</h3>
+                <p class="big-number" id="adminDashboardNewQuestions">0</p>
+                <span>Chưa phản hồi</span>
+            </div>
+
+            <div class="info-card">
+                <h3>Lời khích lệ hôm nay</h3>
+                <p class="big-number" id="adminDashboardTodayEncouragements">0</p>
+                <span>Đã gửi trong hôm nay</span>
+            </div>
+        </div>
+
         <div class="attendance-box">
             <h2>Tác vụ nhanh</h2>
 
             <div class="admin-actions">
-                <button>Import danh sách thành viên</button>
-                <button>Mở điểm danh</button>
-                <button>Đóng điểm danh</button>
-                <button>Cộng điểm thủ công</button>
+                <button onclick="window.location.href='admin-members.html'">
+                    Import danh sách thành viên
+                </button>
+
+                <button onclick="window.location.href='admin-attendance.html'">
+                    Mở / Đóng điểm danh
+                </button>
+
+                <button onclick="window.location.href='admin-score.html'">
+                    Cộng điểm thủ công
+                </button>
+
+                <button onclick="window.location.href='admin-questions.html'">
+                    Xem câu hỏi học viên
+                </button>
+
+                <button onclick="window.location.href='admin-encouragement.html'">
+                    Kiểm duyệt khích lệ
+                </button>
             </div>
         </div>
 
@@ -88,7 +123,7 @@
 
     </main>
 
-    <script src="js/app.js?v=72"></script>
+    <script src="js/app.js?v=76"></script>
 
 </body>
 </html>

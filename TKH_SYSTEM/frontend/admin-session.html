@@ -38,20 +38,20 @@
     <div class="cards">
         <div class="info-card">
             <h3>Buổi hiện tại</h3>
-            <p class="big-number">Buổi 3</p>
-            <span>08/06/2026</span>
+            <p class="big-number" id="currentSessionName">-</p>
+            <span id="currentSessionDate">Chưa có buổi học</span>
         </div>
 
         <div class="info-card">
             <h3>Trạng thái điểm danh</h3>
-            <p class="big-number">Open</p>
-            <span>Đang cho phép điểm danh</span>
+            <p class="big-number" id="currentSessionStatus">-</p>
+            <span id="currentSessionStatusText">Chưa có trạng thái</span>
         </div>
 
         <div class="info-card">
             <h3>Đủ điều kiện Random</h3>
-            <p class="big-number">142</p>
-            <span>Đã điểm danh hợp lệ</span>
+            <p class="big-number" id="currentSessionCheckedIn">0</p>
+            <span>Đã điểm danh hôm nay</span>
         </div>
     </div>
 
@@ -103,32 +103,9 @@
                 </tr>
             </thead>
 
-            <tbody>
+            <tbody id="adminSessionTableBody">
                 <tr>
-                    <td>Buổi 1</td>
-                    <td>01/06/2026</td>
-                    <td>07:30 - 10:30</td>
-                    <td>Closed</td>
-                    <td>Đã đóng</td>
-                    <td>Đã khóa</td>
-                </tr>
-
-                <tr>
-                    <td>Buổi 2</td>
-                    <td>03/06/2026</td>
-                    <td>07:30 - 10:30</td>
-                    <td>Closed</td>
-                    <td>Đã đóng</td>
-                    <td>Đã khóa</td>
-                </tr>
-
-                <tr class="highlight-row">
-                    <td>Buổi 3</td>
-                    <td>08/06/2026</td>
-                    <td>07:30 - 10:30</td>
-                    <td>Open</td>
-                    <td>Đang mở</td>
-                    <td>Sẵn sàng</td>
+                    <td colspan="6">Đang tải danh sách buổi học...</td>
                 </tr>
             </tbody>
         </table>
@@ -136,7 +113,7 @@
 
 </main>
 
-<script src="js/app.js?v=3"></script>
+<script src="js/app.js?v=82"></script>
 
 </body>
 </html>

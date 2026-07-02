@@ -493,6 +493,14 @@ function addScoreDemo() {
 }
 
 //quản lý buổi học
+function getStoredSessionsDemo() {
+    return JSON.parse(localStorage.getItem("tkhSessionsDemo")) || [];
+}
+
+function saveStoredSessionsDemo(sessions) {
+    localStorage.setItem("tkhSessionsDemo", JSON.stringify(sessions));
+}
+
 function createSessionDemo() {
     const sessionName = document.getElementById("sessionName").value.trim();
     const sessionDate = document.getElementById("sessionDate").value;
@@ -512,8 +520,31 @@ function createSessionDemo() {
         return;
     }
 
+    const sessions = getStoredSessionsDemo();
+
+    sessions.unshift({
+        id: Date.now(),
+        name: sessionName,
+        date: sessionDate,
+        startTime: sessionStart,
+        endTime: sessionEnd,
+        status: "Sắp diễn ra",
+        attendanceStatus: "Đã đóng",
+        randomStatus: "Đã khóa",
+        createdAt: new Date().toLocaleString("vi-VN")
+    });
+
+    saveStoredSessionsDemo(sessions);
+
+    document.getElementById("sessionName").value = "";
+    document.getElementById("sessionDate").value = "";
+    document.getElementById("sessionStart").value = "";
+    document.getElementById("sessionEnd").value = "";
+
     message.style.color = "green";
-    message.innerText = "Đã tạo buổi học demo thành công!";
+    message.innerText = "Đã tạo buổi học thành công!";
+
+    loadAdminSessionsDemo();
 }//hết
 
 
@@ -833,6 +864,7 @@ function runPageLoaders() {
     loadDashboardEncouragementCount();
     loadDirectoryEncouragementCounts();
     loadAdminEncouragementStats();
+    loadAdminEncouragementReviewDemo();
     loadTodayEncouragementPreview();
     loadStudyMaterialsDemo();
     loadAdminStudyMaterialsDemo();
@@ -857,6 +889,9 @@ function runPageLoaders() {
     loadAdminAttendanceStatsDemo();
     loadAdminDashboardSummaryDemo();
     loadAdminDashboardGroupStatsDemo();
+    loadAdminDashboardExtraStatsDemo();
+    loadAdminGroupsDemo();
+    loadAdminSessionsDemo();
 }
 
 document.addEventListener("DOMContentLoaded", runPageLoaders);
@@ -3182,4 +3217,456 @@ function loadAdminDashboardGroupStatsDemo() {
             <td>${item.totalScore}</td>
         </tr>
     `).join("");
+}
+
+function loadAdminDashboardExtraStatsDemo() {
+    const totalScoreElement = document.getElementById("adminDashboardTotalScore");
+    const newQuestionsElement = document.getElementById("adminDashboardNewQuestions");
+    const todayEncouragementsElement = document.getElementById("adminDashboardTodayEncouragements");
+
+    if (!totalScoreElement) {
+        return;
+    }
+
+    const scores = getStoredScoresDemo();
+    const questions = getStoredQuestionsDemo();
+    const encouragements = getStoredEncouragementsDemo();
+
+    const today = new Date().toDateString();
+
+    const totalScore = scores.reduce(
+        (total, item) => total + Number(item.scoreValue),
+        0
+    );
+
+    const newQuestions = questions.filter(
+        item => item.status === "Mới"
+    ).length;
+
+    const todayEncouragements = encouragements.filter(
+        item => item.dateKey === today
+    ).length;
+
+    totalScoreElement.innerText = totalScore;
+    newQuestionsElement.innerText = newQuestions;
+    todayEncouragementsElement.innerText = todayEncouragements;
+}
+
+function loadAdminEncouragementReviewDemo() {
+    const list = document.getElementById("adminEncouragementReviewList");
+
+    if (!list) {
+        return;
+    }
+
+    const messages = getStoredEncouragementsDemo();
+
+    if (messages.length === 0) {
+        list.innerHTML = `
+            <p class="empty-note">Chưa có lời khích lệ nào.</p>
+        `;
+        return;
+    }
+
+    list.innerHTML = messages.map((item, index) => `
+        <div class="question-card">
+            <h3>${item.isAnonymous ? "🎭 Ẩn danh với người nhận" : "💌 Công khai"}</h3>
+
+            <p>
+                <strong>Người gửi thật:</strong>
+                ${item.fromFullName} (${item.fromUsername})
+            </p>
+
+            <p>
+                <strong>Người nhận:</strong>
+                ${item.toFullName} (${item.toUsername})
+            </p>
+
+            <p class="question-meta">
+                Thời gian gửi: ${item.createdAt}
+                · Trạng thái đọc: ${item.isRead ? "Đã đọc" : "Chưa đọc"}
+            </p>
+
+            <button
+                class="profile-btn"
+                onclick="toggleAdminEncouragementContentDemo(${index})"
+            >
+                Xem nội dung
+            </button>
+
+            <div
+                id="adminEncouragementContent_${index}"
+                class="admin-encouragement-content"
+                style="display: none;"
+            >
+                <p><strong>Nội dung:</strong></p>
+                <p>${item.text}</p>
+            </div>
+        </div>
+    `).join("");
+}
+
+function toggleAdminEncouragementContentDemo(index) {
+    const content = document.getElementById(
+        "adminEncouragementContent_" + index
+    );
+
+    if (!content) {
+        return;
+    }
+
+    if (content.style.display === "none") {
+        content.style.display = "block";
+    } else {
+        content.style.display = "none";
+    }
+}
+
+function downloadQuestionsByTypeDemo(questionType) {
+    const questions = getStoredQuestionsDemo().filter(
+        item => item.questionType === questionType
+    );
+
+    if (questions.length === 0) {
+        alert("Chưa có câu hỏi thuộc loại này để tải xuống.");
+        return;
+    }
+
+    const typeLabel =
+        questionType === "private"
+            ? "Cau-hoi-rieng-tu"
+            : "Cau-hoi-cong-khai";
+
+    const header = [
+        "Buổi học",
+        "Loại câu hỏi",
+        "Học viên",
+        "Mã TKH",
+        "Nhóm",
+        "Nội dung câu hỏi",
+        "Trạng thái",
+        "Phản hồi BTC",
+        "Thời gian gửi",
+        "Thời gian phản hồi"
+    ];
+
+    const rows = questions.map(item => [
+        item.session || "",
+        item.typeLabel || "",
+        item.userFullName || "",
+        item.username || "",
+        item.groupName || "",
+        item.text || "",
+        item.status || "",
+        item.adminReply || "",
+        item.createdAt || "",
+        item.answeredAt || ""
+    ]);
+
+    const csvContent = [
+        header,
+        ...rows
+    ].map(row =>
+        row.map(value =>
+            `"${String(value).replace(/"/g, '""')}"`
+        ).join(",")
+    ).join("\n");
+
+    const blob = new Blob(
+        ["\uFEFF" + csvContent],
+        {
+            type: "text/csv;charset=utf-8;"
+        }
+    );
+
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+
+    link.href = url;
+    link.download = typeLabel + ".csv";
+    link.click();
+
+    URL.revokeObjectURL(url);
+}
+
+function loadAdminGroupsDemo() {
+    const totalGroupsElement = document.getElementById("adminGroupsTotalGroups");
+    const totalStudentsElement = document.getElementById("adminGroupsTotalStudents");
+    const topGroupElement = document.getElementById("adminGroupsTopGroup");
+    const topGroupScoreElement = document.getElementById("adminGroupsTopGroupScore");
+    const tableBody = document.getElementById("adminGroupsTableBody");
+
+    if (!totalGroupsElement || !tableBody) {
+        return;
+    }
+
+    const students = getImportedStudentsDemo();
+    const ranking = getGroupRankingWithScoresDemo();
+
+    totalGroupsElement.innerText = groupRankingDemo.length;
+    totalStudentsElement.innerText = students.length;
+
+    if (ranking.length > 0) {
+        topGroupElement.innerText = ranking[0].groupName;
+        topGroupScoreElement.innerText = ranking[0].score + " điểm";
+    }
+
+    tableBody.innerHTML = ranking.map((group, index) => {
+        const memberCount = students.filter(
+            student =>
+                student.groupName.toLowerCase() ===
+                group.groupName.toLowerCase()
+        ).length;
+
+        return `
+            <tr>
+                <td>G${String(index + 1).padStart(2, "0")}</td>
+                <td>${group.groupName}</td>
+                <td>${memberCount}</td>
+                <td>${group.score}</td>
+                <td>#${index + 1}</td>
+            </tr>
+        `;
+    }).join("");
+}
+
+function formatSessionDateDemo(dateText) {
+    if (!dateText) {
+        return "-";
+    }
+
+    const parts = dateText.split("-");
+
+    if (parts.length !== 3) {
+        return dateText;
+    }
+
+    return parts[2] + "/" + parts[1] + "/" + parts[0];
+}
+
+function loadAdminSessionsDemo() {
+    const tableBody = document.getElementById("adminSessionTableBody");
+
+    if (!tableBody) {
+        return;
+    }
+
+    const sessions = getStoredSessionsDemo();
+
+    if (sessions.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="6">Chưa có buổi học nào được tạo.</td>
+            </tr>
+        `;
+
+        loadCurrentSessionSummaryDemo();
+        return;
+    }
+
+    tableBody.innerHTML = sessions.map((session, index) => `
+        <tr class="${index === 0 ? "highlight-row" : ""}">
+            <td>${session.name}</td>
+            <td>${formatSessionDateDemo(session.date)}</td>
+            <td>${session.startTime} - ${session.endTime}</td>
+            <td>${session.status}</td>
+            <td>${session.attendanceStatus}</td>
+            <td>
+                ${session.randomStatus}
+                <br><br>
+
+                <button class="edit-material-btn" onclick="openSessionDemo(${session.id})">
+                    Mở
+                </button>
+
+                <button class="delete-material-btn" onclick="closeSessionDemo(${session.id})">
+                    Kết thúc
+                </button>
+
+                <button class="delete-material-btn" onclick="deleteSessionDemo(${session.id})">
+                    Xóa
+                </button>
+            </td>
+        </tr>
+    `).join("");
+
+    loadCurrentSessionSummaryDemo();
+}
+
+function loadCurrentSessionSummaryDemo() {
+    const nameElement = document.getElementById("currentSessionName");
+    const dateElement = document.getElementById("currentSessionDate");
+    const statusElement = document.getElementById("currentSessionStatus");
+    const statusTextElement = document.getElementById("currentSessionStatusText");
+    const checkedInElement = document.getElementById("currentSessionCheckedIn");
+
+    if (!nameElement) {
+        return;
+    }
+
+    const sessions = getStoredSessionsDemo();
+
+    if (sessions.length === 0) {
+        nameElement.innerText = "-";
+        dateElement.innerText = "Chưa có buổi học";
+        statusElement.innerText = "-";
+        statusTextElement.innerText = "Chưa có trạng thái";
+        checkedInElement.innerText = "0";
+        return;
+    }
+
+    const currentSession = getCurrentSessionDemo();
+
+    if (!currentSession) {
+    nameElement.innerText = "-";
+    dateElement.innerText = "Chưa có buổi học";
+    statusElement.innerText = "-";
+    statusTextElement.innerText = "Chưa có trạng thái";
+    checkedInElement.innerText = "0";
+    return;
+    }
+
+    nameElement.innerText = currentSession.name;
+    dateElement.innerText = formatSessionDateDemo(currentSession.date);
+    statusElement.innerText = currentSession.status;
+    statusTextElement.innerText = "Điểm danh: " + currentSession.attendanceStatus;
+
+    const attendanceHistory =
+        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+
+    const today = new Date().toDateString();
+
+    const todayRecords = attendanceHistory.filter(item =>
+        item.dateKey === today
+    );
+
+    const uniqueUsers = [];
+
+    todayRecords.forEach(item => {
+        const existed = uniqueUsers.some(
+            username =>
+                username.toLowerCase() === item.username.toLowerCase()
+        );
+
+        if (!existed) {
+            uniqueUsers.push(item.username);
+        }
+    });
+
+    checkedInElement.innerText = uniqueUsers.length;
+}
+
+function openSessionDemo(sessionId) {
+    const sessions = getStoredSessionsDemo();
+
+    const updatedSessions = sessions.map(session => {
+        if (Number(session.id) === Number(sessionId)) {
+            return {
+                ...session,
+                status: "Đang mở",
+                attendanceStatus: "Có thể điểm danh",
+                randomStatus: "Sẵn sàng"
+            };
+        }
+
+        if (session.status === "Đang mở") {
+            return {
+                ...session,
+                status: "Sắp diễn ra",
+                attendanceStatus: "Đã đóng",
+                randomStatus: "Đã khóa"
+            };
+        }
+
+        if (session.status === "Sắp diễn ra") {
+            return {
+                ...session,
+                attendanceStatus: "Đã đóng",
+                randomStatus: "Đã khóa"
+            };
+        }
+
+        return session;
+    });
+
+    saveStoredSessionsDemo(updatedSessions);
+    loadAdminSessionsDemo();
+}
+
+function closeSessionDemo(sessionId) {
+    const sessions = getStoredSessionsDemo();
+
+    const updatedSessions = sessions.map(session => {
+        if (Number(session.id) === Number(sessionId)) {
+            return {
+                ...session,
+                status: "Đã kết thúc",
+                attendanceStatus: "Đã đóng",
+                randomStatus: "Đã khóa"
+            };
+        }
+
+        return session;
+    });
+
+    saveStoredSessionsDemo(updatedSessions);
+    loadAdminSessionsDemo();
+}
+
+function deleteSessionDemo(sessionId) {
+    const confirmDelete = confirm("Bạn có chắc muốn xóa buổi học này không?");
+
+    if (!confirmDelete) {
+        return;
+    }
+
+    const sessions = getStoredSessionsDemo()
+        .filter(session => Number(session.id) !== Number(sessionId));
+
+    saveStoredSessionsDemo(sessions);
+    loadAdminSessionsDemo();
+}
+
+function getCurrentSessionDemo() {
+    const sessions = getStoredSessionsDemo();
+
+    if (sessions.length === 0) {
+        return null;
+    }
+
+    const openSession = sessions.find(
+        session => session.status === "Đang mở"
+    );
+
+    if (openSession) {
+        return openSession;
+    }
+
+    const upcomingSessions = sessions
+        .filter(session => session.status === "Sắp diễn ra")
+        .sort((a, b) => {
+            const dateA = new Date(a.date + "T" + a.startTime);
+            const dateB = new Date(b.date + "T" + b.startTime);
+
+            return dateA - dateB;
+        });
+
+    if (upcomingSessions.length > 0) {
+        return upcomingSessions[0];
+    }
+
+    const endedSessions = sessions
+        .filter(session => session.status === "Đã kết thúc")
+        .sort((a, b) => {
+            const dateA = new Date(a.date + "T" + a.startTime);
+            const dateB = new Date(b.date + "T" + b.startTime);
+
+            return dateB - dateA;
+        });
+
+    if (endedSessions.length > 0) {
+        return endedSessions[0];
+    }
+
+    return sessions[0];
 }

@@ -37,6 +37,24 @@
     </div>
 
     <section class="attendance-box">
+        <h2>Tải câu hỏi cho Diễn giả</h2>
+
+        <div class="admin-actions">
+            <button onclick="downloadQuestionsByTypeDemo('public')">
+                Download câu hỏi công khai
+            </button>
+
+            <button onclick="downloadQuestionsByTypeDemo('private')">
+                Download câu hỏi riêng tư
+            </button>
+        </div>
+
+        <p class="empty-note">
+            File tải về dạng CSV, có thể mở bằng Excel.
+        </p>
+    </section>
+
+    <section class="attendance-box">
         <h2>Danh sách câu hỏi</h2>
 
         <div id="adminQuestionList" class="question-list">
@@ -46,7 +64,7 @@
 
 </main>
 
-<script src="js/app.js?v=20"></script>
+<script src="js/app.js?v=75"></script>
 
 </body>
 </html>
