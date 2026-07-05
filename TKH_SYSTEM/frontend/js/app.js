@@ -499,6 +499,7 @@ function addScoreDemo() {
     message.innerText = "Đã lưu điểm thành công cho " + student.fullName + ".";
 
     loadAdminScoreHistoryDemo();
+    loadAdminScoreSummaryDemo();
 }
 
 //quản lý buổi học
@@ -1015,6 +1016,10 @@ function runPageLoaders() {
     loadStudentSchedulesDemo();
     loadScheduleSessionOptionsDemo();
     loadCurrentAttendanceSessionTextDemo();
+    loadStudentDashboardStatsDemo();
+    loadGroupScoreHistoryDemo();
+    loadAdminScoreSummaryDemo();
+    loadBibleChallengeDemo();
 }
 
 document.addEventListener("DOMContentLoaded", runPageLoaders);
@@ -2178,24 +2183,29 @@ function loadAdminMembersTableDemo() {
     if (students.length === 0) {
         tableBody.innerHTML = `
             <tr>
-                <td colspan="8">Chưa có học viên nào được import.</td>
+                <td colspan="9">Chưa có học viên nào được import.</td>
             </tr>
         `;
         return;
     }
 
     tableBody.innerHTML = students.map(student => `
-        <tr>
-            <td>${student.username}</td>
-            <td>${student.fullName}</td>
-            <td>${student.gender}</td>
-            <td>${student.birthDate}</td>
-            <td>${student.phone}</td>
-            <td>${student.groupName}</td>
-            <td>Học viên</td>
-            <td>123456</td>
-        </tr>
-    `).join("");
+    <tr>
+        <td>${student.username}</td>
+        <td>${student.fullName}</td>
+        <td>${student.gender}</td>
+        <td>${student.birthDate}</td>
+        <td>${student.phone}</td>
+        <td>${student.groupName}</td>
+        <td>Học viên</td>
+        <td>123456</td>
+        <td>
+            <button class="profile-btn" onclick="resetStudentPasswordDemo('${student.username}')">
+                Reset
+            </button>
+        </td>
+    </tr>
+`).join("");
 }//hết
 
 
@@ -3975,4 +3985,247 @@ function getOpenSessionDemo() {
     return sessions.find(
         session => session.status === "Đang mở"
     ) || null;
+}
+
+function loadStudentDashboardStatsDemo() {
+    const attendanceElement = document.getElementById("dashboardAttendanceCount");
+    const groupScoreElement = document.getElementById("dashboardGroupScore");
+    const groupNameText = document.getElementById("dashboardGroupNameText");
+
+    if (!attendanceElement || !groupScoreElement || !groupNameText) {
+        return;
+    }
+
+    const currentUser = getCurrentUserDemo();
+
+    if (!currentUser) {
+        return;
+    }
+
+    const attendanceHistory =
+        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+
+    const myAttendance = attendanceHistory.filter(item =>
+        item.username &&
+        item.username.toLowerCase() === currentUser.username.toLowerCase()
+    );
+
+    attendanceElement.innerText = myAttendance.length;
+
+    const groupScore = getGroupTotalScoreDemo(currentUser.groupName);
+
+    groupScoreElement.innerText = groupScore;
+    groupNameText.innerText = "Nhóm " + currentUser.groupName;
+}
+
+function loadGroupScoreHistoryDemo() {
+    const tableBody = document.getElementById("groupScoreHistoryBody");
+
+    if (!tableBody) {
+        return;
+    }
+
+    const currentUser = getCurrentUserDemo();
+
+    if (!currentUser) {
+        return;
+    }
+
+    const scores = getStoredScoresDemo();
+
+    const groupScores = scores.filter(item =>
+        item.groupName &&
+        item.groupName.toLowerCase() === currentUser.groupName.toLowerCase()
+    );
+
+    if (groupScores.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="3">Nhóm của bạn chưa có lịch sử điểm.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    tableBody.innerHTML = groupScores.map(item => `
+        <tr>
+            <td>${item.createdAt}</td>
+            <td>${item.reason} - ${item.fullName}</td>
+            <td>${item.scoreValue > 0 ? "+" : ""}${item.scoreValue}</td>
+        </tr>
+    `).join("");
+}
+
+function resetStudentPasswordDemo(username) {
+    const confirmReset = confirm(
+        "Bạn có chắc muốn reset mật khẩu của học viên này về 123456 không?"
+    );
+
+    if (!confirmReset) {
+        return;
+    }
+
+    localStorage.removeItem("password_" + username);
+
+    alert("Đã reset mật khẩu về mặc định: 123456");
+}
+
+function loadAdminScoreSummaryDemo() {
+    const totalPointsElement = document.getElementById("adminScoreTotalPoints");
+    const totalRecordsElement = document.getElementById("adminScoreTotalRecords");
+    const topGroupElement = document.getElementById("adminScoreTopGroup");
+    const topGroupPointsElement = document.getElementById("adminScoreTopGroupPoints");
+
+    if (!totalPointsElement) {
+        return;
+    }
+
+    const scores = getStoredScoresDemo();
+
+    const totalPoints = scores.reduce(
+        (total, item) => total + Number(item.scoreValue || 0),
+        0
+    );
+
+    const ranking = getGroupRankingWithScoresDemo();
+
+    totalPointsElement.innerText = totalPoints;
+    totalRecordsElement.innerText = scores.length;
+
+    if (ranking.length > 0) {
+        topGroupElement.innerText = ranking[0].groupName;
+        topGroupPointsElement.innerText = ranking[0].score + " điểm";
+    } else {
+        topGroupElement.innerText = "-";
+        topGroupPointsElement.innerText = "0 điểm";
+    }
+}
+
+
+let bcCurrentGroupNameDemo = "";
+let bcAvailableMembersDemo = [];
+
+function loadBibleChallengeDemo() {
+    const groupGrid = document.getElementById("bcGroupGrid");
+
+    if (!groupGrid) {
+        return;
+    }
+
+    const students = getImportedStudentsDemo();
+
+    if (students.length === 0) {
+        groupGrid.innerHTML = `
+            <p class="empty-note">Chưa có học viên. Vui lòng import danh sách trước.</p>
+        `;
+        return;
+    }
+
+    const groups = groupRankingDemo.map(group => {
+        const members = students.filter(student =>
+            student.groupName &&
+            student.groupName.toLowerCase() === group.groupName.toLowerCase()
+        );
+
+        return {
+            groupName: group.groupName,
+            members: members
+        };
+    });
+
+    groupGrid.innerHTML = groups.map(group => `
+        <div class="bc-card" onclick="bcOpenGroupDemo('${group.groupName}')">
+            <div class="bc-avatar">${group.groupName.charAt(0)}</div>
+            <div>${group.groupName}</div>
+            <small>${group.members.length} học viên</small>
+        </div>
+    `).join("");
+}
+
+function bcOpenGroupDemo(groupName) {
+    bcCurrentGroupNameDemo = groupName;
+
+    const groupPanel = document.querySelector(".bc-random-panel");
+    const memberPanel = document.getElementById("bcMemberPanel");
+    const memberTitle = document.getElementById("bcMemberGroupTitle");
+    const memberGrid = document.getElementById("bcMemberGrid");
+
+    const students = getImportedStudentsDemo();
+
+    bcAvailableMembersDemo = students.filter(student =>
+        student.groupName &&
+        student.groupName.toLowerCase() === groupName.toLowerCase()
+    );
+
+    groupPanel.classList.add("hidden");
+    memberPanel.classList.remove("hidden");
+
+    memberTitle.innerText = "Nhóm " + groupName;
+
+    if (bcAvailableMembersDemo.length === 0) {
+        memberGrid.innerHTML = `
+            <p class="empty-note">Nhóm này chưa có học viên.</p>
+        `;
+        return;
+    }
+
+    memberGrid.innerHTML = bcAvailableMembersDemo.map((student, index) => `
+        <div class="bc-card" onclick="bcShowWinnerDemo(${index})">
+            <div class="bc-avatar">${getStudentAvatarInitialDemo(student)}</div>
+            <div>${student.fullName}</div>
+            <small>${student.username}</small>
+        </div>
+    `).join("");
+}
+
+function bcBackToGroupsDemo() {
+    const panels = document.querySelectorAll(".bc-random-panel");
+    const memberPanel = document.getElementById("bcMemberPanel");
+
+    panels[0].classList.remove("hidden");
+    memberPanel.classList.add("hidden");
+}
+
+function bcRandomMemberDemo() {
+    if (bcAvailableMembersDemo.length === 0) {
+        alert("Không có học viên để random.");
+        return;
+    }
+
+    const winnerIndex = Math.floor(Math.random() * bcAvailableMembersDemo.length);
+
+    bcShowWinnerDemo(winnerIndex);
+}
+
+function bcShowWinnerDemo(index) {
+    const winner = bcAvailableMembersDemo[index];
+
+    if (!winner) {
+        return;
+    }
+
+    const backdrop = document.getElementById("bcWinnerBackdrop");
+    const overlay = document.getElementById("bcWinnerOverlay");
+    const avatar = document.getElementById("bcWinnerAvatar");
+    const name = document.getElementById("bcWinnerName");
+
+    avatar.innerText = getStudentAvatarInitialDemo(winner);
+    name.innerText = winner.fullName;
+
+    backdrop.classList.remove("hidden");
+    overlay.classList.remove("hidden");
+
+    if (typeof confetti === "function") {
+        confetti({
+            particleCount: 160,
+            spread: 360,
+            startVelocity: 45,
+            origin: { y: 0.5 }
+        });
+    }
+
+    setTimeout(() => {
+        backdrop.classList.add("hidden");
+        overlay.classList.add("hidden");
+    }, 5000);
 }

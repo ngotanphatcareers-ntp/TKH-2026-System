@@ -1060,3 +1060,121 @@ body {
     background: #f9fafb;
     border-left: 4px solid #16a34a;
 }
+
+.bc-stage {
+    position: relative;
+}
+
+.bc-random-panel {
+    background: #0f172a;
+    color: white;
+    border-radius: 18px;
+    padding: 28px;
+    margin-top: 24px;
+    text-align: center;
+}
+
+.bc-group-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 18px;
+    margin-top: 24px;
+}
+
+.bc-card {
+    min-height: 120px;
+    background: #1e293b;
+    border: 2px solid rgba(255,255,255,0.75);
+    border-radius: 16px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.25s;
+}
+
+.bc-card:hover {
+    transform: scale(1.04);
+    box-shadow: 0 0 25px rgba(255,255,255,0.25);
+}
+
+.bc-card.selected {
+    border-color: gold;
+    box-shadow: 0 0 35px gold;
+    transform: scale(1.08);
+}
+
+.bc-card.used {
+    opacity: 0.35;
+    filter: grayscale(100%);
+    cursor: not-allowed;
+}
+
+.bc-avatar {
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    background: #334155;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+}
+
+.bc-winner-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(3px);
+    z-index: 9000;
+}
+
+.bc-winner-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+    color: white;
+    text-align: center;
+}
+
+.bc-winner-avatar {
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    border: 8px solid gold;
+    box-shadow: 0 0 50px gold;
+    background: #1e293b;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 90px;
+    margin-bottom: 28px;
+}
+
+#bcWinnerName {
+    font-size: 64px;
+    text-shadow:
+        3px 3px 0 #000,
+        -3px -3px 0 #000,
+        0 0 25px gold;
+    animation: bcPulse 1s infinite;
+}
+
+@keyframes bcPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+}
+
+.hidden {
+    display: none !important;
+}
