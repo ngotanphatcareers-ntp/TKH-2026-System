@@ -1178,3 +1178,22 @@ body {
 .hidden {
     display: none !important;
 }
+
+.bc-progress-wrapper {
+    width: 100%;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+    margin: 16px 0;
+}
+
+.bc-progress-bar {
+    width: 0%;
+    min-width: 48px;
+    padding: 10px;
+    text-align: center;
+    background: #1e293b;
+    color: white;
+    font-weight: bold;
+    transition: width 0.4s ease;
+}

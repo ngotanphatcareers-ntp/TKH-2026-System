@@ -1022,6 +1022,7 @@ function runPageLoaders() {
     loadBibleChallengeDemo();
     loadBibleChallengeSummaryDemo();
     loadBibleChallengeHistoryDemo();
+    loadBibleChallengeProgressDemo();
 }
 
 document.addEventListener("DOMContentLoaded", runPageLoaders);
@@ -4308,6 +4309,7 @@ function bcShowWinnerDemo(index) {
     saveBibleChallengeStateDemo(state);
     addBibleChallengeHistoryDemo(winner);
     loadBibleChallengeHistoryDemo();
+    loadBibleChallengeProgressDemo();
     loadBibleChallengeSummaryDemo();
 
     const backdrop = document.getElementById("bcWinnerBackdrop");
@@ -4542,7 +4544,7 @@ function loadBibleChallengeSummaryDemo() {
     });
 
     eligibleElement.innerText = checkedUsers.length;
-    completedElement.innerText = completedCount;
+    completedElement.innerText = completedCount + " / " + checkedUsers.length;
 }
 
 function getBibleChallengeHistoryDemo() {
@@ -4666,9 +4668,93 @@ function addBibleChallengeScoreDemo(historyId, points) {
     saveBibleChallengeHistoryDemo(history);
 
     loadBibleChallengeHistoryDemo();
+    loadBibleChallengeProgressDemo();
     loadBibleChallengeSummaryDemo();
     loadAdminScoreSummaryDemo();
     loadAdminScoreHistoryDemo();
 
     alert("Đã cộng " + points + " điểm cho " + item.fullName + ".");
+}
+
+function loadBibleChallengeProgressDemo() {
+    const progressBar = document.getElementById("bcProgressBar");
+    const progressText = document.getElementById("bcProgressText");
+    const groupStatsBody = document.getElementById("bcGroupStatsBody");
+
+    if (!progressBar || !progressText || !groupStatsBody) {
+        return;
+    }
+
+    const currentSession = getOpenSessionDemo();
+    const history = getBibleChallengeHistoryDemo();
+
+    if (!currentSession) {
+        progressBar.style.width = "0%";
+        progressBar.innerText = "0%";
+        progressText.innerText = "Chưa có buổi học đang mở.";
+        groupStatsBody.innerHTML = `
+            <tr>
+                <td colspan="2">Chưa có dữ liệu.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    const attendanceHistory =
+        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+
+    const checkedUsers = [];
+
+    attendanceHistory.forEach(item => {
+        if (
+            item.session === currentSession.name &&
+            !checkedUsers.includes(item.username)
+        ) {
+            checkedUsers.push(item.username);
+        }
+    });
+
+    const sessionHistory = history.filter(
+        item => item.session === currentSession.name
+    );
+
+    const completedCount = sessionHistory.length;
+    const eligibleCount = checkedUsers.length;
+
+    const percent =
+        eligibleCount > 0
+            ? Math.round((completedCount / eligibleCount) * 100)
+            : 0;
+
+    progressBar.style.width = percent + "%";
+    progressBar.innerText = percent + "%";
+
+    progressText.innerText =
+        "Đã random " +
+        completedCount +
+        " / " +
+        eligibleCount +
+        " học viên đủ điều kiện trong " +
+        currentSession.name +
+        ".";
+
+    const groupStats = groupRankingDemo.map(group => {
+        const count = sessionHistory.filter(
+            item =>
+                item.groupName &&
+                item.groupName.toLowerCase() === group.groupName.toLowerCase()
+        ).length;
+
+        return {
+            groupName: group.groupName,
+            count: count
+        };
+    });
+
+    groupStatsBody.innerHTML = groupStats.map(item => `
+        <tr>
+            <td>${item.groupName}</td>
+            <td>${item.count}</td>
+        </tr>
+    `).join("");
 }

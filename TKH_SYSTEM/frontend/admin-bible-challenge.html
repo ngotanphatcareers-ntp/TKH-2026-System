@@ -104,6 +104,23 @@ Random học viên trả bài Kinh Thánh theo buổi học.
 
 </div>
 
+
+<div class="attendance-box">
+    <h2>Tiến độ Bible Challenge</h2>
+
+    <div class="bc-progress-wrapper">
+        <div id="bcProgressBar" class="bc-progress-bar">
+            0%
+        </div>
+    </div>
+
+    <p id="bcProgressText" class="empty-note">
+        Chưa có dữ liệu Bible Challenge.
+    </p>
+</div>
+
+
+
 <section class="bc-stage">
 
     <div id="bcWinnerBackdrop" class="bc-winner-backdrop hidden"></div>
@@ -175,10 +192,29 @@ Random học viên trả bài Kinh Thánh theo buổi học.
     </table>
 </div>
 
+<div class="attendance-box">
+    <h2>Thống kê lượt Random theo nhóm</h2>
+
+    <table class="score-table">
+        <thead>
+            <tr>
+                <th>Nhóm</th>
+                <th>Số lượt đã Random</th>
+            </tr>
+        </thead>
+
+        <tbody id="bcGroupStatsBody">
+            <tr>
+                <td colspan="2">Chưa có dữ liệu.</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="js/app.js?v=117"></script>
+<script src="js/app.js?v=119"></script>
 
 </body>
 </html>
