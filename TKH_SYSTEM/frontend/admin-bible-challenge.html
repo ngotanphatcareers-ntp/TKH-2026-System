@@ -122,6 +122,18 @@ Random học viên trả bài Kinh Thánh theo buổi học.
         <div id="bcGroupGrid" class="bc-group-grid">
             <p class="empty-note">Đang tải danh sách nhóm...</p>
         </div>
+
+        <div class="admin-actions">
+            <button onclick="bcRandomGroupDemo()">
+                Random Group
+            </button>
+
+            <button onclick="bcResetBibleChallengeDemo()">
+                Reset Bible Challenge
+            </button>
+
+        </div>
+
     </div>
 
     <div class="bc-random-panel hidden" id="bcMemberPanel">
@@ -139,10 +151,34 @@ Random học viên trả bài Kinh Thánh theo buổi học.
 
 </section>
 
+
+<div class="attendance-box">
+    <h2>Lịch sử Bible Challenge</h2>
+
+    <table class="score-table">
+        <thead>
+            <tr>
+                <th>Thời gian</th>
+                <th>Buổi học</th>
+                <th>Thành viên</th>
+                <th>Nhóm</th>
+                <th>Trạng thái</th>
+                <th>Thao tác</th>
+            </tr>
+        </thead>
+
+        <tbody id="bcHistoryTableBody">
+            <tr>
+                <td colspan="6">Chưa có lịch sử Bible Challenge.</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="js/app.js?v=108"></script>
+<script src="js/app.js?v=117"></script>
 
 </body>
 </html>

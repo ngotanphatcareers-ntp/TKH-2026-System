@@ -1020,6 +1020,8 @@ function runPageLoaders() {
     loadGroupScoreHistoryDemo();
     loadAdminScoreSummaryDemo();
     loadBibleChallengeDemo();
+    loadBibleChallengeSummaryDemo();
+    loadBibleChallengeHistoryDemo();
 }
 
 document.addEventListener("DOMContentLoaded", runPageLoaders);
@@ -4113,6 +4115,7 @@ function loadBibleChallengeDemo() {
     }
 
     const students = getImportedStudentsDemo();
+    const state = getBibleChallengeStateDemo();
 
     if (students.length === 0) {
         groupGrid.innerHTML = `
@@ -4129,12 +4132,17 @@ function loadBibleChallengeDemo() {
 
         return {
             groupName: group.groupName,
-            members: members
+            members: members,
+            used: state.usedGroups.includes(group.groupName)
         };
     });
 
     groupGrid.innerHTML = groups.map(group => `
-        <div class="bc-card" onclick="bcOpenGroupDemo('${group.groupName}')">
+        <div
+            class="bc-card ${group.used ? "used" : ""}"
+            data-group-name="${group.groupName}"
+            onclick="bcOpenGroupDemo('${group.groupName}')"
+        >
             <div class="bc-avatar">${group.groupName.charAt(0)}</div>
             <div>${group.groupName}</div>
             <small>${group.members.length} học viên</small>
@@ -4142,7 +4150,13 @@ function loadBibleChallengeDemo() {
     `).join("");
 }
 
-function bcOpenGroupDemo(groupName) {
+function bcOpenGroupDemo(groupName, allowUsed = false) {
+    const state = getBibleChallengeStateDemo();
+
+    if (state.usedGroups.includes(groupName) && !allowUsed) {
+        return;
+    }
+
     bcCurrentGroupNameDemo = groupName;
 
     const groupPanel = document.querySelector(".bc-random-panel");
@@ -4151,34 +4165,75 @@ function bcOpenGroupDemo(groupName) {
     const memberGrid = document.getElementById("bcMemberGrid");
 
     const students = getImportedStudentsDemo();
+    const currentSession = getOpenSessionDemo();
+
+    if (!currentSession) {
+        alert("Hiện chưa có buổi học nào đang mở.");
+        return;
+    }
+
+    const attendanceHistory =
+        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+
+    const checkedUsernames = [];
+
+    attendanceHistory.forEach(item => {
+        const isSameSession =
+            item.session === currentSession.name;
+
+        const alreadyAdded =
+            checkedUsernames.includes(item.username);
+
+        if (isSameSession && !alreadyAdded) {
+            checkedUsernames.push(item.username);
+        }
+    });
+
+    const usedMembers = state.usedMembers[groupName] || [];
 
     bcAvailableMembersDemo = students.filter(student =>
         student.groupName &&
-        student.groupName.toLowerCase() === groupName.toLowerCase()
+        student.groupName.toLowerCase() === groupName.toLowerCase() &&
+        checkedUsernames.includes(student.username)
     );
 
     groupPanel.classList.add("hidden");
     memberPanel.classList.remove("hidden");
 
-    memberTitle.innerText = "Nhóm " + groupName;
+    memberTitle.innerText =
+        "Nhóm " + groupName + " · " + currentSession.name;
 
     if (bcAvailableMembersDemo.length === 0) {
         memberGrid.innerHTML = `
-            <p class="empty-note">Nhóm này chưa có học viên.</p>
+            <p class="empty-note">
+                Nhóm này chưa có học viên nào đã điểm danh trong ${currentSession.name}.
+            </p>
         `;
         return;
     }
 
-    memberGrid.innerHTML = bcAvailableMembersDemo.map((student, index) => `
-        <div class="bc-card" onclick="bcShowWinnerDemo(${index})">
-            <div class="bc-avatar">${getStudentAvatarInitialDemo(student)}</div>
-            <div>${student.fullName}</div>
-            <small>${student.username}</small>
-        </div>
-    `).join("");
+    memberGrid.innerHTML = bcAvailableMembersDemo.map((student, index) => {
+        const isUsed = usedMembers.includes(student.username);
+
+        return `
+            <div
+                class="bc-card ${isUsed ? "used" : ""}"
+                onclick="bcShowWinnerDemo(${index})"
+            >
+                <div class="bc-avatar">${getStudentAvatarInitialDemo(student)}</div>
+                <div>${student.fullName}</div>
+                <small>${student.username}</small>
+            </div>
+        `;
+    }).join("");
 }
 
 function bcBackToGroupsDemo() {
+    if (bcMemberRollingDemo) {
+        alert("Đang random thành viên, vui lòng chờ kết quả.");
+        return;
+    }
+
     const panels = document.querySelectorAll(".bc-random-panel");
     const memberPanel = document.getElementById("bcMemberPanel");
 
@@ -4187,14 +4242,49 @@ function bcBackToGroupsDemo() {
 }
 
 function bcRandomMemberDemo() {
-    if (bcAvailableMembersDemo.length === 0) {
-        alert("Không có học viên để random.");
+    if (bcMemberRollingDemo) {
         return;
     }
 
-    const winnerIndex = Math.floor(Math.random() * bcAvailableMembersDemo.length);
+    const state = getBibleChallengeStateDemo();
+    const usedMembers = state.usedMembers[bcCurrentGroupNameDemo] || [];
 
-    bcShowWinnerDemo(winnerIndex);
+    const availableIndexes = bcAvailableMembersDemo
+        .map((student, index) => {
+            return usedMembers.includes(student.username) ? null : index;
+        })
+        .filter(index => index !== null);
+
+    if (availableIndexes.length === 0) {
+        alert("Tất cả thành viên nhóm này đã được random.");
+        return;
+    }
+
+    const cards = Array.from(
+        document.querySelectorAll("#bcMemberGrid .bc-card")
+    ).filter(card => !card.classList.contains("used"));
+
+    if (cards.length === 0) {
+        return;
+    }
+
+    bcMemberRollingDemo = true;
+
+    const randomPosition = Math.floor(Math.random() * availableIndexes.length);
+    const winnerOriginalIndex = availableIndexes[randomPosition];
+
+    const winnerCardPosition = availableIndexes.indexOf(winnerOriginalIndex);
+
+    bcSpinToWinnerDemo(
+        cards,
+        winnerCardPosition,
+        () => {
+            bcMemberRollingDemo = false;
+            bcShowWinnerDemo(winnerOriginalIndex);
+        },
+        80,
+        30
+    );
 }
 
 function bcShowWinnerDemo(index) {
@@ -4203,6 +4293,22 @@ function bcShowWinnerDemo(index) {
     if (!winner) {
         return;
     }
+
+    const state = getBibleChallengeStateDemo();
+
+    if (!state.usedMembers[bcCurrentGroupNameDemo]) {
+        state.usedMembers[bcCurrentGroupNameDemo] = [];
+    }
+
+    if (state.usedMembers[bcCurrentGroupNameDemo].includes(winner.username)) {
+        return;
+    }
+
+    state.usedMembers[bcCurrentGroupNameDemo].push(winner.username);
+    saveBibleChallengeStateDemo(state);
+    addBibleChallengeHistoryDemo(winner);
+    loadBibleChallengeHistoryDemo();
+    loadBibleChallengeSummaryDemo();
 
     const backdrop = document.getElementById("bcWinnerBackdrop");
     const overlay = document.getElementById("bcWinnerOverlay");
@@ -4227,5 +4333,342 @@ function bcShowWinnerDemo(index) {
     setTimeout(() => {
         backdrop.classList.add("hidden");
         overlay.classList.add("hidden");
+        bcOpenGroupDemo(bcCurrentGroupNameDemo);
     }, 5000);
+}
+
+function bcRandomGroupDemo() {
+    if (bcGroupRollingDemo) {
+        return;
+    }
+
+    const state = getBibleChallengeStateDemo();
+
+    const groupCards = Array.from(
+        document.querySelectorAll("#bcGroupGrid .bc-card")
+    ).filter(card => !card.classList.contains("used"));
+
+    if (groupCards.length === 0) {
+        alert("Tất cả nhóm đã được random.");
+        return;
+    }
+
+    bcGroupRollingDemo = true;
+
+    const winnerIndex = Math.floor(Math.random() * groupCards.length);
+    const winnerCard = groupCards[winnerIndex];
+    const groupName = winnerCard.getAttribute("data-group-name");
+
+    bcSpinToWinnerDemo(
+        groupCards,
+        winnerIndex,
+        () => {
+            if (!state.usedGroups.includes(groupName)) {
+                state.usedGroups.push(groupName);
+            }
+
+            saveBibleChallengeStateDemo(state);
+
+            bcGroupRollingDemo = false;
+
+            bcShowGroupWinnerDemo(groupName);
+
+            setTimeout(() => {
+                bcOpenGroupDemo(groupName, true);
+                loadBibleChallengeDemo();
+            }, 5000);
+        },
+        50,
+        30
+    );
+}
+
+function bcSpinToWinnerDemo(cards, winnerIndex, finishCallback, minSteps = 50, startSpeed = 30) {
+    let currentIndex = 0;
+    let step = 0;
+    let speed = startSpeed;
+
+    const distance = (winnerIndex - currentIndex + cards.length) % cards.length;
+    const targetSteps = minSteps + distance;
+
+    function spin() {
+        cards.forEach(card => card.classList.remove("selected"));
+
+        cards[currentIndex].classList.add("selected");
+
+        if (step >= targetSteps) {
+            cards.forEach(card => card.classList.remove("selected"));
+            cards[winnerIndex].classList.add("selected");
+
+            finishCallback();
+            return;
+        }
+
+        step++;
+
+        currentIndex = (currentIndex + 1) % cards.length;
+
+        const progress = step / targetSteps;
+
+        if (progress < 0.35) {
+            speed += 1;
+        } else if (progress < 0.65) {
+            speed += 4;
+        } else if (progress < 0.85) {
+            speed += 18;
+        } else {
+            speed += 45;
+        }
+
+        setTimeout(spin, speed);
+    }
+
+    spin();
+}
+
+let bcGroupRollingDemo = false;
+let bcMemberRollingDemo = false;
+
+function getBibleChallengeStateDemo() {
+    return JSON.parse(localStorage.getItem("bibleChallengeStateDemo")) || {
+        usedGroups: [],
+        usedMembers: {}
+    };
+}
+
+function saveBibleChallengeStateDemo(state) {
+    localStorage.setItem("bibleChallengeStateDemo", JSON.stringify(state));
+}
+
+function bcShowGroupWinnerDemo(groupName) {
+    const backdrop = document.getElementById("bcWinnerBackdrop");
+    const overlay = document.getElementById("bcWinnerOverlay");
+    const avatar = document.getElementById("bcWinnerAvatar");
+    const name = document.getElementById("bcWinnerName");
+
+    avatar.innerText = "🏆";
+    name.innerText = "Nhóm " + groupName;
+
+    backdrop.classList.remove("hidden");
+    overlay.classList.remove("hidden");
+
+    if (typeof confetti === "function") {
+        confetti({
+            particleCount: 200,
+            spread: 360,
+            startVelocity: 50,
+            origin: { y: 0.5 }
+        });
+    }
+
+    setTimeout(() => {
+        backdrop.classList.add("hidden");
+        overlay.classList.add("hidden");
+    }, 4500);
+}
+
+function bcResetBibleChallengeDemo() {
+    const confirmReset = confirm(
+        "Bạn có chắc muốn reset toàn bộ trạng thái Bible Challenge không? Các nhóm và thành viên đã quay sẽ được mở lại."
+    );
+
+    if (!confirmReset) {
+        return;
+    }
+
+    localStorage.removeItem("bibleChallengeStateDemo");
+
+    bcCurrentGroupNameDemo = "";
+    bcAvailableMembersDemo = [];
+    bcGroupRollingDemo = false;
+    bcMemberRollingDemo = false;
+
+    const memberPanel = document.getElementById("bcMemberPanel");
+    const panels = document.querySelectorAll(".bc-random-panel");
+
+    if (panels[0]) {
+        panels[0].classList.remove("hidden");
+    }
+
+    if (memberPanel) {
+        memberPanel.classList.add("hidden");
+    }
+
+    loadBibleChallengeDemo();
+
+    alert("Đã reset Bible Challenge thành công.");
+}
+
+function loadBibleChallengeSummaryDemo() {
+    const sessionElement = document.getElementById("bcCurrentSession");
+    const eligibleElement = document.getElementById("bcEligible");
+    const completedElement = document.getElementById("bcCompleted");
+
+    if (!sessionElement || !eligibleElement || !completedElement) {
+        return;
+    }
+
+    const currentSession = getOpenSessionDemo();
+
+    if (!currentSession) {
+        sessionElement.innerText = "Chưa mở";
+        eligibleElement.innerText = 0;
+        completedElement.innerText = 0;
+        return;
+    }
+
+    sessionElement.innerText = currentSession.name;
+
+    const attendanceHistory =
+        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+
+    const checkedUsers = [];
+
+    attendanceHistory.forEach(item => {
+        if (
+            item.session === currentSession.name &&
+            !checkedUsers.includes(item.username)
+        ) {
+            checkedUsers.push(item.username);
+        }
+    });
+
+    const state = getBibleChallengeStateDemo();
+
+    let completedCount = 0;
+
+    Object.values(state.usedMembers || {}).forEach(memberList => {
+        completedCount += memberList.length;
+    });
+
+    eligibleElement.innerText = checkedUsers.length;
+    completedElement.innerText = completedCount;
+}
+
+function getBibleChallengeHistoryDemo() {
+    return JSON.parse(localStorage.getItem("bibleChallengeHistoryDemo")) || [];
+}
+
+function saveBibleChallengeHistoryDemo(history) {
+    localStorage.setItem("bibleChallengeHistoryDemo", JSON.stringify(history));
+}
+
+function addBibleChallengeHistoryDemo(winner) {
+    const currentSession = getOpenSessionDemo();
+
+    if (!currentSession || !winner) {
+        return;
+    }
+
+    const history = getBibleChallengeHistoryDemo();
+
+    const alreadyExists = history.find(item =>
+        item.username === winner.username &&
+        item.session === currentSession.name
+    );
+
+    if (alreadyExists) {
+        return;
+    }
+
+    history.unshift({
+        id: Date.now(),
+        session: currentSession.name,
+        username: winner.username,
+        fullName: winner.fullName,
+        groupName: winner.groupName,
+        createdAt: new Date().toLocaleString("vi-VN"),
+        status: "Chưa cộng điểm",
+        scoreAdded: false
+    });
+
+    saveBibleChallengeHistoryDemo(history);
+}
+
+function loadBibleChallengeHistoryDemo() {
+    const tableBody = document.getElementById("bcHistoryTableBody");
+
+    if (!tableBody) {
+        return;
+    }
+
+    const history = getBibleChallengeHistoryDemo();
+
+    if (history.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="6">Chưa có lịch sử Bible Challenge.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    tableBody.innerHTML = history.map(item => `
+        <tr>
+            <td>${item.createdAt}</td>
+            <td>${item.session}</td>
+            <td>${item.fullName} (${item.username})</td>
+            <td>${item.groupName}</td>
+            <td>${item.status}</td>
+            <td>
+                ${
+                    item.scoreAdded
+                    ? "Đã xử lý"
+                    : `
+                        <button class="profile-btn" onclick="addBibleChallengeScoreDemo(${item.id}, 10)">+10</button>
+                        <button class="profile-btn" onclick="addBibleChallengeScoreDemo(${item.id}, 5)">+5</button>
+                        <button class="profile-btn" onclick="addBibleChallengeScoreDemo(${item.id}, 0)">0</button>
+                    `
+                }
+            </td>
+        </tr>
+    `).join("");
+}
+
+
+function addBibleChallengeScoreDemo(historyId, points) {
+    const history = getBibleChallengeHistoryDemo();
+
+    const item = history.find(record =>
+        Number(record.id) === Number(historyId)
+    );
+
+    if (!item) {
+        alert("Không tìm thấy lịch sử Bible Challenge.");
+        return;
+    }
+
+    if (item.scoreAdded) {
+        alert("Học viên này đã được cộng điểm rồi.");
+        return;
+    }
+
+    const scores = getStoredScoresDemo();
+
+    scores.unshift({
+        id: Date.now(),
+        username: item.username,
+        fullName: item.fullName,
+        groupName: item.groupName,
+        scoreType: "bible_challenge",
+        scoreTypeLabel: "Trả bài cũ / Bible Challenge",
+        scoreValue: Number(points),
+        reason: "Bible Challenge - " + item.session,
+        createdAt: new Date().toLocaleString("vi-VN")
+    });
+
+    saveStoredScoresDemo(scores);
+
+    item.scoreAdded = true;
+    item.scoreValue = Number(points);
+    item.status = "Đã cộng điểm: " + points;
+
+    saveBibleChallengeHistoryDemo(history);
+
+    loadBibleChallengeHistoryDemo();
+    loadBibleChallengeSummaryDemo();
+    loadAdminScoreSummaryDemo();
+    loadAdminScoreHistoryDemo();
+
+    alert("Đã cộng " + points + " điểm cho " + item.fullName + ".");
 }
