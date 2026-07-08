@@ -132,7 +132,7 @@ const attendanceCheckinConfigDemo = {
 };
 
 
-const CHECKIN_RADIUS_METERS = 500000;
+const CHECKIN_RADIUS_METERS = 2000;
 
 
 function loadAttendanceConfig() {
