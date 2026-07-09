@@ -21,7 +21,12 @@
         <a href="study-materials.html">Kho tài liệu</a>
         <a href="admin-dashboard.html" class="admin-only">Trang Admin</a>
         <a href="change-password.html">Đổi mật khẩu</a>
-        <a href="../TKH-Bible-Challenge/index.html">Bible Challenge</a>
+        
+        <hr class="sidebar-divider">
+
+        <a href="#" onclick="confirmLogout(event)" class="logout-menu">
+            🚪 Đăng xuất
+        </a>
     </aside>
 
     <main class="main-content">
@@ -32,33 +37,55 @@
                 <p>Theo dõi nội dung học, câu gốc và hoạt động từng buổi.</p>
             </div>
 
-            <button onclick="logoutDemo()">Đăng xuất</button>
+            
         </div>
 
-        <div class="attendance-box">
-            <h2>Danh sách buổi học</h2>
+        <div class="attendance-box schedule-timeline-box">
+            <div class="schedule-header">
+                <div>
+                    <h2 id="scheduleWeekTitle">Tuần 1</h2>
+                    <p id="scheduleWeekSubtitle">
+                        Timeline chi tiết các buổi học trong tuần.
+                    </p>
+                </div>
 
-            <table class="score-table">
-                <thead>
-                    <tr>
-                        <th>Ngày</th>
-                        <th>Chủ đề</th>
-                        <th>Câu gốc</th>
-                        <th>Mô tả</th>
-                    </tr>
-                </thead>
+                <div class="schedule-week-badge" id="scheduleWeekBadge">
+                    1 / 3
+                </div>
+            </div>
 
-                <tbody id="studentScheduleTableBody">
-                    <tr>
-                        <td colspan="4">Đang tải lịch học...</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="schedule-image-frame">
+                <img
+                    id="scheduleTimelineImage"
+                    src="assets/schedule/week-1.jpg"
+                    alt="Timeline tuần 1"
+                >
+            </div>
+
+            <div class="schedule-actions">
+                <button onclick="changeScheduleWeek(-1)" id="prevScheduleWeekBtn">
+                    ← Tuần trước
+                </button>
+
+                <button onclick="changeScheduleWeek(1)" id="nextScheduleWeekBtn">
+                    Tuần sau →
+                </button>
+            </div>
         </div>
 
-    </main>
+            </main>
+            <div id="logoutModal" class="modal-overlay hidden">
+                    <div class="modal-box">
+                            <h3>🚪 Đăng xuất</h3>
+                            <p>Bạn có chắc chắn muốn đăng xuất khỏi hệ thống không?</p>
 
-    <script src="js/app.js?v=87"></script>
+                            <div class="modal-actions">
+                                <button class="btn-secondary" onclick="closeLogoutModal()">Hủy</button>
+                                <button class="btn-danger" onclick="logoutDemo()">Đăng xuất</button>
+                            </div>
+                    </div>
+            </div>
+    <script src="js/app.js?v=124"></script>
 
 </body>
 </html>

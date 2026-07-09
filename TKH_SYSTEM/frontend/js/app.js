@@ -92,6 +92,25 @@ function logoutDemo() {
     window.location.href = "index.html";
 }
 
+function confirmLogout(event) {
+    event.preventDefault();
+
+    const modal = document.getElementById("logoutModal");
+
+    if (modal) {
+        modal.classList.remove("hidden");
+    }
+}
+
+function closeLogoutModal() {
+    const modal = document.getElementById("logoutModal");
+
+    if (modal) {
+        modal.classList.add("hidden");
+    }
+}
+
+
 const CHURCH_LOCATION = {
     lat: 10.765926509333024,
     lng: 106.6643590819157
@@ -780,28 +799,63 @@ function getProfileUsernameFromUrl() {
 }
 
 function loadProfileDemo() {
-    if (!document.getElementById("profileFullName")) {
+    const profileNameEl = document.getElementById("profileName");
+
+    if (!profileNameEl) {
         return;
     }
 
+    const currentUser = getCurrentUserDemo();
     const profileUsername = getProfileUsernameFromUrl();
-    const profileUser = findStudentByUsernameDemo(profileUsername);
+    const profileUser = findStudentByUsernameDemo(profileUsername) || currentUser;
+
+    const profileGroupEl = document.getElementById("profileGroup");
+    const profileAvatarEl = document.getElementById("profileAvatar");
+    const profileFullNameEl = document.getElementById("profileFullName");
+    const profileUsernameEl = document.getElementById("profileUsername");
+    const sendBox = document.getElementById("encouragementSendBox");
 
     if (!profileUser) {
-        document.getElementById("profileName").innerText = "Không tìm thấy thành viên";
-        document.getElementById("profileGroup").innerText = "";
-        document.getElementById("profileAvatar").innerText = "?";
-        document.getElementById("profileFullName").innerText = "Không tìm thấy thành viên";
-        document.getElementById("profileUsername").innerText = "";
+        profileNameEl.innerText = "Không tìm thấy thành viên";
+
+        if (profileGroupEl) profileGroupEl.innerText = "";
+        if (profileAvatarEl) profileAvatarEl.innerText = "?";
+        if (profileFullNameEl) profileFullNameEl.innerText = "Không tìm thấy thành viên";
+        if (profileUsernameEl) profileUsernameEl.innerText = "";
+
+        if (sendBox) {
+            sendBox.style.display = "none";
+        }
+
         return;
     }
 
-    document.getElementById("profileName").innerText = "Hồ sơ: " + profileUser.fullName;
-    document.getElementById("profileGroup").innerText = "Nhóm: " + profileUser.groupName;
-    document.getElementById("profileAvatar").innerText = getStudentAvatarInitialDemo(profileUser);
-    document.getElementById("profileFullName").innerText = profileUser.fullName;
-    document.getElementById("profileUsername").innerText =
-        profileUser.username + " · Nhóm " + profileUser.groupName;
+    profileNameEl.innerText = "Hồ sơ: " + profileUser.fullName;
+
+    if (profileGroupEl) {
+        profileGroupEl.innerText = "Nhóm: " + profileUser.groupName;
+    }
+
+    if (profileAvatarEl) {
+        profileAvatarEl.innerText = getStudentAvatarInitialDemo(profileUser);
+    }
+
+    if (profileFullNameEl) {
+        profileFullNameEl.innerText = profileUser.fullName;
+    }
+
+    if (profileUsernameEl) {
+        profileUsernameEl.innerText =
+            profileUser.username + " · Nhóm " + profileUser.groupName;
+    }
+
+    if (sendBox && currentUser) {
+        const isMyProfile =
+            currentUser.username.toLowerCase() ===
+            profileUser.username.toLowerCase();
+
+        sendBox.style.display = isMyProfile ? "none" : "block";
+    }
 }
 
 // function encourageUserDemo() {
@@ -1014,6 +1068,7 @@ function runPageLoaders() {
     loadAdminSessionsDemo();
     loadAdminSchedulesDemo();
     loadStudentSchedulesDemo();
+    loadScheduleTimelineDemo();
     loadScheduleSessionOptionsDemo();
     loadCurrentAttendanceSessionTextDemo();
     loadStudentDashboardStatsDemo();
@@ -1327,8 +1382,9 @@ function sendEncouragementDemo() {
 
     message.style.color = "green";
     message.innerText =
-        "💚 Cảm ơn bạn đã gửi lời khích lệ đến thành viên này Một lời động viên nho nhỏ có thể mang lại rất nhiều sự ấm áp đến người nhận được. Chúa ở cùng bạn luôn!";
-
+      `❤️ Cảm ơn bạn đã gửi lời khích lệ đến thành viên này 
+            Một lời động viên nho nhỏ có thể mang lại rất nhiều sự ấm áp đến người nhận được. 
+            Chúa ở cùng bạn luôn!`;
     loadEncouragementListDemo();
 }
 
@@ -2292,11 +2348,30 @@ function findStudentByUsernameDemo(username) {
         return null;
     }
 
-    const students = getImportedStudentsDemo();
+    const searchUsername = username.toLowerCase();
 
-    return students.find(
-        student => student.username.toLowerCase() === username.toLowerCase()
+    const importedStudents = getImportedStudentsDemo();
+
+    const demoStudents = demoUsers.filter(
+        user => user.role === "student"
     );
+
+    const currentUser = getCurrentUserDemo();
+
+    const allStudents = [
+        ...importedStudents,
+        ...demoStudents
+    ];
+
+    if (currentUser && currentUser.role === "student") {
+        allStudents.push(currentUser);
+    }
+
+    return allStudents.find(
+        student =>
+            student.username &&
+            student.username.toLowerCase() === searchUsername
+    ) || null;
 }
 
 //hàm điểm nhóm
@@ -3899,6 +3974,63 @@ function loadStudentSchedulesDemo() {
         </tr>
     `).join("");
 }
+
+
+let currentScheduleWeekIndex = 0;
+
+const scheduleTimelineWeeksDemo = [
+    {
+        title: "TUẦN 1: TIÊU CỰ HẸP",
+        subtitle: "Timeline chi tiết các buổi học trong tuần 1.",
+        image: "assets/schedule/week-1.jpg"
+    },
+    {
+        title: "TUẦN 2: ĐIỂM MÙ",
+        subtitle: "Timeline chi tiết các buổi học trong tuần 2.",
+        image: "assets/schedule/week-2.jpg"
+    },
+    {
+        title: "TUẦN 3: LA BÀN",
+        subtitle: "Timeline chi tiết các buổi học trong tuần 3.",
+        image: "assets/schedule/week-3.jpg"
+    }
+];
+
+function loadScheduleTimelineDemo() {
+    const imageElement = document.getElementById("scheduleTimelineImage");
+
+    if (!imageElement) {
+        return;
+    }
+
+    const week = scheduleTimelineWeeksDemo[currentScheduleWeekIndex];
+
+    document.getElementById("scheduleWeekTitle").innerText = week.title;
+    document.getElementById("scheduleWeekSubtitle").innerText = week.subtitle;
+    document.getElementById("scheduleWeekBadge").innerText =
+        currentScheduleWeekIndex + 1 + " / " + scheduleTimelineWeeksDemo.length;
+
+    imageElement.src = week.image;
+    imageElement.alt = "Timeline " + week.title;
+
+    document.getElementById("prevScheduleWeekBtn").disabled =
+        currentScheduleWeekIndex === 0;
+
+    document.getElementById("nextScheduleWeekBtn").disabled =
+        currentScheduleWeekIndex === scheduleTimelineWeeksDemo.length - 1;
+}
+
+function changeScheduleWeek(direction) {
+    const nextIndex = currentScheduleWeekIndex + direction;
+
+    if (nextIndex < 0 || nextIndex >= scheduleTimelineWeeksDemo.length) {
+        return;
+    }
+
+    currentScheduleWeekIndex = nextIndex;
+    loadScheduleTimelineDemo();
+}
+
 
 function loadScheduleSessionOptionsDemo() {
 

@@ -25,6 +25,11 @@
     <a href="admin-study-materials.html">Kho tài liệu</a>
     <a href="admin-questions.html">Câu hỏi học viên</a>
     <a href="admin-encouragement.html" class="active">Thống kê khích lệ</a>
+    <hr class="sidebar-divider">
+
+    <a href="#" onclick="confirmLogout(event)" class="logout-menu">
+        🚪 Đăng xuất
+    </a>
     
 </aside>
 
@@ -36,7 +41,7 @@
             <p>Theo dõi hoạt động gửi và nhận lời khích lệ trong TKH.</p>
         </div>
 
-        <button onclick="logoutDemo()">Đăng xuất</button>
+        
     </div>
 
     <section class="cards">
@@ -86,7 +91,17 @@
     </section>
 
 </main>
+<div id="logoutModal" class="modal-overlay hidden">
+        <div class="modal-box">
+                <h3>🚪 Đăng xuất</h3>
+                <p>Bạn có chắc chắn muốn đăng xuất khỏi hệ thống không?</p>
 
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="closeLogoutModal()">Hủy</button>
+                    <button class="btn-danger" onclick="logoutDemo()">Đăng xuất</button>
+                </div>
+        </div>
+</div>
 <script src="js/app.js?v=105"></script>
 
 </body>

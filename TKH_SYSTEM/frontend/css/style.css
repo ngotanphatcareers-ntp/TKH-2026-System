@@ -1197,3 +1197,158 @@ body {
     font-weight: bold;
     transition: width 0.4s ease;
 }
+
+.sidebar-divider{
+    border: none;
+    border-top: 1px solid rgba(255,255,255,.2);
+    margin: 16px 0;
+}
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+}
+
+.modal-overlay.hidden {
+    display: none;
+}
+
+.modal-box {
+    background: #ffffff;
+    width: 100%;
+    max-width: 380px;
+    border-radius: 18px;
+    padding: 24px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+}
+
+.modal-box h3 {
+    margin-bottom: 10px;
+    color: #1f2937;
+}
+
+.modal-box p {
+    color: #4b5563;
+    line-height: 1.5;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 22px;
+}
+
+.modal-actions button {
+    flex: 1;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.btn-secondary {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.btn-danger {
+    background: #dc2626;
+    color: #ffffff;
+}
+
+.schedule-timeline-box {
+    padding: 28px;
+}
+
+.schedule-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+    margin-bottom: 22px;
+}
+
+.schedule-header h2 {
+    margin-bottom: 8px;
+}
+
+.schedule-header p {
+    margin: 0;
+    color: #6b7280;
+}
+
+.schedule-week-badge {
+    background: #eff6ff;
+    color: #1d4ed8;
+    padding: 10px 16px;
+    border-radius: 999px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.schedule-image-frame {
+    width: 100%;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    padding: 14px;
+    overflow: hidden;
+}
+
+.schedule-image-frame img {
+    width: 100%;
+    display: block;
+    border-radius: 14px;
+}
+
+.schedule-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 22px;
+}
+
+.schedule-actions button {
+    border: none;
+    border-radius: 12px;
+    padding: 13px 18px;
+    background: #2563eb;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.schedule-actions button:hover {
+    background: #1d4ed8;
+}
+
+.schedule-actions button:disabled {
+    background: #cbd5e1;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .schedule-header {
+        flex-direction: column;
+    }
+
+    .schedule-actions {
+        flex-direction: column;
+    }
+
+    .schedule-actions button {
+        width: 100%;
+    }
+
+    .schedule-image-frame {
+        padding: 8px;
+    }
+}
