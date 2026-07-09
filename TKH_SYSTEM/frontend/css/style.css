@@ -1593,13 +1593,14 @@ body {
     font-weight:bold;
 
     margin-bottom:8px;
+    font-size:12px;
+    margin-bottom:4px;
 
 }
 
 .week-badge strong{
-
-    font-size:17px;
-
+    font-size:15px;
+    font-weight:700;
 }
 
 @media(max-width:768px){
@@ -1639,9 +1640,105 @@ height:64px;
 }
 
 .week-badge{
-
-width:100%;
+    width:100%;
+    padding:8px 12px;
+    border-radius:12px;
+}
 
 }
 
+@media (max-width: 768px) {
+    .program-header-card {
+        margin: 20px 0 22px;
+        padding: 22px;
+        border-radius: 22px;
+        background: linear-gradient(180deg, #eff6ff 0%, #ffffff 38%);
+    }
+
+    .program-header-top {
+        flex-direction: row;
+        align-items: center;
+        text-align: left;
+        gap: 14px;
+    }
+
+    .program-logo {
+        width: 54px;
+        height: 54px;
+        object-fit: contain;
+    }
+
+    .program-header-text p {
+        font-size: 14px;
+        line-height: 1.35;
+    }
+
+    .program-youth {
+        font-size: 15px;
+    }
+
+    .program-header-card h1 {
+        font-size: 26px;
+        text-align: center;
+    }
+
+    .program-header-card h2 {
+        font-size: 22px;
+        text-align: center;
+    }
+
+    .program-verse {
+        font-size: 15px;
+        text-align: center;
+    }
+
+    .week-badge-container {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .week-badge {
+        width: 100%;
+        padding: 12px;
+    }
+}
+@media (max-width: 768px) {
+    .week-badge-container {
+        display: block;
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .week-badge {
+        width: 100%;
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        padding: 4px 0;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .week-badge span {
+        display: inline;
+        min-width: 58px;
+        margin: 0;
+        font-size: 13px;
+        color: #2563eb;
+        font-weight: 700;
+    }
+
+    .week-badge strong {
+        font-size: 14px;
+        color: #111827;
+        font-weight: 700;
+    }
+
+    .week-badge span::before {
+        content: "• ";
+    }
 }
