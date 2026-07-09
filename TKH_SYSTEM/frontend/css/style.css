@@ -1367,3 +1367,281 @@ body {
         border-radius: 0;
     }
 }
+
+.program-hero-card {
+    background: linear-gradient(135deg, #ffffff, #eff6ff);
+    border-radius: 24px;
+    padding: 32px;
+    margin-bottom: 24px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    border: 1px solid #dbeafe;
+}
+
+.program-church {
+    margin: 0;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #0f172a;
+    line-height: 1.5;
+}
+
+.program-youth {
+    margin: 12px 0 18px;
+    font-weight: 700;
+    color: #2563eb;
+}
+
+.program-hero-card h1 {
+    margin: 0 0 14px;
+    font-size: 34px;
+    color: #111827;
+}
+
+.program-hero-card h2 {
+    margin: 0 0 14px;
+    font-size: 26px;
+    color: #1d4ed8;
+}
+
+.program-verse {
+    max-width: 760px;
+    margin: 0 auto 22px;
+    color: #374151;
+    font-style: italic;
+    line-height: 1.6;
+}
+
+.program-week-themes {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.program-week-themes span {
+    background: white;
+    border: 1px solid #bfdbfe;
+    color: #1e3a8a;
+    padding: 12px;
+    border-radius: 14px;
+    font-weight: 700;
+}
+
+@media (max-width: 768px) {
+    .program-hero-card {
+        padding: 24px;
+        text-align: left;
+    }
+
+    .program-hero-card h1 {
+        font-size: 26px;
+    }
+
+    .program-hero-card h2 {
+        font-size: 22px;
+    }
+
+    .program-week-themes {
+        grid-template-columns: 1fr;
+    }
+}
+
+.program-header-card{
+    background: linear-gradient(180deg, #eff6ff 0%, #ffffff 34%);
+
+    border-radius:22px;
+
+    padding:24px 34px;
+
+    margin-bottom:24px;
+
+    box-shadow:0 8px 24px rgba(0,0,0,.06);
+
+}
+
+.program-header-top{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:22px;
+
+}
+
+.program-logo{
+
+    width:72px;
+
+    height:72px;
+
+    object-fit:contain;
+
+    flex-shrink:0;
+
+}
+
+.program-header-text{
+
+    flex:1;
+
+}
+
+.program-header-text p{
+
+    margin:3px 0;
+
+    font-weight:700;
+
+    color:#334155;
+    font-size:15px;
+}
+
+.program-youth{
+
+    color:#2563eb;
+
+    font-size:14px;
+
+}
+
+.program-header-card hr{
+
+    margin:20px 0;
+
+    border:none;
+
+    border-top:1px solid #e5e7eb;
+
+}
+
+.program-header-card h1{
+
+    margin:0;
+
+    text-align:center;
+
+    font-size:34px;
+
+}
+
+.program-header-card h2{
+
+    margin-top:10px;
+
+    text-align:center;
+
+    color:#2563eb;
+    font-size:26px;
+
+}
+
+.program-verse{
+
+    text-align:center;
+
+    margin:18px auto;
+
+    max-width:700px;
+
+    color:#6b7280;
+
+    font-style:italic;
+
+    line-height:1.6;
+
+}
+
+.week-badge-container{
+
+    display:flex;
+
+    justify-content:center;
+
+    gap:16px;
+
+    margin-top:20px;
+
+    flex-wrap:wrap;
+
+}
+
+.week-badge{
+
+    background:#eff6ff;
+
+    border:1px solid #bfdbfe;
+
+    border-radius:16px;
+
+    width:180px;
+
+    padding:14px;
+
+    text-align:center;
+
+}
+
+.week-badge span{
+
+    display:block;
+
+    color:#2563eb;
+
+    font-size:13px;
+
+    font-weight:bold;
+
+    margin-bottom:8px;
+
+}
+
+.week-badge strong{
+
+    font-size:17px;
+
+}
+
+@media(max-width:768px){
+
+.program-header-card{
+
+padding:22px;
+
+}
+
+.program-header-top{
+
+flex-direction:column;
+
+text-align:center;
+
+}
+
+.program-header-card h1{
+
+font-size:28px;
+
+}
+
+.program-header-card h2{
+
+font-size:22px;
+
+}
+
+.program-logo{
+
+width:64px;
+
+height:64px;
+
+}
+
+.week-badge{
+
+width:100%;
+
+}
+
+}
