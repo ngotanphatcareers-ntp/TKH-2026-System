@@ -1824,3 +1824,45 @@ height:64px;
         margin: 0 5px;
     }
 }
+.week-badge-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.week-badge {
+    width: auto;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+}
+
+.week-badge span {
+    display: none;
+}
+
+.week-badge strong {
+    font-size: 15px;
+    color: #7f1d1d;
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+.week-badge:not(:last-child)::after {
+    content: "•";
+    color: #7f1d1d;
+    font-weight: 700;
+    font-size: 13px;
+    margin: 0 8px;
+}
