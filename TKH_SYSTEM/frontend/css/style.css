@@ -1363,7 +1363,7 @@ body {
     .schedule-image-frame img {
         width: auto;
         max-width: none;
-        min-width: 1100px;
+        min-width: 900px;
         border-radius: 0;
     }
 }
