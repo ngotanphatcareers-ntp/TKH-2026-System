@@ -1742,3 +1742,85 @@ height:64px;
         content: "• ";
     }
 }
+
+@media (max-width: 768px) {
+    .week-badge-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .week-badge {
+        width: auto;
+        background: transparent;
+        border: none;
+        padding: 0;
+        display: inline;
+    }
+
+    .week-badge span {
+        display: none;
+    }
+
+    .week-badge strong {
+        font-size: 15px;
+        color: #7f1d1d;
+        font-weight: 800;
+    }
+
+    .week-badge:not(:last-child)::after {
+        content: "•";
+        color: #7f1d1d;
+        font-weight: 800;
+        margin: 0 6px;
+    }
+}
+@media (max-width: 768px) {
+    .week-badge-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 3px;
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid #e5e7eb;
+        line-height: 1.4;
+    }
+
+    .week-badge {
+        width: auto;
+        background: transparent;
+        border: none;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .week-badge span {
+        display: none;
+    }
+
+    .week-badge strong {
+        font-size: 13px;
+        color: #7f1d1d;
+        font-weight: 700;
+        letter-spacing: 0;
+        line-height: 1.4;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+    }
+
+    .week-badge:not(:last-child)::after {
+        content: "•";
+        color: #7f1d1d;
+        font-weight: 700;
+        font-size: 12px;
+        margin: 0 5px;
+    }
+}
