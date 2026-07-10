@@ -1866,3 +1866,38 @@ height:64px;
     font-size: 13px;
     margin: 0 8px;
 }
+
+.session-row {
+    transition: background 0.2s ease;
+}
+
+/* Buổi học đang mở */
+.session-row.session-open {
+    background: #dcfce7;
+    box-shadow: inset 5px 0 0 #16a34a;
+}
+
+.session-row.session-open td {
+    color: #166534;
+    font-weight: 700;
+}
+
+/* Buổi học gần nhất sắp tới */
+.session-row.session-next {
+    background: #eff6ff;
+    box-shadow: inset 5px 0 0 #2563eb;
+}
+
+.session-row.session-next td {
+    color: #1d4ed8;
+    font-weight: 600;
+}
+
+/* Các buổi không hoạt động */
+.session-row.session-muted {
+    background: #f3f4f6;
+}
+
+.session-row.session-muted td {
+    color: #9ca3af;
+}

@@ -151,7 +151,7 @@ const attendanceCheckinConfigDemo = {
 };
 
 
-const CHECKIN_RADIUS_METERS = 2000;
+const CHECKIN_RADIUS_METERS = 200000;
 
 
 function loadAttendanceConfig() {
@@ -3701,31 +3701,82 @@ function loadAdminSessionsDemo() {
         return;
     }
 
-    tableBody.innerHTML = sessions.map((session, index) => `
-        <tr class="${index === 0 ? "highlight-row" : ""}">
-            <td>${session.name}</td>
-            <td>${formatSessionDateDemo(session.date)}</td>
-            <td>${session.startTime} - ${session.endTime}</td>
-            <td>${session.status}</td>
-            <td>${session.attendanceStatus}</td>
-            <td>
-                ${session.randomStatus}
-                <br><br>
+    const openSession = sessions.find(
+        session => session.status === "Đang mở"
+    );
 
-                <button class="edit-material-btn" onclick="openSessionDemo(${session.id})">
-                    Mở
-                </button>
+    const upcomingSessions = sessions
+        .filter(session => session.status === "Sắp diễn ra")
+        .sort((a, b) => {
+            const dateA = new Date(a.date + "T" + a.startTime);
+            const dateB = new Date(b.date + "T" + b.startTime);
 
-                <button class="delete-material-btn" onclick="closeSessionDemo(${session.id})">
-                    Kết thúc
-                </button>
+            return dateA - dateB;
+        });
 
-                <button class="delete-material-btn" onclick="deleteSessionDemo(${session.id})">
-                    Xóa
-                </button>
-            </td>
-        </tr>
-    `).join("");
+    const nearestUpcomingSession =
+        !openSession && upcomingSessions.length > 0
+            ? upcomingSessions[0]
+            : null;
+
+    tableBody.innerHTML = sessions.map(session => {
+        let rowClass = "session-row session-muted";
+
+        if (
+            openSession &&
+            Number(session.id) === Number(openSession.id)
+        ) {
+            rowClass = "session-row session-open";
+        } else if (
+            nearestUpcomingSession &&
+            Number(session.id) === Number(nearestUpcomingSession.id)
+        ) {
+            rowClass = "session-row session-next";
+        }
+
+        return `
+            <tr class="${rowClass}">
+                <td>${session.name}</td>
+
+                <td>${formatSessionDateDemo(session.date)}</td>
+
+                <td>
+                    ${session.startTime} - ${session.endTime}
+                </td>
+
+                <td>${session.status}</td>
+
+                <td>${session.attendanceStatus}</td>
+
+                <td>
+                    ${session.randomStatus}
+
+                    <br><br>
+
+                    <button
+                        class="edit-material-btn"
+                        onclick="openSessionDemo(${session.id})"
+                    >
+                        Mở
+                    </button>
+
+                    <button
+                        class="delete-material-btn"
+                        onclick="closeSessionDemo(${session.id})"
+                    >
+                        Kết thúc
+                    </button>
+
+                    <button
+                        class="delete-material-btn"
+                        onclick="deleteSessionDemo(${session.id})"
+                    >
+                        Xóa
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join("");
 
     loadCurrentSessionSummaryDemo();
 }
