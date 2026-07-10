@@ -292,6 +292,26 @@ function saveAttendanceDemo(distance) {
     };
 }
 
+function openGpsHelpModal() {
+    const modal = document.getElementById("gpsHelpModal");
+
+    if (modal) {
+        modal.classList.remove("hidden");
+    }
+}
+
+function closeGpsHelpModal() {
+    const modal = document.getElementById("gpsHelpModal");
+
+    if (modal) {
+        modal.classList.add("hidden");
+    }
+}
+
+function retryGpsAfterHelp() {
+    closeGpsHelpModal();
+    checkInDemo();
+}
 
 function checkInDemo() {
     const gpsMessage = document.getElementById("gpsMessage");
@@ -372,9 +392,22 @@ function checkInDemo() {
             gpsMessage.style.color = "red";
 
             if (error.code === error.PERMISSION_DENIED) {
-                gpsMessage.innerText = "Bạn cần cho phép trình duyệt truy cập vị trí.";
+                gpsMessage.innerHTML = `
+                    ❌ Không thể truy cập vị trí.<br>
+                    Bạn có thể đã từ chối quyền GPS trước đó.<br>
+                    Vui lòng bấm “Hướng dẫn bật quyền vị trí” để xem cách bật lại.
+                `;
+
+                openGpsHelpModal();
+            } else if (error.code === error.POSITION_UNAVAILABLE) {
+                gpsMessage.innerText =
+                    "Không thể xác định vị trí hiện tại. Vui lòng bật GPS và thử lại.";
+            } else if (error.code === error.TIMEOUT) {
+                gpsMessage.innerText =
+                    "Quá thời gian lấy vị trí. Vui lòng kiểm tra GPS hoặc kết nối mạng rồi thử lại.";
             } else {
-                gpsMessage.innerText = "Không thể lấy vị trí. Vui lòng thử lại.";
+                gpsMessage.innerText =
+                    "Không thể lấy vị trí. Vui lòng thử lại.";
             }
         }
     );

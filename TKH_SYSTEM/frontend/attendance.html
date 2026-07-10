@@ -54,6 +54,10 @@
                 Điểm danh ngay
             </button>
 
+            <button class="gps-help-btn" onclick="openGpsHelpModal()">
+                📍 Hướng dẫn bật quyền vị trí
+            </button>
+
             <div class="gps-info">
             <p class="distance-label">📍 Khoảng cách đến Nhà Thờ Nguyễn Tri Phương</p>
             <p class="distance-number"><span id="distance">-</span></p>
@@ -71,6 +75,61 @@
         </section>
 
     </main>
+    <div id="gpsHelpModal" class="modal-overlay hidden">
+        <div class="modal-box gps-help-modal-box">
+            <h3>📍 Hướng dẫn bật quyền vị trí</h3>
+
+            <p class="gps-help-intro">
+                Website cần quyền truy cập vị trí để xác nhận bạn đang ở trong khu vực điểm danh.
+            </p>
+
+            <div class="gps-help-section">
+                <h4>iPhone / Safari</h4>
+                <p>
+                    Cách 1: Mở trang TKH bằng Safari → bấm biểu tượng bên trái thanh địa chỉ
+                    → Cài đặt trang web → Vị trí → Cho phép.
+                </p>
+                <p>
+                    Cách 2: Cài đặt → Quyền riêng tư & Bảo mật → Dịch vụ định vị
+                    → Safari Websites → Khi dùng ứng dụng.
+                </p>
+            </div>
+
+            <div class="gps-help-section">
+                <h4>Android / Chrome</h4>
+                <p>
+                    Cài đặt → Ứng dụng → Chrome → Quyền → Vị trí → Cho phép khi dùng ứng dụng.
+                </p>
+                <p>
+                    Sau đó quay lại Chrome, tải lại trang TKH và bấm “Điểm danh ngay”.
+                </p>
+            </div>
+
+            <div class="gps-help-section">
+                <h4>Trình duyệt trong Zalo</h4>
+                <p>
+                    Nên chọn “Mở bằng trình duyệt” hoặc “Mở bằng Chrome/Safari”.
+                    Sau đó cho phép trình duyệt truy cập vị trí.
+                </p>
+            </div>
+
+            <div class="gps-help-note">
+                Nếu trước đó bạn đã bấm “Không cho phép”, trình duyệt có thể không hiện lại popup.
+                Khi đó bạn cần bật lại quyền vị trí trong phần Cài đặt của thiết bị.
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeGpsHelpModal()">
+                    Đóng
+                </button>
+
+                <button class="gps-retry-btn" onclick="retryGpsAfterHelp()">
+                    Thử điểm danh lại
+                </button>
+            </div>
+        </div>
+    </div>
+    
     <div id="logoutModal" class="modal-overlay hidden">
             <div class="modal-box">
                     <h3>⏻ Đăng xuất</h3>
@@ -82,6 +141,6 @@
                     </div>
             </div>
     </div>
-    <script src="js/app.js?v=90"></script>
+    <script src="js/app.js?v=128"></script>
 </body>
 </html>

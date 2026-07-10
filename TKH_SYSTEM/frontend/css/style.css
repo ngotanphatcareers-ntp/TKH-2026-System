@@ -1901,3 +1901,94 @@ height:64px;
 .session-row.session-muted td {
     color: #9ca3af;
 }
+
+.gps-help-btn {
+    width: 100%;
+    margin-top: 12px;
+    padding: 13px 16px;
+    border: 1px solid #bfdbfe;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.gps-help-btn:hover {
+    background: #dbeafe;
+}
+
+.gps-help-modal-box {
+    max-width: 620px;
+    max-height: 88vh;
+    overflow-y: auto;
+    text-align: left;
+}
+
+.gps-help-modal-box h3 {
+    text-align: center;
+    margin-top: 0;
+}
+
+.gps-help-intro {
+    text-align: center;
+    margin-bottom: 18px;
+}
+
+.gps-help-section {
+    margin-top: 14px;
+    padding: 14px;
+    border-radius: 14px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+}
+
+.gps-help-section h4 {
+    margin: 0 0 8px;
+    color: #1d4ed8;
+}
+
+.gps-help-section p {
+    margin: 6px 0;
+    line-height: 1.55;
+}
+
+.gps-help-note {
+    margin-top: 16px;
+    padding: 14px;
+    border-left: 4px solid #f59e0b;
+    border-radius: 10px;
+    background: #fffbeb;
+    color: #92400e;
+    line-height: 1.55;
+}
+
+.gps-retry-btn {
+    flex: 1;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 14px;
+    background: #16a34a;
+    color: #ffffff;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.gps-retry-btn:hover {
+    background: #15803d;
+}
+
+@media (max-width: 768px) {
+    .gps-help-modal-box {
+        max-height: 90vh;
+        padding: 20px;
+    }
+
+    .gps-help-modal-box .modal-actions {
+        flex-direction: column;
+    }
+
+    .gps-help-modal-box .modal-actions button {
+        width: 100%;
+    }
+}
