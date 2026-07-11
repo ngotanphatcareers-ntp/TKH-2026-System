@@ -141,6 +141,50 @@
 
         <h2>Điểm danh buổi hiện tại</h2>
 
+        <div class="attendance-toolbar">
+
+            <input
+                type="text"
+                id="attendanceSearchInput"
+                class="form-input"
+                placeholder="🔍 Tìm theo mã TKH, tên hoặc nhóm..."
+                oninput="filterAttendanceTable()"
+            >
+
+            <select
+                id="attendanceGroupFilter"
+                class="form-input"
+                onchange="filterAttendanceTable()"
+            >
+                <option value="">Tất cả nhóm</option>
+            </select>
+
+            <select
+                id="attendanceStatusFilter"
+                class="form-input"
+                onchange="filterAttendanceTable()"
+            >
+                <option value="">Tất cả trạng thái</option>
+                <option value="checkedin">Đã điểm danh</option>
+                <option value="absent">Chưa điểm danh</option>
+            </select>
+
+            <button
+                class="profile-btn"
+                onclick="exportAttendanceExcelDemo()"
+            >
+                📥 Xuất Excel
+            </button>
+
+        </div>
+
+        <p
+            id="attendanceSearchResult"
+            class="empty-note"
+        >
+            Đang hiển thị 0 học viên
+        </p>
+
         <table class="score-table">
 
             <thead>
@@ -181,7 +225,9 @@
         </div>
     </div>
 </div>
-<script src="js/app.js?v=103"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="js/app.js?v=131"></script>
 
 </body>
 </html>

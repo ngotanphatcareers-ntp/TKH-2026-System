@@ -3170,7 +3170,17 @@ function isAutoCheckinWindowOpenDemo(windowConfig) {
         return false;
     }
 
-    const now = new Date();
+
+    //test tĩnh nguyện
+    const now = new Date(); //const now = new Date("2026-07-13T05:45:00");
+
+    // JavaScript: 0 = Chúa nhật, 1 = Thứ Hai, ..., 6 = Thứ Bảy
+    const dayOfWeek = now.getDay();
+
+    // Không mở điểm danh tĩnh nguyện vào Chúa nhật
+    if (dayOfWeek === 0) {
+        return false;
+    }
 
     const currentMinutes =
         now.getHours() * 60 + now.getMinutes();
@@ -3184,7 +3194,8 @@ function isAutoCheckinWindowOpenDemo(windowConfig) {
     const endMinutes =
         Number(endParts[0]) * 60 + Number(endParts[1]);
 
-    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+    return currentMinutes >= startMinutes &&
+           currentMinutes <= endMinutes;
 }
 
 function loadAdminCheckinWindowStatusDemo() {
@@ -3322,7 +3333,6 @@ function loadDeviceWarningDemo() {
 }
 
 function loadAdminAttendanceTableDemo() {
-
     const tableBody =
         document.getElementById("adminAttendanceTableBody");
 
@@ -3330,44 +3340,97 @@ function loadAdminAttendanceTableDemo() {
         return;
     }
 
+    const students = getImportedStudentsDemo();
+
     const attendanceHistory =
-    JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
 
-        const currentSession = getOpenSessionDemo();
+    const currentSession = getOpenSessionDemo();
 
-        if (!currentSession) {
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="7">
-                        Hiện chưa có buổi học nào đang mở.
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-
-        const sessionRecords = attendanceHistory.filter(
-            item => item.session === currentSession.name
-        );
-
-        if (sessionRecords.length === 0) {
-
+    if (!currentSession) {
         tableBody.innerHTML = `
             <tr>
                 <td colspan="7">
-                    Chưa có học viên nào điểm danh.
+                    Hiện chưa có buổi học nào đang mở.
                 </td>
             </tr>
         `;
 
+        loadAttendanceGroupFilterDemo();
+        updateAttendanceSearchResultDemo();
         return;
     }
 
-    tableBody.innerHTML =
-        sessionRecords.map(item => `
+    const sessionRecords = attendanceHistory.filter(
+        item => item.session === currentSession.name
+    );
 
-        <tr>
+    const tableRows = [];
 
+    students.forEach(student => {
+        const studentRecords = sessionRecords.filter(item =>
+            item.username &&
+            item.username.toLowerCase() ===
+            student.username.toLowerCase()
+        );
+
+        if (studentRecords.length === 0) {
+            tableRows.push({
+                username: student.username,
+                fullName: student.fullName,
+                groupName: student.groupName,
+                windowLabel: "-",
+                checkInTime: "-",
+                distance: "-",
+                points: 0,
+                status: "Chưa điểm danh",
+                statusKey: "absent"
+            });
+
+            return;
+        }
+
+        studentRecords.forEach(record => {
+            tableRows.push({
+                username: student.username,
+                fullName: student.fullName,
+                groupName: student.groupName,
+                windowLabel: record.windowLabel || "Điểm danh",
+                checkInTime: record.checkInTime || "-",
+                distance: record.distance || "-",
+                points: Number(record.points || 0),
+                status: record.status || "Có mặt",
+                statusKey: "checkedin"
+            });
+        });
+    });
+
+    if (tableRows.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="7">
+                    Chưa có dữ liệu học viên.
+                </td>
+            </tr>
+        `;
+
+        loadAttendanceGroupFilterDemo();
+        updateAttendanceSearchResultDemo();
+        return;
+    }
+
+    tableBody.innerHTML = tableRows.map(item => `
+        <tr
+            class="${
+                item.statusKey === "absent"
+                    ? "attendance-row-absent"
+                    : ""
+            }"
+            data-username="${String(item.username).toLowerCase()}"
+            data-name="${String(item.fullName).toLowerCase()}"
+            data-group="${String(item.groupName).toLowerCase()}"
+            data-status="${item.statusKey}"
+        >
             <td>${item.fullName}</td>
 
             <td>${item.groupName}</td>
@@ -3378,15 +3441,322 @@ function loadAdminAttendanceTableDemo() {
 
             <td>${item.distance}</td>
 
-            <td>+${item.points}</td>
+            <td>
+                ${item.points > 0 ? "+" + item.points : "-"}
+            </td>
 
-            <td>${item.status}</td>
-
+            <td class="${
+                item.statusKey === "checkedin"
+                    ? "attendance-status-checked"
+                    : "attendance-status-absent"
+            }">
+                ${
+                    item.statusKey === "checkedin"
+                        ? "✅ " + item.status
+                        : "❌ Chưa điểm danh"
+                }
+            </td>
         </tr>
-
     `).join("");
 
+    loadAttendanceGroupFilterDemo();
+    filterAttendanceTable();
 }
+
+//hàm dropdown 8 nhóm nhỏ
+function loadAttendanceGroupFilterDemo() {
+    const select =
+        document.getElementById("attendanceGroupFilter");
+
+    if (!select) {
+        return;
+    }
+
+    const previousValue = select.value;
+
+    const students = getImportedStudentsDemo();
+
+    const groups = [
+        ...new Set(
+            students
+                .map(student => student.groupName)
+                .filter(groupName => groupName)
+        )
+    ].sort((a, b) =>
+        a.localeCompare(b, "vi")
+    );
+
+    select.innerHTML =
+        `<option value="">Tất cả nhóm</option>`;
+
+    groups.forEach(groupName => {
+        select.innerHTML += `
+            <option value="${groupName.toLowerCase()}">
+                ${groupName}
+            </option>
+        `;
+    });
+
+    const stillExists = Array.from(select.options).some(
+        option => option.value === previousValue
+    );
+
+    if (stillExists) {
+        select.value = previousValue;
+    }
+}//hết
+
+//hàm lọc bảng
+function filterAttendanceTable() {
+    const searchInput =
+        document.getElementById("attendanceSearchInput");
+
+    const groupFilter =
+        document.getElementById("attendanceGroupFilter");
+
+    const statusFilter =
+        document.getElementById("attendanceStatusFilter");
+
+    if (!searchInput || !groupFilter || !statusFilter) {
+        return;
+    }
+
+    const keyword =
+        searchInput.value.toLowerCase().trim();
+
+    const selectedGroup =
+        groupFilter.value.toLowerCase();
+
+    const selectedStatus =
+        statusFilter.value.toLowerCase();
+
+    const rows =
+        document.querySelectorAll(
+            "#adminAttendanceTableBody tr[data-username]"
+        );
+
+    rows.forEach(row => {
+        const username = row.dataset.username || "";
+        const name = row.dataset.name || "";
+        const group = row.dataset.group || "";
+        const status = row.dataset.status || "";
+
+        const foundKeyword =
+            username.includes(keyword) ||
+            name.includes(keyword) ||
+            group.includes(keyword);
+
+        const foundGroup =
+            selectedGroup === "" ||
+            group === selectedGroup;
+
+        const foundStatus =
+            selectedStatus === "" ||
+            status === selectedStatus;
+
+        const shouldShow =
+            foundKeyword &&
+            foundGroup &&
+            foundStatus;
+
+        row.style.display =
+            shouldShow ? "" : "none";
+    });
+
+    updateAttendanceSearchResultDemo();
+}//hết
+
+//hàm thống kê số lượng đang hiển thị
+function updateAttendanceSearchResultDemo() {
+    const result =
+        document.getElementById("attendanceSearchResult");
+
+    if (!result) {
+        return;
+    }
+
+    const rows =
+        document.querySelectorAll(
+            "#adminAttendanceTableBody tr[data-username]"
+        );
+
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+        if (row.style.display !== "none") {
+            visibleCount++;
+        }
+    });
+
+    result.innerText =
+        "Đang hiển thị " +
+        visibleCount +
+        " / " +
+        rows.length +
+        " dòng dữ liệu.";
+}//hết
+
+//hàm export
+function exportAttendanceExcelDemo() {
+    if (typeof XLSX === "undefined") {
+        alert("Không thể tải file Excel vì thư viện XLSX chưa được nạp.");
+        return;
+    }
+
+    const workbook = XLSX.utils.book_new();
+
+    // =========================
+    // SHEET 1: ĐIỂM DANH
+    // =========================
+    const attendanceRows = [
+        [
+            "Họ tên",
+            "Nhóm",
+            "Khung",
+            "Giờ điểm danh",
+            "Khoảng cách",
+            "Điểm",
+            "Trạng thái"
+        ]
+    ];
+
+    const attendanceTableRows = document.querySelectorAll(
+        "#adminAttendanceTableBody tr[data-username]"
+    );
+
+    attendanceTableRows.forEach(row => {
+        attendanceRows.push([
+            row.cells[0]?.innerText || "",
+            row.cells[1]?.innerText || "",
+            row.cells[2]?.innerText || "",
+            row.cells[3]?.innerText || "",
+            row.cells[4]?.innerText || "",
+            row.cells[5]?.innerText || "",
+            row.cells[6]?.innerText || ""
+        ]);
+    });
+
+    const attendanceSheet =
+        XLSX.utils.aoa_to_sheet(attendanceRows);
+
+    XLSX.utils.book_append_sheet(
+        workbook,
+        attendanceSheet,
+        "Điểm danh"
+    );
+
+    // =========================
+    // SHEET 2: CẢNH BÁO THIẾT BỊ
+    // =========================
+    const warningRows = [
+        [
+            "Mã thiết bị",
+            "Mã TKH",
+            "Họ tên",
+            "Nhóm",
+            "Lý do"
+        ]
+    ];
+
+    const attendanceHistory =
+        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+
+    const deviceMap = {};
+
+    attendanceHistory.forEach(item => {
+        if (!item.deviceId || !item.username) {
+            return;
+        }
+
+        if (!deviceMap[item.deviceId]) {
+            deviceMap[item.deviceId] = [];
+        }
+
+        const existedUser = deviceMap[item.deviceId].some(
+            user =>
+                String(user.username).toLowerCase() ===
+                String(item.username).toLowerCase()
+        );
+
+        if (!existedUser) {
+            deviceMap[item.deviceId].push({
+                username: item.username || "",
+                fullName: item.fullName || "",
+                groupName: item.groupName || ""
+            });
+        }
+    });
+
+    const suspiciousDevices = Object.entries(deviceMap)
+        .filter(([, users]) => users.length >= 2);
+
+    if (suspiciousDevices.length === 0) {
+        warningRows.push([
+            "-",
+            "-",
+            "-",
+            "-",
+            "Không có cảnh báo thiết bị"
+        ]);
+    } else {
+        suspiciousDevices.forEach(([deviceId, users]) => {
+            users.forEach(user => {
+                warningRows.push([
+                    deviceId,
+                    user.username,
+                    user.fullName,
+                    user.groupName,
+                    "Thiết bị này đã được sử dụng để điểm danh từ 2 tài khoản trở lên"
+                ]);
+            });
+        });
+    }
+
+    const warningSheet =
+        XLSX.utils.aoa_to_sheet(warningRows);
+
+    XLSX.utils.book_append_sheet(
+        workbook,
+        warningSheet,
+        "Cảnh báo thiết bị"
+    );
+
+    // =========================
+    // TÊN FILE THEO BUỔI HỌC
+    // =========================
+    const currentSession = getOpenSessionDemo();
+
+    let fileName = "TKH2026_Attendance.xlsx";
+
+    if (currentSession) {
+        const sessionDate =
+            String(currentSession.date || "");
+
+        const safeDate =
+            sessionDate.replaceAll("-", "");
+
+        const safeSessionName =
+            String(currentSession.name || "BuoiHoc")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/đ/g, "d")
+                .replace(/Đ/g, "D")
+                .replace(/[^a-zA-Z0-9]+/g, "-")
+                .replace(/^-+|-+$/g, "");
+
+        fileName =
+            `TKH2026_Attendance_${safeSessionName}_${safeDate}.xlsx`;
+    }
+
+    XLSX.writeFile(
+        workbook,
+        fileName
+    );
+}
+//hết
+
+
+
 
 function loadAdminAttendanceStatsDemo() {
     const totalElement = document.getElementById("adminTotalStudents");

@@ -2051,3 +2051,60 @@ height:64px;
     font-style:italic;
 
 }
+
+.attendance-toolbar {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) 210px 210px auto;
+    gap: 12px;
+    align-items: center;
+    margin: 18px 0 10px;
+}
+
+.attendance-toolbar .profile-btn {
+    margin-top: 0;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+#attendanceSearchResult {
+    margin: 0 0 16px;
+    font-size: 14px;
+    font-style: italic;
+}
+
+.attendance-status-checked {
+    color: #166534;
+    font-weight: 700;
+}
+
+.attendance-status-absent {
+    color: #991b1b;
+    font-weight: 700;
+}
+
+.attendance-row-absent {
+    background: #f9fafb;
+}
+
+.attendance-row-absent td {
+    color: #9ca3af;
+}
+
+@media (max-width: 900px) {
+    .attendance-toolbar {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .attendance-toolbar {
+        grid-template-columns: 1fr;
+    }
+
+    .attendance-toolbar select,
+    .attendance-toolbar input,
+    .attendance-toolbar button {
+        width: 100%;
+    }
+}
