@@ -95,6 +95,31 @@
         <div class="attendance-box">
     <h2>Danh sách thành viên</h2>
 
+    <div class="member-search-box">
+
+        <input
+            type="text"
+            id="memberSearchInput"
+            class="form-input"
+            placeholder="🔍 Tìm theo mã TKH, họ tên, nhóm hoặc số điện thoại..."
+            oninput="filterMembersTable()"
+        >
+
+        <select
+            id="memberGroupFilter"
+            class="form-input"
+            onchange="filterMembersTable()">
+
+            <option value="">Tất cả nhóm</option>
+
+        </select>
+
+    </div>
+
+    <p id="memberSearchResult" class="member-search-result">
+        Hiển thị 0 / 0 học viên
+    </p>
+
     <div class="table-wrapper">
         <table class="score-table">
             <thead>

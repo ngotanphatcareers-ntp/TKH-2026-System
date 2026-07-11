@@ -1992,3 +1992,62 @@ height:64px;
         width: 100%;
     }
 }
+
+.member-search-box{
+
+    display:flex;
+
+    gap:14px;
+
+    align-items:center;
+
+    margin:18px 0 20px;
+
+    flex-wrap:wrap;
+
+}
+
+.member-search-box input{
+
+    flex:1;
+
+    min-width:280px;
+
+}
+
+.member-search-box select{
+
+    width:220px;
+
+}
+
+@media(max-width:768px){
+
+.member-search-box{
+
+    flex-direction:column;
+
+    align-items:stretch;
+
+}
+
+.member-search-box select{
+
+    width:100%;
+
+}
+
+}
+
+.member-search-result{
+
+    margin-top:-8px;
+    margin-bottom:18px;
+
+    color:#6b7280;
+
+    font-size:14px;
+
+    font-style:italic;
+
+}

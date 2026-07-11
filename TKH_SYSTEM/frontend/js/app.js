@@ -2282,7 +2282,12 @@ function loadAdminMembersTableDemo() {
     }
 
     tableBody.innerHTML = students.map(student => `
-    <tr>
+    <tr
+        data-username="${student.username.toLowerCase()}"
+        data-name="${student.fullName.toLowerCase()}"
+        data-group="${student.groupName.toLowerCase()}"
+        data-phone="${student.phone}"
+    >
         <td>${student.username}</td>
         <td>${student.fullName}</td>
         <td>${student.gender}</td>
@@ -2297,7 +2302,113 @@ function loadAdminMembersTableDemo() {
             </button>
         </td>
     </tr>
-`).join("");
+`).join(""); updateMemberSearchResult();
+            
+            loadGroupFilter();
+}//hết
+
+//hàm loadgroupfilter
+function loadGroupFilter(){
+
+    const select = document.getElementById("memberGroupFilter");
+
+    if(!select) return;
+
+    const rows = document.querySelectorAll("#adminMembersTableBody tr");
+
+    const groups = [];
+
+    rows.forEach(row=>{
+
+        const group = row.dataset.group;
+
+        if(group && !groups.includes(group)){
+            groups.push(group);
+        }
+
+    });
+
+    groups.sort();
+
+    select.innerHTML =
+        `<option value="">Tất cả nhóm</option>`;
+
+    groups.forEach(group=>{
+
+        select.innerHTML +=
+        `<option value="${group}">${group}</option>`;
+
+    });
+
+}//hết
+
+
+//hàm tìm kiếm thành viên
+function filterMembersTable() {
+    const keyword = document
+        .getElementById("memberSearchInput")
+        .value
+        .toLowerCase()
+        .trim();
+
+    const selectedGroup = document
+        .getElementById("memberGroupFilter")
+        .value
+        .toLowerCase();
+
+    const rows = document.querySelectorAll("#adminMembersTableBody tr");
+
+    rows.forEach(row => {
+        const username = row.dataset.username || "";
+        const name = row.dataset.name || "";
+        const group = row.dataset.group || "";
+        const phone = row.dataset.phone || "";
+
+        const foundKeyword =
+            username.includes(keyword) ||
+            name.includes(keyword) ||
+            group.includes(keyword) ||
+            phone.includes(keyword);
+
+        const foundGroup =
+            selectedGroup === "" ||
+            group === selectedGroup;
+
+        const found =
+            foundKeyword && foundGroup;
+
+        row.style.display = found ? "" : "none";
+    });
+
+    updateMemberSearchResult();
+}//hết
+
+//hàm thống kê thành viên
+function updateMemberSearchResult() {
+
+    const rows = document.querySelectorAll("#adminMembersTableBody tr");
+
+    let visible = 0;
+
+    rows.forEach(row => {
+
+        if(row.style.display !== "none"){
+
+            visible++;
+
+        }
+
+    });
+
+    const result = document.getElementById("memberSearchResult");
+
+    if(result){
+
+        result.innerText =
+            `Hiển thị ${visible} / ${rows.length} học viên`;
+
+    }
+
 }//hết
 
 
