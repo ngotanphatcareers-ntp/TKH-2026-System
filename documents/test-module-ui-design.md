@@ -1,94 +1,46 @@
 # TKH 2026 — MODULE KIỂM TRA UI DESIGN
 
-Version: 1.0  
-Status: Draft  
-Dựa trên: test-module-business-design.md v1.0  
+Version: 1.1
+Status: Frozen
+Đồng bộ với: Business Design v1.1 (Frozen)
 
 ---
 
 # 1. Tổng quan màn hình
 
-Module Kiểm tra gồm các màn hình sau:
-
-| STT | Màn hình | Vai trò |
-|-----|----------|---------|
-| 1 | Trang danh sách bài kiểm tra | Học viên |
-| 2 | Phòng chờ | Học viên |
-| 3 | Bài kiểm tra — Chọn đáp án | Học viên |
-| 4 | Kết quả bài kiểm tra | Học viên |
-| 5 | Phòng chờ Admin | Admin |
-| 6 | Màn hình trình chiếu câu hỏi | Admin / TV |
-| 7 | Quản lý bài kiểm tra | Admin |
-| 8 | Quản lý câu hỏi | Admin |
-| 9 | Trạng thái lỗi / mất kết nối | Học viên + Admin |
-
+| STT | Màn hình                     | Vai trò               |
+| --- | ---------------------------- | --------------------- |
+| 1   | Trang danh sách bài kiểm tra | Học viên              |
+| 2   | Phòng chờ                    | Học viên              |
+| 3   | Làm bài — Chọn đáp án        | Học viên              |
+| 4   | Kết quả bài kiểm tra         | Học viên              |
+| 5   | Phòng chờ điều hành          | Admin                 |
+| 6   | Trình chiếu (TV)             | TV (không phải Admin) |
+| 7   | Quản lý bài kiểm tra         | Admin                 |
+| 8   | Quản lý câu hỏi              | Admin                 |
+| 9   | Trạng thái lỗi / mất kết nối | Học viên + Admin + TV |
 
 ---
 
-# 1.1 UI Flow Diagram
+# 1.1 UI Data Flow (Answer Submit)
 
-Luồng sử dụng của học viên:
-
-```text
-Đăng nhập
-    │
-    ▼
-Dashboard
-    │
-    ▼
-Kiểm tra
-    │
-    ▼
-Danh sách bài kiểm tra
-    │
-    ▼
-Phòng chờ
-    │
-    ▼
-Làm bài
-    │
-    ▼
-Đang thu bài
-    │
-    ▼
-Kết quả
-    │
-    ▼
-Quay về Dashboard
-```
-
-Luồng sử dụng của Admin:
+Mục tiêu: **Student submit đáp án bằng REST**, Socket.IO chỉ dùng để **cập nhật trạng thái**.
 
 ```text
-Dashboard Admin
-      │
-      ▼
-Quản lý bài kiểm tra
-      │
-      ▼
-Quản lý câu hỏi
-      │
-      ▼
-Mở phòng chờ
-      │
-      ▼
-Bắt đầu bài kiểm tra
-      │
-      ▼
-Trình chiếu câu hỏi
-      │
-      ▼
-Kết thúc bài
-      │
-      ▼
-Xem kết quả
+Student UI
+   │
+   │  (REST) POST answer
+   ▼
+Backend
+   │
+   │  (Socket.IO) broadcast trạng thái/count
+   ▼
+Admin/TV/Student UI (status updates)
 ```
 
 ---
 
-# 1.2 State Diagram
-
-Trạng thái của một bài kiểm tra:
+# 1.2 State Diagram (Exam)
 
 ```text
 DRAFT
@@ -113,18 +65,36 @@ COMPLETED
    CANCELLED
 ```
 
-Ý nghĩa:
+---
 
-| State | Mô tả |
-|--------|------|
-| DRAFT | Admin đang soạn bài |
-| SCHEDULED | Đã lên lịch |
-| WAITING_ROOM_OPEN | Học viên được phép vào phòng chờ |
-| IN_PROGRESS | Đang làm bài |
-| SUBMITTING | Backend đang thu bài và chấm điểm |
-| COMPLETED | Đã hoàn thành |
-| CANCELLED | BTC hủy bài kiểm tra |
+# 1.3 State Diagram (Question Flow)
 
+Luồng câu hỏi (đã chốt):
+
+```text
+Admin mở câu
+   │
+   ▼
+ACTIVE
+   │
+   ▼
+Countdown
+   │
+   ▼
+Server khóa câu
+   │
+   ▼
+LOCKED
+   │
+   ▼
+TV hiện đáp án
+   │
+   ▼
+WAITING_NEXT
+   │
+   ▼
+Admin mở câu tiếp
+```
 
 ---
 
@@ -138,8 +108,8 @@ COMPLETED
 
 ## 2.2 Mô tả
 
-Học viên vào trang này để xem 4 bài kiểm tra của mùa TKH 2026.  
-Mỗi bài hiển thị dưới dạng card.  
+Học viên vào trang này để xem 4 bài kiểm tra của mùa TKH 2026.
+Mỗi bài hiển thị dưới dạng card.
 Trạng thái card thay đổi theo trạng thái bài kiểm tra.
 
 ## 2.3 Layout tổng thể
@@ -183,35 +153,35 @@ Grid 2 cột trên desktop, 1 cột trên mobile.
 
 ## 2.5 Quy tắc hiển thị theo trạng thái
 
-| Trạng thái | Màu Card | Badge | Nút |
-|------------|----------|-------|-----|
-| DRAFT | Ẩn hoàn toàn | — | — |
-| SCHEDULED | Mờ (opacity 0.5) | ⏰ Sắp diễn ra | Không có |
-| WAITING_ROOM_OPEN | Highlight (viền xanh lá) | 🟢 Phòng chờ đang mở | "Vào phòng chờ" |
-| IN_PROGRESS (đã vào phòng chờ) | Highlight (viền vàng) | 🟡 Đang diễn ra | "Vào bài kiểm tra" |
-| IN_PROGRESS (chưa vào phòng chờ) | Mờ (opacity 0.5) | 🔴 Đã bắt đầu | Không có |
-| SUBMITTING | Bình thường | ⏳ Đang thu bài | Không có |
-| COMPLETED | Bình thường | ✅ Đã kết thúc | "Xem kết quả" (nếu Admin cho phép) |
-| CANCELLED | Mờ (opacity 0.5) | ❌ Đã hủy | Không có |
+| Trạng thái                       | Màu Card                 | Badge                | Nút                                |
+| -------------------------------- | ------------------------ | -------------------- | ---------------------------------- |
+| DRAFT                            | Ẩn hoàn toàn             | —                    | —                                  |
+| SCHEDULED                        | Mờ (opacity 0.5)         | ⏰ Sắp diễn ra        | Không có                           |
+| WAITING_ROOM_OPEN                | Highlight (viền xanh lá) | 🟢 Phòng chờ đang mở | "Vào phòng chờ"                    |
+| IN_PROGRESS (đã vào phòng chờ)   | Highlight (viền vàng)    | 🟡 Đang diễn ra      | "Vào bài kiểm tra"                 |
+| IN_PROGRESS (chưa vào phòng chờ) | Mờ (opacity 0.5)         | 🔴 Đã bắt đầu        | Không có                           |
+| SUBMITTING                       | Bình thường              | ⏳ Đang thu bài       | Không có                           |
+| COMPLETED                        | Bình thường              | ✅ Đã kết thúc        | "Xem kết quả" (nếu Admin cho phép) |
+| CANCELLED                        | Mờ (opacity 0.5)         | ❌ Đã hủy             | Không có                           |
 
 ## 2.6 Màu sắc badge trạng thái
 
 Dùng đúng class CSS hiện có trong `style.css`:
 
-| Trạng thái | Class CSS |
-|------------|-----------|
-| SCHEDULED | badge-gray |
-| WAITING_ROOM_OPEN | badge-green |
-| IN_PROGRESS | badge-yellow |
-| SUBMITTING | badge-orange |
-| COMPLETED | badge-blue |
-| CANCELLED | badge-red |
+| Trạng thái        | Class CSS    |
+| ----------------- | ------------ |
+| SCHEDULED         | badge-gray   |
+| WAITING_ROOM_OPEN | badge-green  |
+| IN_PROGRESS       | badge-yellow |
+| SUBMITTING        | badge-orange |
+| COMPLETED         | badge-blue   |
+| CANCELLED         | badge-red    |
 
 ## 2.7 Responsive
 
-- Desktop (≥768px): Grid 2 cột.
-- Mobile (<768px): Grid 1 cột, full width.
-- Card chiều cao tự động theo nội dung.
+* Desktop (≥768px): Grid 2 cột.
+* Mobile (<768px): Grid 1 cột, full width.
+* Card chiều cao tự động theo nội dung.
 
 ## 2.8 Trạng thái rỗng
 
@@ -240,7 +210,7 @@ Trả về:
 - total_questions
 - time_per_question
 - status         (DRAFT | SCHEDULED | WAITING_ROOM_OPEN | IN_PROGRESS | SUBMITTING | COMPLETED | CANCELLED)
-- allow_view_result
+- result_visibility    (HIDDEN | SCORE_ONLY | FULL_RESULT)
 ```
 
 ---
@@ -255,8 +225,8 @@ Trả về:
 
 ## 3.2 Mô tả
 
-Học viên vào đây sau khi bấm "Vào phòng chờ".  
-Màn hình này giữ kết nối realtime (Socket.IO) với server.  
+Học viên vào đây sau khi bấm "Vào phòng chờ".
+Màn hình này giữ kết nối realtime (Socket.IO) với server.
 Khi Admin bấm "Bắt đầu", học viên tự động được chuyển sang màn hình bài kiểm tra.
 
 ## 3.3 Layout
@@ -288,31 +258,32 @@ Khi Admin bấm "Bắt đầu", học viên tự động được chuyển sang 
 
 ## 3.4 Trạng thái kết nối
 
-| Trạng thái | Hiển thị | Màu |
-|------------|----------|-----|
-| Đã kết nối | 🟢 Đã kết nối | Xanh lá |
-| Mất kết nối | 🔴 Mất kết nối — Đang thử lại... | Đỏ |
-| Đang kết nối lại | 🟡 Đang kết nối lại... | Vàng |
+| Trạng thái       | Hiển thị                         | Màu     |
+| ---------------- | -------------------------------- | ------- |
+| Đã kết nối       | 🟢 Đã kết nối                    | Xanh lá |
+| Mất kết nối      | 🔴 Mất kết nối — Đang thử lại... | Đỏ      |
+| Đang kết nối lại | 🟡 Đang kết nối lại...           | Vàng    |
 
 ## 3.5 Điều kiện truy cập
 
 Học viên chỉ vào được trang này khi:
 
-- Đã đăng nhập.
-- Có Season Membership hợp lệ.
-- Bài kiểm tra thuộc mùa hiện tại.
-- Trạng thái bài là `WAITING_ROOM_OPEN`.
-- Học viên chưa có Attempt chính thức đã hoàn thành.
+* Đã đăng nhập.
+* Có Season Membership hợp lệ.
+* Bài kiểm tra thuộc mùa hiện tại.
+* Trạng thái bài là `WAITING_ROOM_OPEN`.
+* Học viên chưa có Attempt chính thức đã hoàn thành.
 
 Nếu không đủ điều kiện → redirect về `/kiem-tra` kèm thông báo lỗi.
 
-## 3.6 Sự kiện realtime (Socket.IO)
+## 3.6 Sự kiện realtime (Socket.IO) — chỉ cập nhật trạng thái
 
-| Sự kiện lắng nghe | Hành động |
-|-------------------|-----------|
-| `exam:started` | Tự động redirect sang `/kiem-tra/{exam_id}/lam-bai` |
-| `exam:cancelled` | Redirect về `/kiem-tra` + thông báo "Bài kiểm tra đã bị hủy" |
-| `disconnect` | Hiển thị trạng thái mất kết nối, tự động thử kết nối lại |
+| Sự kiện lắng nghe | Hành động                                                            |
+| ----------------- | -------------------------------------------------------------------- |
+| `exam:started`    | Redirect sang `/kiem-tra/{exam_id}/lam-bai`                          |
+| `exam:cancelled`  | Redirect về `/kiem-tra` + thông báo hủy                              |
+| `exam:status`     | Cập nhật trạng thái bài (phòng chờ đang mở/đang làm/đang thu bài...) |
+| `disconnect`      | Hiển thị mất kết nối, auto reconnect                                 |
 
 ## 3.7 Dữ liệu cần từ API
 
@@ -339,10 +310,16 @@ GET /api/auth/me
 
 ## 4.2 Mô tả
 
-Học viên thấy toàn bộ danh sách câu hỏi (chỉ số thứ tự, không thấy nội dung).  
-Chỉ câu đang được Admin trình chiếu mới được phép chọn đáp án.  
-Countdown hiển thị thời gian còn lại của câu hiện tại.  
-Khi hết giờ, câu tự động bị khóa và chuyển sang câu tiếp theo.
+Học viên thấy toàn bộ danh sách câu hỏi (chỉ số thứ tự, **không** thấy nội dung).
+Chỉ câu đang ở trạng thái `ACTIVE` mới được phép chọn/đổi đáp án.
+Countdown hiển thị theo thời gian do server cung cấp (`serverNow`, `questionEndsAt`) — **không dùng thời gian local**.
+
+Late Join (đã chốt):
+
+* **Được phép vào trễ** khi bài đã `IN_PROGRESS`.
+* Học viên vào trễ **bắt đầu từ câu đang `ACTIVE`**.
+* **Không** làm lại các câu đã `LOCKED`.
+* **Không** cộng thêm thời gian.
 
 ## 4.3 Layout tổng thể
 
@@ -372,12 +349,12 @@ Khi hết giờ, câu tự động bị khóa và chuyển sang câu tiếp theo
 
 ## 4.4 Trạng thái từng câu
 
-| Trạng thái | Ký hiệu | Màu nền | Mô tả |
-|------------|---------|---------|-------|
-| LOCKED_PAST (đã trả lời) | ✅ | Xanh nhạt | Đã chọn đáp án, bị khóa |
-| LOCKED_PAST (chưa trả lời) | ⬜ | Xám nhạt | Hết giờ, không trả lời |
-| ACTIVE | 🔵 | Xanh dương viền nổi | Đang mở, được phép chọn |
-| LOCKED_FUTURE | 🔜 | Trắng mờ | Chưa đến lượt |
+| Trạng thái                 | Ký hiệu | Màu nền             | Mô tả                   |
+| -------------------------- | ------- | ------------------- | ----------------------- |
+| LOCKED_PAST (đã trả lời)   | ✅       | Xanh nhạt           | Đã chọn đáp án, bị khóa |
+| LOCKED_PAST (chưa trả lời) | ⬜       | Xám nhạt            | Hết giờ, không trả lời  |
+| ACTIVE                     | 🔵      | Xanh dương viền nổi | Đang mở, được phép chọn |
+| LOCKED_FUTURE              | 🔜      | Trắng mờ            | Chưa đến lượt           |
 
 ## 4.5 Thiết kế từng dòng câu hỏi
 
@@ -416,64 +393,84 @@ Khi hết giờ, câu tự động bị khóa và chuyển sang câu tiếp theo
 
 Kích thước tối thiểu: **44px × 44px** (đủ bấm trên mobile).
 
-| Trạng thái nút | Màu nền | Viền |
-|----------------|---------|------|
-| Chưa chọn | Trắng | Xám |
-| Hover | Xanh nhạt | Xanh |
-| Đã chọn | Xanh đậm | Xanh đậm |
-| Bị khóa — câu cũ | Xám nhạt | Xám |
-| Bị khóa — câu tương lai | Trắng mờ | Xám mờ |
+| Trạng thái nút          | Màu nền   | Viền     |
+| ----------------------- | --------- | -------- |
+| Chưa chọn               | Trắng     | Xám      |
+| Hover                   | Xanh nhạt | Xanh     |
+| Đã chọn                 | Xanh đậm  | Xanh đậm |
+| Bị khóa — câu cũ        | Xám nhạt  | Xám      |
+| Bị khóa — câu tương lai | Trắng mờ  | Xám mờ   |
 
-## 4.7 Countdown
+## 4.7 Countdown (theo server time)
 
-- Hiển thị số giây còn lại dạng lớn, nổi bật ở đầu trang.
-- Thanh progress bar thu dần từ phải sang trái.
-- Khi còn ≤ 5 giây: chữ đổi sang màu đỏ, progress bar đổi sang đỏ.
-- Khi hết giờ: câu tự động bị khóa, không nhận thêm đáp án.
+Frontend **không** dùng thời gian local để quyết định còn bao nhiêu giây.
+Frontend hiển thị countdown dựa trên 2 mốc do server gửi:
 
-## 4.8 Sự kiện realtime (Socket.IO)
+* `serverNow`
+* `questionEndsAt`
+
+Cách hiển thị:
+
+* `secondsRemaining = ceil((questionEndsAt - nowClient)/1000)` nhưng luôn ưu tiên `questionEndsAt` từ server (để chống lệch giờ).
+* Thanh progress bar thu dần theo `questionEndsAt`.
+* Khi còn ≤ 5 giây: đổi sang màu đỏ.
+* Khi server phát `question:locked`: khóa thao tác chọn đáp án cho câu đó.
+
+## 4.8 Sự kiện realtime (Socket.IO) — chỉ cập nhật trạng thái
 
 ### Lắng nghe từ server
 
-| Sự kiện | Hành động |
-|---------|-----------|
-| `question:activated` | Mở câu mới, reset countdown |
-| `question:locked` | Khóa câu hiện tại |
-| `exam:completed` | Redirect sang `/kiem-tra/{exam_id}/ket-qua` |
-| `exam:cancelled` | Redirect về `/kiem-tra` + thông báo hủy |
-| `disconnect` | Hiển thị banner mất kết nối, tự thử kết nối lại |
+| Sự kiện              | UI cập nhật                                              |
+| -------------------- | -------------------------------------------------------- |
+| `question:activated` | Set câu `ACTIVE`, render countdown theo `questionEndsAt` |
+| `question:locked`    | Set câu vừa hết giờ thành `LOCKED`, khóa thao tác        |
+| `exam:submitting`    | Hiển thị màn "Đang thu bài"                              |
+| `exam:completed`     | Redirect sang `/kiem-tra/{exam_id}/ket-qua`              |
+| `exam:cancelled`     | Redirect về `/kiem-tra` + thông báo hủy                  |
+| `disconnect`         | Hiển thị banner mất kết nối, auto reconnect              |
 
-### Gửi lên server
+### Submit đáp án (REST)
 
-| Sự kiện | Khi nào |
-|---------|---------|
-| `answer:submit` | Học viên chọn hoặc đổi đáp án |
+* Không dùng Socket.IO để submit.
+* Student UI gọi REST `POST /attempt/answer` khi chọn/đổi đáp án.
 
 ## 4.9 Quy tắc quan trọng
 
-- Học viên **KHÔNG** thấy nội dung câu hỏi trên điện thoại.
-- Học viên chỉ thấy số thứ tự câu và 4 nút A B C D.
-- Chỉ câu `ACTIVE` được phép chọn.
-- Đáp án được lưu ngay khi bấm — không cần nút "Gửi".
-- Có thể đổi đáp án trong khi câu còn `ACTIVE`.
-- Khi câu bị khóa → đáp án cuối cùng được ghi nhận chính thức.
+* Học viên **KHÔNG** thấy nội dung câu hỏi trên điện thoại.
+* Học viên chỉ thấy số thứ tự câu và 4 nút A B C D.
+* Chỉ câu `ACTIVE` được phép chọn.
+* Đáp án được lưu ngay khi bấm — không cần nút "Gửi".
+* Có thể đổi đáp án trong khi câu còn `ACTIVE`.
+* Khi câu bị khóa → đáp án cuối cùng được ghi nhận chính thức.
 
 ## 4.10 Responsive
 
-- Mobile (<768px): nút A B C D to, 2 nút / hàng.
-- Desktop (≥768px): 4 nút / hàng.
-- Danh sách câu cuộn dọc tự do.
+* Mobile (<768px): nút A B C D to, 2 nút / hàng.
+* Desktop (≥768px): 4 nút / hàng.
+* Danh sách câu cuộn dọc tự do.
 
-## 4.11 Dữ liệu cần từ API
+## 4.11 Dữ liệu cần từ Backend (không lộ nội dung câu hỏi)
+
+### REST
 
 ```
 GET /api/exams/{exam_id}/attempt
-→ Lấy attempt hiện tại của học viên (danh sách câu, đáp án đã chọn)
+→ Lấy attempt hiện tại (chỉ metadata UI):
+  - exam_status
+  - current_question_index
+  - questions[]: question_index, chosen_answer, state
 
 POST /api/exams/{exam_id}/attempt/answer
 Body: { question_id, answer }
-→ Gửi hoặc cập nhật đáp án
+→ Gửi hoặc cập nhật đáp án (chỉ cho câu ACTIVE)
 ```
+
+### Socket.IO (status only)
+
+* `question:activated` gửi: `questionIndex`, `serverNow`, `questionEndsAt`
+* `question:locked` gửi: `questionIndex`
+
+> Student UI **không** nhận: `question_text`, `correct_answer`.
 
 ---
 
@@ -487,80 +484,91 @@ Body: { question_id, answer }
 
 ## 5.2 Mô tả
 
-Hiển thị sau khi bài kiểm tra kết thúc.  
-Nội dung hiển thị phụ thuộc vào **loại bài** và **cấu hình Admin**:
+Hiển thị sau khi bài kiểm tra kết thúc.
 
-| Loại bài | Điểm bài thi | Cộng hồ sơ | Ranking cá nhân & nhóm |
-|----------|-------------|------------|------------------------|
-| PRE_TEST | ✅ Luôn hiện | ✅ Luôn cộng | ✅ Luôn hiện |
-| FINAL_TEST | ✅ Luôn hiện | ✅ Luôn cộng | ⚙️ Admin ẩn/mở tùy ý |
+UI sử dụng hai cấu hình độc lập:
 
-## 5.3 Layout — Pre-test (hoặc Final Test khi Ranking đang mở)
+## Result Visibility — thuộc từng Exam
 
-```
-┌──────────────────────────────────────────┐
-│  🎉 Bài kiểm tra đã kết thúc!            │
-│  PRE-TEST 1 — 21/07/2026                 │
-├──────────────────────────────────────────┤
-│                                          │
-│         ┌───────────────────┐            │
-│         │    8 / 10         │            │  ← Điểm lớn, nổi bật
-│         │  câu đúng         │            │
-│         └───────────────────┘            │
-│                                          │
-│  Điểm của bạn:   80 điểm                │
-│  Xếp hạng cá nhân:  #12 / 150           │
-│  Xếp hạng nhóm:     Nhóm Giô-suê #3    │
-│                                          │
-├──────────────────────────────────────────┤
-│  Chi tiết từng câu:                      │
-│                                          │
-│  Câu 1   Bạn chọn: A   ✅ Đúng          │
-│  Câu 2   Bạn chọn: C   ✅ Đúng          │
-│  Câu 3   Bạn chọn: B   ❌ Sai           │
-│  Câu 4   Bạn chọn: —   ❌ Không trả lời │
-│  ...                                     │
-│                                          │
-│  [  Về trang Kiểm tra  ]                 │
-└──────────────────────────────────────────┘
-```
+```text
+exams.result_visibility
+Giá trị:
 
-## 5.4 Layout — Final Test khi Admin đang ẩn Ranking
+HIDDEN: Học viên chưa được xem kết quả.
+SCORE_ONLY: Học viên chỉ xem điểm và thống kê tổng.
+FULL_RESULT: Học viên xem điểm và chi tiết đúng/sai theo cấu hình.
+
+Ranking Visibility — thuộc Season
+season_settings.ranking_visible
+Giá trị:
+
+true: Hiển thị ranking cá nhân và nhóm.
+false: Ẩn ranking cá nhân và nhóm.
+
+Hai cấu hình hoạt động độc lập.
+
+Ví dụ:
+
+Pre-test:
+result_visibility = FULL_RESULT
+ranking_visible = true
+Final Test trước khi công bố:
+result_visibility = SCORE_ONLY
+ranking_visible = false
 
 ```
-┌──────────────────────────────────────────┐
-│  🎉 Bài kiểm tra đã kết thúc!            │
-│  FINAL TEST — 2026                       │
-├──────────────────────────────────────────┤
-│                                          │
-│         ┌───────────────────┐            │
-│         │    9 / 10         │            │  ← Điểm vẫn hiện đầy đủ
-│         │  câu đúng         │            │
-│         └───────────────────┘            │
-│                                          │
-│  Điểm của bạn:   90 điểm                │
-│                                          │
-│         🔒                               │
-│   Xếp hạng sẽ được BTC công bố          │
-│   vào thời điểm thích hợp.              │
-│                                          │
-├──────────────────────────────────────────┤
-│  Chi tiết từng câu:                      │
-│                                          │
-│  Câu 1   Bạn chọn: A   ✅ Đúng          │
-│  Câu 2   Bạn chọn: C   ✅ Đúng          │
-│  ...                                     │
-│                                          │
-│  [  Về trang Kiểm tra  ]                 │
-└──────────────────────────────────────────┘
+## 5.3 Layout theo `result_visibility`
+
+### Case A — `HIDDEN`
+
+* Không hiển thị điểm, không ranking, không chi tiết.
+
+```
+✅ Bài kiểm tra đã kết thúc!
+Kết quả sẽ được BTC công bố sau.
+
+[ Về trang Kiểm tra ]
+```
+
+### Case B — `SCORE_ONLY`
+
+* Hiển thị điểm (và số câu đúng) đầy đủ.
+* **Không** hiển thị ranking.
+* Chi tiết từng câu: tuỳ chọn (V1.1: khuyến nghị vẫn có thể hiển thị đúng/sai mà không lộ đáp án đúng).
+
+```
+🎉 Bài kiểm tra đã kết thúc!
+Điểm của bạn: 90 điểm (9/10)
+
+🔒 Xếp hạng sẽ được BTC công bố vào thời điểm thích hợp.
+
+[ Về trang Kiểm tra ]
+```
+
+### Case C — `FULL_RESULT`
+
+* Hiển thị điểm + ranking cá nhân + ranking nhóm + chi tiết.
+
+```
+🎉 Bài kiểm tra đã kết thúc!
+Điểm của bạn: 80 điểm (8/10)
+Xếp hạng cá nhân: #12 / 150
+Xếp hạng nhóm: Nhóm Giô-suê #3
+
+Chi tiết từng câu:
+- Câu 1: ✅ Đúng
+- Câu 2: ❌ Sai
+- ...
+
+[ Về trang Kiểm tra ]
 ```
 
 ## 5.5 Quy tắc hiển thị chi tiết câu
 
-| Trường hợp | Hiển thị |
-|------------|----------|
-| Trả lời đúng | ✅ Đúng |
-| Trả lời sai | ❌ Sai |
+| Trường hợp    | Hiển thị        |
+| ------------- | --------------- |
+| Trả lời đúng  | ✅ Đúng          |
+| Trả lời sai   | ❌ Sai           |
 | Không trả lời | ❌ Không trả lời |
 
 > Không hiện đáp án đúng là gì — tránh học viên ghi nhớ để gian lận ở bài tiếp theo.
@@ -575,24 +583,39 @@ Sau khi bài kết thúc, hệ thống tự động:
 4. Cập nhật ranking nhóm.
 5. Trả kết quả về màn hình học viên.
 
-> Với Final Test: ranking được tính và lưu đầy đủ trong database,  
+> Với Final Test: ranking được tính và lưu đầy đủ trong database,
 > nhưng **chỉ ẩn hiển thị phía học viên** nếu Admin bật chế độ ẩn.
 
 ## 5.7 Dữ liệu cần từ API
 
-```
+```text
 GET /api/exams/{exam_id}/attempt/result
-→ Trả về:
-  - exam_type          (PRE_TEST | FINAL_TEST)
-  - score              (điểm số)
-  - total_questions    (tổng câu)
-  - correct_count      (số câu đúng)
-  - rank_individual    (xếp hạng cá nhân — null nếu đang ẩn)
-  - rank_group         (xếp hạng nhóm — null nếu đang ẩn)
-  - ranking_hidden     (true | false — do Admin cấu hình)
-  - answers[]          (question_id, chosen_answer, is_correct)
-```
 
+Trả về:
+- exam_type
+- score
+- total_questions
+- correct_count
+- wrong_count
+- unanswered_count
+- result_visibility
+- ranking_visible
+- rank_individual
+- rank_group
+- answers[]
+
+Quy tắc:
+- Nếu `result_visibility = HIDDEN`:
+  - Không trả điểm hoặc chi tiết kết quả cho học viên.
+- Nếu `result_visibility = SCORE_ONLY`:
+  - Trả điểm và thống kê tổng.
+  - Không trả `answers[]`.
+- Nếu `result_visibility = FULL_RESULT`:
+  - Có thể trả `answers[]`.
+- Nếu `ranking_visible = false`:
+  - `rank_individual = null`
+  - `rank_group = null`
+```
 ---
 
 # 6. Màn hình 5 — Phòng chờ Admin
@@ -605,7 +628,7 @@ GET /api/exams/{exam_id}/attempt/result
 
 ## 6.2 Mô tả
 
-Admin dùng màn hình này để theo dõi học viên đang vào phòng chờ  
+Admin dùng màn hình này để theo dõi học viên đang vào phòng chờ
 và điều khiển thời điểm bắt đầu bài kiểm tra.
 
 ## 6.3 Layout tổng thể
@@ -631,13 +654,13 @@ và điều khiển thời điểm bắt đầu bài kiểm tra.
 
 ## 6.4 Bảng thống kê realtime
 
-| Chỉ số | Mô tả |
-|--------|-------|
+| Chỉ số        | Mô tả                             |
+| ------------- | --------------------------------- |
 | Tổng học viên | Tổng số học viên hợp lệ trong mùa |
-| Đã vào phòng | Số học viên đã join phòng chờ |
-| Chưa vào | Tổng - Đã vào |
-| Online | Đang kết nối Socket.IO |
-| Mất kết nối | Đã join nhưng mất kết nối |
+| Đã vào phòng  | Số học viên đã join phòng chờ     |
+| Chưa vào      | Tổng - Đã vào                     |
+| Online        | Đang kết nối Socket.IO            |
+| Mất kết nối   | Đã join nhưng mất kết nối         |
 
 Cập nhật realtime qua Socket.IO.
 
@@ -645,35 +668,35 @@ Cập nhật realtime qua Socket.IO.
 
 Mỗi dòng gồm:
 
-- Họ tên
-- Mã TKH
-- Nhóm
-- Thời gian vào phòng (HH:MM:SS)
-- Trạng thái kết nối: 🟢 Online / 🔴 Mất kết nối
+* Họ tên
+* Mã TKH
+* Nhóm
+* Thời gian vào phòng (HH:MM:SS)
+* Trạng thái kết nối: 🟢 Online / 🔴 Mất kết nối
 
 Bộ lọc:
 
-- Tìm theo tên hoặc mã TKH
-- Lọc theo nhóm
-- Lọc: Đã vào / Chưa vào
-- Lọc: Online / Mất kết nối
+* Tìm theo tên hoặc mã TKH
+* Lọc theo nhóm
+* Lọc: Đã vào / Chưa vào
+* Lọc: Online / Mất kết nối
 
 ## 6.6 Các nút điều khiển
 
-| Nút | Điều kiện hiển thị | Hành động |
-|-----|--------------------|-----------| 
-| Mở phòng chờ | Trạng thái SCHEDULED | Chuyển sang WAITING_ROOM_OPEN |
-| Đóng phòng chờ | Trạng thái WAITING_ROOM_OPEN | Đóng phòng chờ |
+| Nút              | Điều kiện hiển thị                          | Hành động                       |
+| ---------------- | ------------------------------------------- | ------------------------------- |
+| Mở phòng chờ     | Trạng thái SCHEDULED                        | Chuyển sang WAITING_ROOM_OPEN   |
+| Đóng phòng chờ   | Trạng thái WAITING_ROOM_OPEN                | Đóng phòng chờ                  |
 | BẮT ĐẦU KIỂM TRA | Trạng thái WAITING_ROOM_OPEN + đủ điều kiện | Hiện popup xác nhận rồi bắt đầu |
-| Hủy bài kiểm tra | Trạng thái WAITING_ROOM_OPEN | Hiện popup xác nhận rồi hủy |
+| Hủy bài kiểm tra | Trạng thái WAITING_ROOM_OPEN                | Hiện popup xác nhận rồi hủy     |
 
 ## 6.7 Điều kiện nút BẮT ĐẦU được kích hoạt
 
-- Bài có ít nhất 1 câu hỏi.
-- Mỗi câu có đủ 4 đáp án.
-- Mỗi câu có đúng 1 đáp án đúng.
-- Thời gian mỗi câu hợp lệ.
-- Không có bài khác đang IN_PROGRESS trong cùng mùa.
+* Bài có ít nhất 1 câu hỏi.
+* Mỗi câu có đủ 4 đáp án.
+* Mỗi câu có đúng 1 đáp án đúng.
+* Thời gian mỗi câu hợp lệ.
+* Không có bài khác đang IN_PROGRESS trong cùng mùa.
 
 Nếu chưa đủ điều kiện: nút bị disable + tooltip giải thích lý do.
 
@@ -696,10 +719,10 @@ Nếu chưa đủ điều kiện: nút bị disable + tooltip giải thích lý 
 
 ## 6.9 Sự kiện realtime (Socket.IO)
 
-| Sự kiện lắng nghe | Hành động |
-|-------------------|-----------| 
-| `student:joined` | Cập nhật số đã vào phòng |
-| `student:connected` | Cập nhật trạng thái online |
+| Sự kiện lắng nghe      | Hành động                       |
+| ---------------------- | ------------------------------- |
+| `student:joined`       | Cập nhật số đã vào phòng        |
+| `student:connected`    | Cập nhật trạng thái online      |
 | `student:disconnected` | Cập nhật trạng thái mất kết nối |
 
 ## 6.10 Dữ liệu cần từ API
@@ -715,20 +738,22 @@ POST /api/admin/exams/{exam_id}/cancel
 
 ---
 
-# 7. Màn hình 6 — Trình chiếu câu hỏi (Admin / TV)
+# 7. Màn hình 6 — Trình chiếu câu hỏi (TV)
 
 ## 7.1 Đường dẫn
 
 ```
-/admin/kiem-tra/{exam_id}/trinh-chieu
+/tv/kiem-tra/{exam_id}/trinh-chieu
 ```
+
+> TV có room riêng và không dùng chung quyền với Admin.
 
 ## 7.2 Mô tả
 
-Màn hình này dành để chiếu lên TV hoặc màn hình lớn trong phòng thi.  
-Admin mở trên máy tính, kết nối với TV qua HDMI hoặc Chromecast.  
-**Tỉ lệ ưu tiên: 16:9 (landscape)** — phân bổ không gian để học viên nhìn rõ nhất phần **nội dung câu hỏi**.  
-Hiển thị câu hỏi hiện tại, countdown và tiến trình bài kiểm tra.  
+Màn hình này dành để chiếu lên TV hoặc màn hình lớn trong phòng thi.
+Admin mở trên máy tính, kết nối với TV qua HDMI hoặc Chromecast.
+**Tỉ lệ ưu tiên: 16:9 (landscape)** — phân bổ không gian để học viên nhìn rõ nhất phần **nội dung câu hỏi**.
+Hiển thị câu hỏi hiện tại, countdown và tiến trình bài kiểm tra.
 Không hiển thị đáp án đúng khi câu đang mở.
 
 ## 7.3 Layout tổng thể (16:9)
@@ -757,20 +782,20 @@ Không hiển thị đáp án đúng khi câu đang mở.
 
 Màn hình trình chiếu dùng font lớn hơn màn hình thường:
 
-| Thành phần | Kích thước font |
-|------------|----------------|
-| Nội dung câu hỏi | 32–44px |
-| Đáp án A B C D | 24–30px |
-| Countdown | 56–80px |
-| Header (tên bài, câu số) | 18–22px |
+| Thành phần               | Kích thước font |
+| ------------------------ | --------------- |
+| Nội dung câu hỏi         | 32–44px         |
+| Đáp án A B C D           | 24–30px         |
+| Countdown                | 56–80px         |
+| Header (tên bài, câu số) | 18–22px         |
 
 ## 7.5 Trạng thái countdown
 
-| Thời gian còn lại | Màu countdown | Màu progress bar |
-|-------------------|---------------|-----------------|
-| > 5 giây | Đen / trắng (tùy nền) | Xanh lá |
-| ≤ 5 giây | Đỏ | Đỏ |
-| Hết giờ | Hiện "Hết giờ!" | Rỗng |
+| Thời gian còn lại | Màu countdown         | Màu progress bar |
+| ----------------- | --------------------- | ---------------- |
+| > 5 giây          | Đen / trắng (tùy nền) | Xanh lá          |
+| ≤ 5 giây          | Đỏ                    | Đỏ               |
+| Hết giờ           | Hiện "Hết giờ!"       | Rỗng             |
 
 ## 7.6 Sau khi câu bị khóa
 
@@ -779,11 +804,11 @@ Hiển thị đáp án đúng với màu highlight xanh lá:
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  A.  Đáp án A                                           │
-│  B.  Đáp án B   ✅  ← ĐÁP ÁN ĐÚNG (highlight xanh lá) │
+│  B.  Đáp án B   ✅  ← ĐÁP ÁN ĐÚNG (highlight xanh lá)  │
 │  C.  Đáp án C                                           │
 │  D.  Đáp án D                                           │
 │                                                         │
-│  [Câu tiếp theo →]   ← Nút Admin bấm để chuyển câu     │
+│  Đang chờ Admin mở câu tiếp theo...                     │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -802,14 +827,17 @@ Thời gian hiển thị đáp án đúng: **3–5 giây** hoặc đến khi Adm
 └─────────────────────────────────────────────────────────┘
 ```
 
-## 7.8 Sự kiện realtime (Socket.IO)
+## 7.8 Sự kiện realtime (Socket.IO) — TV Room
 
-| Sự kiện lắng nghe | Hành động |
-|-------------------|-----------|
-| `question:activated` | Hiển thị câu mới, reset countdown |
-| `question:locked` | Khóa câu, hiện đáp án đúng |
-| `answer:count_updated` | Cập nhật số học viên đã trả lời |
-| `exam:completed` | Hiển thị màn hình kết thúc |
+> TV có room riêng: `exam:{examId}:presentation`.
+
+| Sự kiện lắng nghe        | UI cập nhật                                        |
+| ------------------------ | -------------------------------------------------- |
+| `question:activated`     | Hiển thị câu mới + countdown theo `questionEndsAt` |
+| `question:locked`        | Đóng câu                                           |
+| `question:reveal_answer` | TV hiện đáp án đúng (sau khi LOCKED)               |
+| `answer:count_updated`   | Cập nhật số học viên đã trả lời                    |
+| `exam:completed`         | Hiển thị màn hình kết thúc                         |
 
 ## 7.9 Dữ liệu cần từ API
 
@@ -832,11 +860,11 @@ GET /api/admin/exams/{exam_id}/live
 
 Admin quản lý danh sách bài kiểm tra của mùa hiện tại:
 
-- Tạo bài mới
-- Chỉnh sửa thông tin bài
-- Mở phòng chờ / Bắt đầu / Kết thúc / Hủy
-- Xem nhanh số câu, thời gian, trạng thái
-- Vào các màn hình: Phòng chờ Admin, Trình chiếu, Kết quả tổng
+* Tạo bài mới
+* Chỉnh sửa thông tin bài
+* Mở phòng chờ / Bắt đầu / Kết thúc / Hủy
+* Xem nhanh số câu, thời gian, trạng thái
+* Vào các màn hình: Phòng chờ Admin, Trình chiếu, Kết quả tổng
 
 ## 8.3 Layout tổng thể
 
@@ -859,52 +887,58 @@ Admin quản lý danh sách bài kiểm tra của mùa hiện tại:
 
 ## 8.4 Cột dữ liệu bắt buộc
 
-- Tên bài kiểm tra
-- Loại: `PRE_TEST` / `FINAL_TEST`
-- Ngày giờ dự kiến
-- Số câu
-- Thời gian mỗi câu (giây)
-- Trạng thái
+* Tên bài kiểm tra
+* Loại: `PRE_TEST` / `FINAL_TEST`
+* Ngày giờ dự kiến
+* Số câu
+* Thời gian mỗi câu (giây)
+* Trạng thái
 
 ## 8.5 Action theo trạng thái
 
-| Trạng thái | Cho phép |
-|-----------|----------|
-| DRAFT | Sửa, Quản lý câu hỏi, Lên lịch |
-| SCHEDULED | Mở phòng chờ, Sửa lịch |
+| Trạng thái        | Cho phép                                          |
+| ----------------- | ------------------------------------------------- |
+| DRAFT             | Sửa, Quản lý câu hỏi, Lên lịch                    |
+| SCHEDULED         | Mở phòng chờ, Sửa lịch                            |
 | WAITING_ROOM_OPEN | Vào phòng chờ Admin, Bắt đầu, Đóng phòng chờ, Hủy |
-| IN_PROGRESS | Vào trình chiếu, Kết thúc (nếu cần) |
-| SUBMITTING | Chỉ xem trạng thái |
-| COMPLETED | Xem kết quả, Download |
-| CANCELLED | Chỉ xem |
+| IN_PROGRESS       | Vào trình chiếu, Kết thúc (nếu cần)               |
+| SUBMITTING        | Chỉ xem trạng thái                                |
+| COMPLETED         | Xem kết quả, Download                             |
+| CANCELLED         | Chỉ xem                                           |
 
 ## 8.6 Form tạo/sửa bài kiểm tra
 
 Fields:
 
-- Name (Pre-test 1...)
-- Type (`PRE_TEST` / `FINAL_TEST`)
-- Exam date
-- Exam time
-- Time per question (giây)
-- (Optional) Tổng số câu dự kiến (read-only hoặc auto từ câu hỏi)
+* Name (Pre-test 1...)
+* Type (`PRE_TEST` / `FINAL_TEST`)
+* Exam date
+* Exam time
+* Time per question (giây)
+* (Optional) Tổng số câu dự kiến (read-only hoặc auto từ câu hỏi)
 
 Validate:
 
-- Ngày/giờ hợp lệ
-- Time per question > 0
+* Ngày/giờ hợp lệ
+* Time per question > 0
 
-## 8.7 Setting đặc biệt cho Final Test: Ẩn/Hiện Ranking
+## 8.7 Ranking Visibility — cấu hình toàn mùa
 
-Chỉ với bài `FINAL_TEST` hiển thị thêm toggle:
+Ranking visibility không thuộc từng Exam.
 
-- [ ] Ẩn Ranking cá nhân và nhóm (Final Test)
+UI đọc cấu hình:
 
-Giải thích nhỏ:
+```text
+season_settings.ranking_visible
+UI đề xuất:
+[ ] Hiển thị Ranking cá nhân và nhóm
+Quy tắc:
 
-- Ẩn chỉ ảnh hưởng việc **hiển thị** cho học viên
-- Điểm vẫn chấm và cộng hồ sơ bình thường
-- Ranking vẫn được tính và lưu (để mở lại sau)
+true: Học viên thấy ranking cá nhân và nhóm.
+false: Học viên không thấy ranking.
+Admin vẫn xem được ranking.
+Điểm và dữ liệu ranking vẫn được tính đầy đủ.
+```
 
 ## 8.8 Dữ liệu cần từ API
 
@@ -919,8 +953,8 @@ POST /api/admin/exams/{exam_id}/start
 POST /api/admin/exams/{exam_id}/end
 POST /api/admin/exams/{exam_id}/cancel
 
-PUT  /api/admin/exams/{exam_id}/ranking-visibility
-Body: { ranking_hidden: true|false }
+PUT /api/admin/season-settings/ranking-visibility
+Body: { ranking_visible: true|false }
 ```
 
 ---
@@ -937,12 +971,12 @@ Body: { ranking_hidden: true|false }
 
 Admin tạo và quản lý danh sách câu hỏi cho một bài kiểm tra:
 
-- Thêm / sửa / xóa câu hỏi
-- Nhập nội dung câu hỏi + 4 đáp án A/B/C/D
-- Chọn đúng 1 đáp án đúng
-- Countdown dùng **duy nhất** `time_per_question` của bài (không override theo từng câu)
-- Sắp xếp thứ tự câu
-- Validate trước khi bắt đầu bài
+* Thêm / sửa / xóa câu hỏi
+* Nhập nội dung câu hỏi + 4 đáp án A/B/C/D
+* Chọn đúng 1 đáp án đúng
+* Countdown dùng **duy nhất** `time_per_question` của bài (không override theo từng câu)
+* Sắp xếp thứ tự câu
+* Validate trước khi bắt đầu bài
 
 ## 9.3 Layout tổng thể
 
@@ -969,46 +1003,46 @@ Admin tạo và quản lý danh sách câu hỏi cho một bài kiểm tra:
 
 Fields:
 
-- Question text (nội dung câu hỏi)
-- Answer A
-- Answer B
-- Answer C
-- Answer D
-- Correct answer: (A | B | C | D) — bắt buộc đúng 1
+* Question text (nội dung câu hỏi)
+* Answer A
+* Answer B
+* Answer C
+* Answer D
+* Correct answer: (A | B | C | D) — bắt buộc đúng 1
 
 Validate:
 
-- Không rỗng question text
-- Đủ 4 đáp án
-- Correct answer phải được chọn
+* Không rỗng question text
+* Đủ 4 đáp án
+* Correct answer phải được chọn
 
 ## 9.5 Quy tắc khóa chỉnh sửa
 
 Khi bài đã chuyển trạng thái:
 
-- `WAITING_ROOM_OPEN` trở đi: **khóa chỉnh sửa câu hỏi**
-- Chỉ cho xem danh sách câu
+* `WAITING_ROOM_OPEN` trở đi: **khóa chỉnh sửa câu hỏi**
+* Chỉ cho xem danh sách câu
 
 UI thể hiện:
 
-- Hiện banner: "Bài đã mở phòng chờ, không thể chỉnh sửa câu hỏi"
-- Ẩn hoặc disable nút [Thêm], [Sửa], [Xóa], [Import Excel]
+* Hiện banner: "Bài đã mở phòng chờ, không thể chỉnh sửa câu hỏi"
+* Ẩn hoặc disable nút [Thêm], [Sửa], [Xóa], [Import Excel]
 
 ## 9.6 Validate trước khi bắt đầu
 
 Nút "BẮT ĐẦU KIỂM TRA" (ở màn phòng chờ Admin) chỉ bật khi:
 
-- Có ít nhất 1 câu hỏi
-- Mỗi câu có đủ 4 đáp án
-- Mỗi câu có đúng 1 đáp án đúng
-- `time_per_question` của bài > 0
+* Có ít nhất 1 câu hỏi
+* Mỗi câu có đủ 4 đáp án
+* Mỗi câu có đúng 1 đáp án đúng
+* `time_per_question` của bài > 0
 
 Ở trang này hiển thị “Checklist hợp lệ”:
 
-- [ ] Có câu hỏi
-- [ ] Mỗi câu đủ 4 đáp án
-- [ ] Mỗi câu có 1 đáp án đúng
-- [ ] Thời gian bài thi hợp lệ
+* [ ] Có câu hỏi
+* [ ] Mỗi câu đủ 4 đáp án
+* [ ] Mỗi câu có 1 đáp án đúng
+* [ ] Thời gian bài thi hợp lệ
 
 ## 9.7 Import câu hỏi từ Excel (roadmap: làm nếu đơn giản)
 
@@ -1016,15 +1050,15 @@ Mục tiêu: Admin import nhanh danh sách câu hỏi từ file Excel.
 
 Định dạng file đề xuất:
 
-| question_text | A | B | C | D | correct |
-|--------------|---|---|---|---|---------|
-| ... | ... | ... | ... | ... | A/B/C/D |
+| question_text | A   | B   | C   | D   | correct |
+| ------------- | --- | --- | --- | --- | ------- |
+| ...           | ... | ... | ... | ... | A/B/C/D |
 
 Quy tắc:
 
-- `correct` chỉ nhận A/B/C/D.
-- Nếu thiếu cột hoặc giá trị sai → báo lỗi và không import.
-- Import xong hiển thị preview và yêu cầu Admin xác nhận lưu.
+* `correct` chỉ nhận A/B/C/D.
+* Nếu thiếu cột hoặc giá trị sai → báo lỗi và không import.
+* Import xong hiển thị preview và yêu cầu Admin xác nhận lưu.
 
 ## 9.8 Dữ liệu cần từ API
 
@@ -1047,24 +1081,24 @@ POST /api/admin/exams/{exam_id}/questions/import-excel
 
 ## 10.1 Mục tiêu
 
-Trong môi trường thi thật, lỗi mạng là chuyện **chắc chắn sẽ xảy ra**.  
+Trong môi trường thi thật, lỗi mạng là chuyện **chắc chắn sẽ xảy ra**.
 UI cần hướng dẫn rõ ràng, không gây hoảng, và giúp BTC xử lý nhanh.
 
 Phạm vi:
 
-- Mất kết nối Socket.IO
-- Refresh trang giữa chừng
-- Rớt mạng 3G/4G
-- Học viên vào trễ (late join)
-- Admin đóng/mở phòng chờ
-- Server đang SUBMITTING
+* Mất kết nối Socket.IO
+* Refresh trang giữa chừng
+* Rớt mạng 3G/4G
+* Học viên vào trễ (late join)
+* Admin đóng/mở phòng chờ
+* Server đang SUBMITTING
 
 ## 10.2 Nguyên tắc UX
 
-- Thông báo ngắn, rõ, hướng dẫn hành động tiếp theo.
-- Không dùng thông báo mơ hồ kiểu "Có lỗi xảy ra".
-- Luôn hiển thị trạng thái: "Đang thử kết nối lại..." và số lần thử.
-- Khi mất kết nối: vẫn giữ UI đọc được, nhưng khóa thao tác nếu cần.
+* Thông báo ngắn, rõ, hướng dẫn hành động tiếp theo.
+* Không dùng thông báo mơ hồ kiểu "Có lỗi xảy ra".
+* Luôn hiển thị trạng thái: "Đang thử kết nối lại..." và số lần thử.
+* Khi mất kết nối: vẫn giữ UI đọc được, nhưng khóa thao tác nếu cần.
 
 ## 10.3 Banner mất kết nối (Học viên)
 
@@ -1079,68 +1113,68 @@ Hiển thị sticky ở đầu trang trong lúc Socket disconnected:
 
 Trạng thái:
 
-| Case | Hiển thị |
-|------|----------|
-| Mất kết nối < 10s | Banner đỏ + auto reconnect |
-| Mất kết nối ≥ 10s | Banner đỏ + nút "Tải lại trang" |
+| Case                   | Hiển thị                         |
+| ---------------------- | -------------------------------- |
+| Mất kết nối < 10s      | Banner đỏ + auto reconnect       |
+| Mất kết nối ≥ 10s      | Banner đỏ + nút "Tải lại trang"  |
 | Kết nối lại thành công | Banner xanh 2s: "Đã kết nối lại" |
 
 ## 10.4 Refresh trang khi đang làm bài
 
 Khi học viên refresh / mở lại tab:
 
-- App gọi `GET /api/exams/{exam_id}/attempt` để phục hồi trạng thái.
-- Server trả về:
-  - Câu hiện tại đang ACTIVE (index)
-  - Đáp án đã chọn trước đó
-  - Thời gian còn lại của câu hiện tại (nếu cần)
+* App gọi `GET /api/exams/{exam_id}/attempt` để phục hồi trạng thái.
+* Server trả về:
+
+  * Câu hiện tại đang ACTIVE (index)
+  * Đáp án đã chọn trước đó
+  * Thời gian còn lại của câu hiện tại (nếu cần)
 
 UI hiển thị:
 
-- Tự động đưa về đúng màn hình (`/lam-bai` nếu bài đang IN_PROGRESS)
-- Hiện toast: "Đã khôi phục bài làm".
+* Tự động đưa về đúng màn hình (`/lam-bai` nếu bài đang IN_PROGRESS)
+* Hiện toast: "Đã khôi phục bài làm".
 
-## 10.5 Late join (học viên vào trễ)
+## 10.5 Late join (học viên vào trễ) — ĐƯỢC PHÉP
 
-Theo business design:
+Late join (V1.1 Frozen): **được phép**.
 
-- Nếu bài đã `IN_PROGRESS` và học viên **chưa vào phòng chờ**:
-  - Mặc định **không cho tham gia**.
-  - Card hiển thị: "Bài kiểm tra đã bắt đầu".
+Quy tắc UI:
 
-Nếu BTC sau này muốn cho phép ngoại lệ:
+* Nếu bài đã `IN_PROGRESS` và học viên vào trễ:
 
-- Admin có thể có nút "Cho phép late join" (không bắt buộc trong V1).
-- Khi bật ngoại lệ, học viên vào sẽ bắt đầu từ câu hiện tại.
+  * Cho phép vào màn làm bài.
+  * Học viên bắt đầu từ **câu đang `ACTIVE`**.
+  * **Không** làm lại các câu đã `LOCKED`.
+  * **Không** cộng thêm thời gian.
 
-V1 UI (đúng business):
+UI message gợi ý:
 
 ```
-Bạn không thể tham gia vì bài kiểm tra đã bắt đầu.
-Vui lòng liên hệ BTC nếu bạn gặp sự cố kỹ thuật.
-[Quay lại]
+Bạn vào trễ, hệ thống sẽ bắt đầu từ câu hiện tại.
+Các câu trước đã bị khóa sẽ không thể làm lại.
 ```
 
 ## 10.6 Trạng thái SUBMITTING
 
 Khi bài chuyển sang `SUBMITTING`:
 
-- Học viên thấy màn hình khóa thao tác:
+* Học viên thấy màn hình khóa thao tác:
 
 ```
 ⏳ Đang thu bài...
 Vui lòng không tắt trình duyệt.
 ```
 
-- Nếu reload: vẫn trả về màn hình SUBMITTING.
+* Nếu reload: vẫn trả về màn hình SUBMITTING.
 
 ## 10.7 Case Admin mất kết nối
 
 Ở các màn Admin (phòng chờ/trình chiếu):
 
-- Banner đỏ: "Mất kết nối server — đang thử lại..."
-- Nút điều khiển bị disable trong lúc mất kết nối.
-- Khi reconnect: tự đồng bộ trạng thái bài.
+* Banner đỏ: "Mất kết nối server — đang thử lại..."
+* Nút điều khiển bị disable trong lúc mất kết nối.
+* Khi reconnect: tự đồng bộ trạng thái bài.
 
 ## 10.8 Dữ liệu cần từ API
 
@@ -1154,5 +1188,38 @@ GET /api/admin/exams/{exam_id}/live
 
 ---
 
-✅ HOÀN TẤT UI DESIGN — Module Kiểm tra
+# 11. Business Rules (UI)
 
+## 11.1 UI Rules
+
+* Student submit đáp án bằng **REST**; Socket.IO chỉ cập nhật trạng thái.
+* Student UI không nhận và không hiển thị: `question_text`, `correct_answer`.
+* Countdown hiển thị theo server time: `serverNow`, `questionEndsAt`.
+* Late join **được phép**: vào từ câu `ACTIVE`, không làm câu cũ, không cộng thời gian.
+* Flow câu hỏi có trạng thái `WAITING_NEXT` và **Admin mở câu tiếp theo** (không auto next).
+* TV có room riêng, không dùng chung quyền với Admin.
+* Ranking/result mode UI đọc từ `season_settings`.
+* Result mode dùng enum: `HIDDEN` / `SCORE_ONLY` / `FULL_RESULT`.
+
+## 11.2 Freeze Checklist
+
+* [ ] Không còn mô tả submit answer bằng Socket.IO.
+* [ ] Late join được phép và mô tả đúng rule.
+* [ ] Flow câu hỏi có `WAITING_NEXT` và admin mở câu tiếp.
+* [ ] Countdown theo `serverNow` + `questionEndsAt`.
+* [ ] Student UI không nhận `question_text`/`correct_answer`.
+* [ ] TV có room riêng.
+* [ ] Ranking/result mode đọc từ `season_settings`.
+* [ ] Result mode không dùng boolean.
+* [ ] Version = 1.1, Status = Frozen.
+
+## 11.3 Related Documents
+
+* TKH-2026-PROJECT-HANDOFF-V2.md
+* test-module-business-design.md (v1.1 Frozen)
+* test-module-database-design.md
+* test-module-realtime-design.md
+
+---
+
+✅ HOÀN TẤT UI DESIGN — Module Kiểm tra (v1.1 Frozen)
