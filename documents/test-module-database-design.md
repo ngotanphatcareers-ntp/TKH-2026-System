@@ -44,7 +44,7 @@ Tất cả nghiệp vụ học viên theo mùa liên kết qua `season_membershi
 - Học viên không được làm các câu đã khóa.
 - Học viên không được cộng thêm thời gian riêng.
 - Final Test vẫn chấm điểm và lưu ranking đầy đủ.
-- `ranking_hidden` chỉ ảnh hưởng phần hiển thị cho học viên.
+- `season_settings.ranking_visible` chỉ ảnh hưởng phần hiển thị Ranking cho học viên; Backend vẫn tính và lưu Ranking đầy đủ.
 - Không hard delete dữ liệu lịch sử bài làm.
 - Thao tác quản trị quan trọng phải có audit log.
 - Runtime state phải được lưu trong database để phục hồi khi server restart.
@@ -233,7 +233,7 @@ Mỗi học viên có một attempt cho mỗi bài.
 ### 6.3 Constraints
 
 - UNIQUE `(exam_id, season_membership_id, attempt_no)`
-- CHECK `status IN ('IN_PROGRESS','SUBMITTING','COMPLETED')`
+- CHECK `status IN ('IN_PROGRESS','SUBMITTING','COMPLETED','RESET','CANCELLED')`
 - CHECK `score >= 0`
 - CHECK `correct_count >= 0`
 - CHECK `total_questions >= 0`
@@ -412,4 +412,4 @@ Nếu ranking_visible = false
 
 ---
 
-✅ DATABASE DESIGN REVIEWED — MODULE KIỂM TRA
+✅ DATABASE DESIGN FROZEN — MODULE KIỂM TRA — READY FOR IMPLEMENTATION
