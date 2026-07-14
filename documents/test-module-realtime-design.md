@@ -1,7 +1,7 @@
 # TKH 2026 — MODULE KIỂM TRA REALTIME DESIGN
 
-Version: 1.1  
-Status: Reviewed  
+Version: 1.2
+Status: Frozen
 Realtime: Socket.IO  
 Late join V1: Cho phép  
 Countdown: dùng `exams.time_per_question`  
@@ -159,6 +159,10 @@ Khi hết câu cuối:
 ```text
 LOCKED
     ↓
+WAITING_NEXT
+    ↓
+Admin kết thúc bài
+    ↓
 SUBMITTING
     ↓
 Backend chấm điểm
@@ -185,6 +189,7 @@ COMPLETED
 | `exam:started` | exam info | Bắt đầu bài |
 | `question:activated` | question state | Câu mới |
 | `question:locked` | question identifiers | Khóa câu |
+| `question:waiting_next` | `examId`, `questionIndex` | Chờ Admin mở câu tiếp theo |
 | `exam:submitting` | `examId` | Thu bài |
 | `exam:completed` | `examId` | Hoàn tất |
 | `exam:cancelled` | `examId`, `reason` | Hủy bài |
@@ -239,6 +244,7 @@ Submit answer dùng REST.
 | `answer:count_updated` | count | DB đã commit answer |
 | `question:activated` | full question | Câu mới |
 | `question:locked` | correct answer | Khóa câu |
+| `question:waiting_next` | question state | Câu đã khóa, chờ Admin mở câu tiếp |
 | `exam:submitting` | exam id | Thu bài |
 | `exam:completed` | exam id | Hoàn tất |
 | `sync:state` | admin state | Reconnect |
@@ -261,11 +267,14 @@ Các thao tác điều khiển dùng REST:
 - Open waiting room.
 - Close waiting room.
 - Start exam.
+- Activate first question.
 - Activate next question.
+- Finish exam after final question.
 - Cancel exam.
-- End exam.
+- End exam early.
 - Reset attempt.
 - Change ranking visibility.
+- Change result visibility.
 
 Socket.IO chỉ push trạng thái sau khi REST thành công.
 
@@ -279,6 +288,7 @@ Socket.IO chỉ push trạng thái sau khi REST thành công.
 |---|---|
 | `question:activated` | Nội dung câu, 4 đáp án, countdown |
 | `question:locked` | Đáp án đúng |
+| `question:waiting_next` | Trạng thái chờ câu tiếp theo |
 | `answer:count_updated` | Số đã trả lời |
 | `exam:submitting` | Trạng thái thu bài |
 | `exam:completed` | Màn hình kết thúc |
@@ -387,12 +397,16 @@ Chỉ emit count sau khi database commit thành công.
 
 Có thể gồm:
 
-- Exam status.
-- Live state.
-- Current question.
-- Student counts.
+- Question text.
+- Four answers.
+- Current question ID.
+- Current question index.
+- Total questions.
+- Live question state.
+- `serverNow`.
+- `questionEndsAt`.
+- Correct answer nếu state đã `LOCKED` hoặc `WAITING_NEXT`.
 - Answered count.
-- Online/offline summary.
 
 ### 9.3 sync:state cho TV
 
@@ -497,21 +511,21 @@ Không emit trạng thái thành công trước khi transaction commit.
 
 ## 14. Checklist review
 
-- [ ] Student không nhận nội dung câu hỏi.
-- [ ] TV và Admin dùng room riêng.
-- [ ] Countdown theo server time.
-- [ ] Dùng `questionEndsAt`.
-- [ ] Hết giờ tự khóa câu.
-- [ ] Admin mở câu tiếp theo.
-- [ ] Late join được hỗ trợ.
-- [ ] Câu cũ bị khóa với late join.
-- [ ] Không cộng thêm thời gian.
-- [ ] Answer qua REST.
-- [ ] Emit count sau DB commit.
-- [ ] Có sync state theo role.
-- [ ] Có heartbeat.
-- [ ] Có phục hồi server restart.
-- [ ] Có audit cho thao tác quan trọng.
+- [x] Student không nhận nội dung câu hỏi.
+- [x] TV và Admin dùng room riêng.
+- [x] Countdown theo server time.
+- [x] Dùng `questionEndsAt`.
+- [x] Hết giờ tự khóa câu.
+- [x] Admin mở câu tiếp theo.
+- [x] Late join được hỗ trợ.
+- [x] Câu cũ bị khóa với late join.
+- [x] Không cộng thêm thời gian.
+- [x] Answer qua REST.
+- [x] Emit count sau DB commit.
+- [x] Có sync state theo role.
+- [x] Có heartbeat.
+- [x] Có phục hồi server restart.
+- [x] Có audit cho thao tác quan trọng.
 
 ---
 
