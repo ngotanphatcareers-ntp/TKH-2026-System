@@ -1,7 +1,7 @@
 # TKH 2026 — MODULE KIỂM TRA DATABASE DESIGN
 
-Version: 1.1  
-Status: Reviewed  
+Version: 1.2
+Status: Frozen 
 Database: SQL Server (SSMS)  
 Primary key: `INT IDENTITY(1,1)`  
 Liên kết học viên: ưu tiên `season_membership_id`  
@@ -82,8 +82,7 @@ Lưu bài kiểm tra theo từng mùa.
 | `status` | VARCHAR(30) | NOT NULL | Trạng thái |
 | `scheduled_start_at` | DATETIME2(0) | NULL | Ngày giờ dự kiến |
 | `time_per_question` | INT | NOT NULL | Giây/câu |
-| `ranking_hidden` | BIT | NOT NULL | Default 0 |
-| `allow_view_result` | BIT | NOT NULL | Default 0 |
+| `result_visibility` | VARCHAR(20) | NOT NULL | HIDDEN / SCORE_ONLY / FULL_RESULT |
 | `created_at` | DATETIME2(0) | NOT NULL | Default GETDATE() |
 | `updated_at` | DATETIME2(0) | NOT NULL | Default GETDATE() |
 
@@ -95,7 +94,8 @@ Lưu bài kiểm tra theo từng mùa.
 
 Quy tắc app-layer:
 
-- Nếu `type = 'PRE_TEST'` thì `ranking_hidden = 0`.
+- Result visibility thuộc từng Exam.
+- Ranking visibility thuộc season_settings.
 - Bài từ `WAITING_ROOM_OPEN` trở đi không được hard delete.
 - Bài đã có attempt không được hard delete.
 
@@ -126,6 +126,7 @@ Lưu câu hỏi và bốn đáp án.
 | `answer_c` | NVARCHAR(500) | NOT NULL | |
 | `answer_d` | NVARCHAR(500) | NOT NULL | |
 | `correct_answer` | CHAR(1) | NOT NULL | A/B/C/D |
+| `points` | INT | NOT NULL | Default 10 |
 | `created_at` | DATETIME2(0) | NOT NULL | Default GETDATE() |
 | `updated_at` | DATETIME2(0) | NOT NULL | Default GETDATE() |
 
@@ -133,6 +134,7 @@ Lưu câu hỏi và bốn đáp án.
 
 - UNIQUE (`exam_id`, `question_index`)
 - CHECK `correct_answer IN ('A','B','C','D')`
+- CHECK (points >= 0)
 
 Không có cột thời gian riêng theo câu.
 
@@ -215,7 +217,9 @@ Mỗi học viên có một attempt cho mỗi bài.
 | `id` | INT IDENTITY(1,1) | NOT NULL | PK |
 | `exam_id` | INT | NOT NULL | FK → `exams.id` |
 | `season_membership_id` | INT | NOT NULL | FK → `season_memberships.id` |
+| `attempt_no` | INT | NOT NULL | Default 1 |
 | `status` | VARCHAR(20) | NOT NULL | Trạng thái attempt |
+| `reset_reason` | NVARCHAR(500) | NULL | |
 | `started_at` | DATETIME2(0) | NULL | |
 | `submitted_at` | DATETIME2(0) | NULL | |
 | `score` | INT | NOT NULL | Default 0 |
@@ -228,7 +232,7 @@ Mỗi học viên có một attempt cho mỗi bài.
 
 ### 6.3 Constraints
 
-- UNIQUE (`exam_id`, `season_membership_id`)
+- UNIQUE `(exam_id, season_membership_id, attempt_no)`
 - CHECK `status IN ('IN_PROGRESS','SUBMITTING','COMPLETED')`
 - CHECK `score >= 0`
 - CHECK `correct_count >= 0`
@@ -317,6 +321,8 @@ Không bắt buộc lưu:
 | `season_membership_id` | INT | NULL | Học viên liên quan |
 | `actor_user_id` | INT | NULL | Người thực hiện |
 | `event_type` | VARCHAR(50) | NOT NULL | |
+| `entity_type` | VARCHAR(30) | NULL | |
+| `entity_id` | INT | NULL | |
 | `reason` | NVARCHAR(500) | NULL | Lý do |
 | `payload_json` | NVARCHAR(MAX) | NULL | JSON |
 | `created_at` | DATETIME2(0) | NOT NULL | Default GETDATE() |
@@ -371,27 +377,38 @@ Không tự chốt trong tài liệu database nếu BTC chưa xác nhận một 
 
 ### 10.4 Ẩn ranking
 
-Nếu `ranking_hidden = 1`:
+Ranking visibility lấy từ:
 
-- Backend vẫn tính ranking cho Admin.
-- API học viên trả rank bằng `null`.
+season_settings.ranking_visible
+
+Nếu ranking_visible = false
+
+- Backend vẫn tính ranking.
+- Admin vẫn xem được.
+- API học viên trả:
+  rank_individual = null
+  rank_group = null
 
 ---
 
 ## 11. Checklist review
 
-- [ ] Tất cả PK dùng `INT IDENTITY(1,1)`.
-- [ ] Liên kết học viên qua `season_membership_id`.
-- [ ] Có late join.
-- [ ] Có `is_late_join`.
-- [ ] Có `joined_question_index`.
-- [ ] Có bảng live state.
-- [ ] Không có thời gian riêng từng câu.
-- [ ] Có unique constraint chống trùng.
-- [ ] Có audit log bắt buộc cho thao tác quan trọng.
-- [ ] Không hard delete lịch sử.
-- [ ] Không lưu socket status như nguồn realtime chính.
-- [ ] Ranking nhóm chưa bị tự ý chốt sai business.
+- [x] Tất cả PK dùng `INT IDENTITY(1,1)`.
+- [x] Liên kết học viên qua `season_membership_id`.
+- [x] Có late join.
+- [x] Có `is_late_join`.
+- [x] Có `joined_question_index`.
+- [x] Có bảng live state.
+- [x] Không có thời gian riêng từng câu.
+- [x] Có unique constraint chống trùng.
+- [x] Có audit log bắt buộc cho thao tác quan trọng.
+- [x] Không hard delete lịch sử.
+- [x] Không lưu socket status như nguồn realtime chính.
+- [x] Ranking nhóm chưa bị tự ý chốt sai business.
+- [x] result_visibility theo Exam
+- [x] ranking_visibility theo Season
+- [x] attempt_no hỗ trợ Reset
+- [x] question có points
 
 ---
 
