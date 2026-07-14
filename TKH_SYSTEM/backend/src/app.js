@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
+const { testDatabaseConnection } = require("./config/database");
 
 const app = express();
 
@@ -14,6 +15,32 @@ app.get("/api/health", (req, res) => {
   res.status(200).json({
     success: true,
     message: "TKH 2026 Backend is running",
+  });
+});
+
+app.get("/api/health/database", async (req, res, next) => {
+  try {
+    const database = await testDatabaseConnection();
+
+    res.status(200).json({
+      success: true,
+      message: "SQL Server connection successful",
+      data: database,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.use((error, req, res, next) => {
+  console.error("Unhandled error:", error);
+
+  res.status(500).json({
+    success: false,
+    error: {
+      code: "INTERNAL_SERVER_ERROR",
+      message: error.message || "Unexpected server error",
+    },
   });
 });
 
