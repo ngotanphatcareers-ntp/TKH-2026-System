@@ -499,14 +499,22 @@ function toRadians(degrees) {
 
 
 //đổi mật khẩu//
-function changePasswordDemo() {
-    const currentPassword = document.getElementById("currentPassword").value.trim();
-    const newPassword = document.getElementById("newPassword").value.trim();
-    const confirmPassword = document.getElementById("confirmPassword").value.trim();
-    const message = document.getElementById("passwordMessage");
+async function changePasswordDemo() {
+    const currentPasswordInput =
+        document.getElementById("currentPassword");
 
-    const currentUser =
-        JSON.parse(localStorage.getItem("currentUser"));
+    const newPasswordInput =
+        document.getElementById("newPassword");
+
+    const confirmPasswordInput =
+        document.getElementById("confirmPassword");
+
+    const message =
+        document.getElementById("passwordMessage");
+
+    const currentPassword = currentPasswordInput.value;
+    const newPassword = newPasswordInput.value;
+    const confirmPassword = confirmPasswordInput.value;
 
     if (!currentPassword || !newPassword || !confirmPassword) {
         message.style.color = "red";
@@ -514,37 +522,98 @@ function changePasswordDemo() {
         return;
     }
 
-    const savedPassword =
-        localStorage.getItem("password_" + currentUser.username) ||
-        currentUser.defaultPassword;
-
-    if (currentPassword !== savedPassword) {
-    message.style.color = "red";
-    message.innerText = "Mật khẩu hiện tại không đúng.";
-    return;
-    }
-
-    if (newPassword.length < 6) {
+    if (newPassword.length < 8) {
         message.style.color = "red";
-        message.innerText = "Mật khẩu mới phải có ít nhất 6 ký tự.";
+        message.innerText =
+            "Mật khẩu mới phải có ít nhất 8 ký tự.";
         return;
     }
 
     if (newPassword !== confirmPassword) {
         message.style.color = "red";
-        message.innerText = "Xác nhận mật khẩu mới không khớp.";
+        message.innerText =
+            "Mật khẩu xác nhận không khớp.";
         return;
     }
 
-    
+    const token = localStorage.getItem("accessToken");
 
-localStorage.setItem(
-    "password_" + currentUser.username,
-    newPassword
-);
+    if (!token) {
+        logoutDemo();
+        return;
+    }
 
-    message.style.color = "green";
-    message.innerText = "Đổi mật khẩu thành công!";
+    message.style.color = "#555";
+    message.innerText = "Đang đổi mật khẩu...";
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/auth/change-password`,
+            {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    currentPassword,
+                    newPassword
+                })
+            }
+        );
+
+        const result = await response.json();
+
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
+
+        if (!response.ok || !result.success) {
+            message.style.color = "red";
+            message.innerText =
+                result?.error?.message ||
+                "Không thể đổi mật khẩu.";
+            return;
+        }
+
+        const currentUser = JSON.parse(
+            localStorage.getItem("currentUser")
+        );
+
+        if (currentUser) {
+            currentUser.mustChangePassword = false;
+
+            localStorage.setItem(
+                "currentUser",
+                JSON.stringify(currentUser)
+            );
+        }
+
+        currentPasswordInput.value = "";
+        newPasswordInput.value = "";
+        confirmPasswordInput.value = "";
+
+        message.style.color = "green";
+        message.innerText =
+            "Đổi mật khẩu thành công!";
+
+        setTimeout(() => {
+            if (currentUser?.role === "admin") {
+                window.location.href =
+                    "admin-dashboard.html";
+            } else {
+                window.location.href =
+                    "dashboard.html";
+            }
+        }, 700);
+    } catch (error) {
+        console.error("Change password error:", error);
+
+        message.style.color = "red";
+        message.innerText =
+            "Không thể kết nối đến hệ thống.";
+    }
 }
 //////hết
 
@@ -1180,8 +1249,34 @@ function isAdminPage() {
         .startsWith("admin-");
 }
 
+function isStudentDashboardPage() {
+    const pageName = window.location.pathname
+        .split("/")
+        .pop();
+
+    return pageName === "dashboard.html";
+}
+
+function isChangePasswordPage() {
+    const pageName = window.location.pathname
+        .split("/")
+        .pop();
+
+    return pageName === "change-password.html";
+}
+
+
 async function initializePage() {
-    if (isAdminPage()) {
+    const changePasswordPage = isChangePasswordPage();
+    const adminPage = isAdminPage();
+    const studentDashboardPage = isStudentDashboardPage();
+    
+
+    if (
+        adminPage ||
+        studentDashboardPage ||
+        changePasswordPage
+    ) {
         const isAuthenticated = await validateCurrentSession();
 
         if (!isAuthenticated) {
@@ -1192,11 +1287,47 @@ async function initializePage() {
             localStorage.getItem("currentUser")
         );
 
-        if (!currentUser || currentUser.role !== "admin") {
+        if (!currentUser) {
+            logoutDemo();
+            return;
+        }
+
+        if (adminPage && currentUser.role !== "admin") {
             window.location.href = "dashboard.html";
             return;
         }
+
+        if (
+            studentDashboardPage &&
+            currentUser.role !== "student"
+        ) {
+            window.location.href = "admin-dashboard.html";
+            return;
+        }
+
+        if (
+            studentDashboardPage &&
+            currentUser.mustChangePassword
+        ) {
+            window.location.href = "change-password.html";
+            return;
+        }
     }
+
+        if (
+            changePasswordPage &&
+            !currentUser?.mustChangePassword
+        ) {
+            if (currentUser?.role === "admin") {
+                window.location.href =
+                    "admin-dashboard.html";
+            } else {
+                window.location.href =
+                    "dashboard.html";
+            }
+
+            return;
+        }
 
     runPageLoaders();
 }
