@@ -77,6 +77,106 @@ NULL,
 END
 GO
 
+/* ---------- Demo student ---------- */
+DECLARE @DemoSeasonId INT =
+(
+    SELECT id
+    FROM dbo.seasons
+    WHERE code = 'TKH2026'
+);
+
+DECLARE @DemoGroupId INT =
+(
+    SELECT id
+    FROM dbo.groups
+    WHERE season_id = @DemoSeasonId
+      AND code = 'G1'
+);
+
+DECLARE @DemoMemberId INT;
+
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM dbo.members
+    WHERE tkh_code = 'TKH001'
+)
+BEGIN
+    INSERT INTO dbo.members
+    (
+        tkh_code,
+        full_name,
+        normalized_name,
+        phone,
+        status
+    )
+    VALUES
+    (
+        'TKH001',
+        N'Học viên Demo',
+        N'hoc vien demo',
+        '0900000001',
+        'ACTIVE'
+    );
+END;
+
+SELECT @DemoMemberId = id
+FROM dbo.members
+WHERE tkh_code = 'TKH001';
+
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM dbo.season_memberships
+    WHERE season_id = @DemoSeasonId
+      AND member_id = @DemoMemberId
+)
+BEGIN
+    INSERT INTO dbo.season_memberships
+    (
+        season_id,
+        member_id,
+        group_id,
+        status
+    )
+    VALUES
+    (
+        @DemoSeasonId,
+        @DemoMemberId,
+        @DemoGroupId,
+        'ACTIVE'
+    );
+END;
+
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM dbo.users
+    WHERE username = 'tkh001'
+)
+BEGIN
+    INSERT INTO dbo.users
+    (
+        member_id,
+        username,
+        password_hash,
+        role,
+        must_change_password,
+        is_active
+    )
+    VALUES
+    (
+        @DemoMemberId,
+        'tkh001',
+        N'$2b$12$r6Nr0p1F9ngQ2KPxJKjR4uYWPf5WQTbsUmwT/KGKiJplt/qNHbidq',
+        'STUDENT',
+        1,
+        1
+    );
+END;
+GO
+
+
 PRINT '================================';
 PRINT 'Seed data completed';
 PRINT 'Season : TKH2026';
