@@ -2410,48 +2410,128 @@ function loadImportedStudentsDemo() {
 
 
 //hàm load bảng admin members
-function loadAdminMembersTableDemo() {
+async function loadAdminMembersTableDemo() {
     const tableBody = document.getElementById("adminMembersTableBody");
 
     if (!tableBody) {
         return;
     }
 
-    const students = getImportedStudentsDemo();
+    const token = localStorage.getItem("accessToken");
 
-    if (students.length === 0) {
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="9">Chưa có học viên nào được import.</td>
-            </tr>
-        `;
+    if (!token) {
+        logoutDemo();
         return;
     }
 
-    tableBody.innerHTML = students.map(student => `
-    <tr
-        data-username="${student.username.toLowerCase()}"
-        data-name="${student.fullName.toLowerCase()}"
-        data-group="${student.groupName.toLowerCase()}"
-        data-phone="${student.phone}"
-    >
-        <td>${student.username}</td>
-        <td>${student.fullName}</td>
-        <td>${student.gender}</td>
-        <td>${student.birthDate}</td>
-        <td>${student.phone}</td>
-        <td>${student.groupName}</td>
-        <td>Học viên</td>
-        <td>123456</td>
-        <td>
-            <button class="profile-btn" onclick="resetStudentPasswordDemo('${student.username}')">
-                Reset
-            </button>
-        </td>
-    </tr>
-`).join(""); updateMemberSearchResult();
-            
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="9">Đang tải danh sách học viên...</td>
+        </tr>
+    `;
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/admin/members`,
+            {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        );
+
+        const result = await response.json();
+
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
+
+        if (!response.ok || !result.success) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="9">
+                        ${result?.error?.message || "Không thể tải danh sách học viên."}
+                    </td>
+                </tr>
+            `;
+            updateMemberSearchResult();
+            return;
+        }
+
+        const students = result.data.members || [];
+
+        if (students.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="9">
+                        Chưa có học viên trong Database.
+                    </td>
+                </tr>
+            `;
+
             loadGroupFilter();
+            updateMemberSearchResult();
+            return;
+        }
+
+        tableBody.innerHTML = students.map(item => {
+            const member = item.member || {};
+            const group = item.group;
+            const account = item.account;
+
+            const username = account?.username || "";
+            const tkhCode = member.tkhCode || username || "—";
+            const fullName = member.fullName || "—";
+            const phone = member.phone || "—";
+            const groupName = group?.name || "Chưa phân nhóm";
+
+            return `
+                <tr
+                    data-username="${username.toLowerCase()}"
+                    data-name="${fullName.toLowerCase()}"
+                    data-group="${groupName.toLowerCase()}"
+                    data-phone="${phone}"
+                >
+                    <td>${tkhCode}</td>
+                    <td>${fullName}</td>
+                    <td>—</td>
+                    <td>—</td>
+                    <td>${phone}</td>
+                    <td>${groupName}</td>
+                    <td>Học viên</td>
+                    <td>
+                        ${account ? "Đã thiết lập" : "Chưa có tài khoản"}
+                    </td>
+                    <td>
+                        <button
+                            class="profile-btn"
+                            disabled
+                            title="API Reset mật khẩu sẽ được bổ sung sau"
+                        >
+                            Reset
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join("");
+
+        loadGroupFilter();
+        updateMemberSearchResult();
+    } catch (error) {
+        console.error("Load members error:", error);
+
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="9">
+                    Không thể kết nối đến Backend.
+                </td>
+            </tr>
+        `;
+
+        updateMemberSearchResult();
+    }
 }//hết
 
 //hàm loadgroupfilter
@@ -2532,30 +2612,24 @@ function filterMembersTable() {
 
 //hàm thống kê thành viên
 function updateMemberSearchResult() {
-
-    const rows = document.querySelectorAll("#adminMembersTableBody tr");
+    const rows = document.querySelectorAll(
+        "#adminMembersTableBody tr[data-username]"
+    );
 
     let visible = 0;
 
     rows.forEach(row => {
-
-        if(row.style.display !== "none"){
-
+        if (row.style.display !== "none") {
             visible++;
-
         }
-
     });
 
     const result = document.getElementById("memberSearchResult");
 
-    if(result){
-
+    if (result) {
         result.innerText =
             `Hiển thị ${visible} / ${rows.length} học viên`;
-
     }
-
 }//hết
 
 
