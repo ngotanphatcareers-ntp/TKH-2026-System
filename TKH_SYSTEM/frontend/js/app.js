@@ -1249,12 +1249,28 @@ function isAdminPage() {
         .startsWith("admin-");
 }
 
-function isStudentDashboardPage() {
-    const pageName = window.location.pathname
+function getCurrentPageName() {
+    return window.location.pathname
         .split("/")
         .pop();
+}
 
-    return pageName === "dashboard.html";
+function isProtectedStudentPage() {
+    const pageName = getCurrentPageName();
+
+    const protectedStudentPages = [
+        "dashboard.html",
+        "attendance.html",
+        "my-score.html",
+        "group-score.html",
+        "schedule.html",
+        "profile.html",
+        "student-directory.html",
+        "session-questions.html",
+        "study-materials.html"
+    ];
+
+    return protectedStudentPages.includes(pageName);
 }
 
 function isChangePasswordPage() {
@@ -1267,67 +1283,78 @@ function isChangePasswordPage() {
 
 
 async function initializePage() {
-    const changePasswordPage = isChangePasswordPage();
     const adminPage = isAdminPage();
-    const studentDashboardPage = isStudentDashboardPage();
-    
+    const studentPage = isProtectedStudentPage();
+    const changePasswordPage = isChangePasswordPage();
 
-    if (
+    const protectedPage =
         adminPage ||
-        studentDashboardPage ||
-        changePasswordPage
-    ) {
-        const isAuthenticated = await validateCurrentSession();
+        studentPage ||
+        changePasswordPage;
 
-        if (!isAuthenticated) {
-            return;
-        }
-
-        const currentUser = JSON.parse(
-            localStorage.getItem("currentUser")
-        );
-
-        if (!currentUser) {
-            logoutDemo();
-            return;
-        }
-
-        if (adminPage && currentUser.role !== "admin") {
-            window.location.href = "dashboard.html";
-            return;
-        }
-
-        if (
-            studentDashboardPage &&
-            currentUser.role !== "student"
-        ) {
-            window.location.href = "admin-dashboard.html";
-            return;
-        }
-
-        if (
-            studentDashboardPage &&
-            currentUser.mustChangePassword
-        ) {
-            window.location.href = "change-password.html";
-            return;
-        }
+    if (!protectedPage) {
+        runPageLoaders();
+        return;
     }
 
-        if (
-            changePasswordPage &&
-            !currentUser?.mustChangePassword
-        ) {
-            if (currentUser?.role === "admin") {
-                window.location.href =
-                    "admin-dashboard.html";
+    const isAuthenticated = await validateCurrentSession();
+
+    if (!isAuthenticated) {
+        return;
+    }
+
+    const currentUser = JSON.parse(
+        localStorage.getItem("currentUser")
+    );
+
+    if (!currentUser) {
+        logoutDemo();
+        return;
+    }
+
+    /*
+     * Trang đổi mật khẩu:
+     * - Người bắt buộc đổi mật khẩu được ở lại.
+     * - Người đã đổi rồi được chuyển về dashboard đúng role.
+     */
+    if (changePasswordPage) {
+        if (!currentUser.mustChangePassword) {
+            if (currentUser.role === "admin") {
+                window.location.href = "admin-dashboard.html";
             } else {
-                window.location.href =
-                    "dashboard.html";
+                window.location.href = "dashboard.html";
             }
 
             return;
         }
+
+        runPageLoaders();
+        return;
+    }
+
+    /*
+     * Mọi trang khác đều buộc đổi mật khẩu trước.
+     */
+    if (currentUser.mustChangePassword) {
+        window.location.href = "change-password.html";
+        return;
+    }
+
+    /*
+     * Bảo vệ trang Admin.
+     */
+    if (adminPage && currentUser.role !== "admin") {
+        window.location.href = "dashboard.html";
+        return;
+    }
+
+    /*
+     * Bảo vệ trang học viên.
+     */
+    if (studentPage && currentUser.role !== "student") {
+        window.location.href = "admin-dashboard.html";
+        return;
+    }
 
     runPageLoaders();
 }
