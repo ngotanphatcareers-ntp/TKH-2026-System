@@ -1108,6 +1108,100 @@ function saveStoredStudyMaterialsDemo(materials) {
     localStorage.setItem("studyMaterialsDemo", JSON.stringify(materials));
 }
 
+
+async function validateCurrentSession() {
+    const token = localStorage.getItem("accessToken");
+
+    if (!token) {
+        localStorage.removeItem("currentUser");
+        localStorage.removeItem("currentUsername");
+        window.location.href = "index.html";
+        return false;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("currentUser");
+            localStorage.removeItem("currentUsername");
+            window.location.href = "index.html";
+            return false;
+        }
+
+        const backendUser = result.data.user;
+
+        const currentUser = {
+            id: backendUser.id,
+            memberId: backendUser.memberId,
+            username: backendUser.username,
+            role: String(backendUser.role).toLowerCase(),
+            fullName: backendUser.fullName || "Quản trị viên TKH",
+            tkhCode: backendUser.tkhCode,
+            groupName: null,
+            mustChangePassword: backendUser.mustChangePassword
+        };
+
+        localStorage.setItem(
+            "currentUsername",
+            currentUser.username
+        );
+
+        localStorage.setItem(
+            "currentUser",
+            JSON.stringify(currentUser)
+        );
+
+        return true;
+    } catch (error) {
+        console.error("Session validation error:", error);
+
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("currentUser");
+        localStorage.removeItem("currentUsername");
+
+        window.location.href = "index.html";
+        return false;
+    }
+}
+
+function isAdminPage() {
+    return window.location.pathname
+        .split("/")
+        .pop()
+        .startsWith("admin-");
+}
+
+async function initializePage() {
+    if (isAdminPage()) {
+        const isAuthenticated = await validateCurrentSession();
+
+        if (!isAuthenticated) {
+            return;
+        }
+
+        const currentUser = JSON.parse(
+            localStorage.getItem("currentUser")
+        );
+
+        if (!currentUser || currentUser.role !== "admin") {
+            window.location.href = "dashboard.html";
+            return;
+        }
+    }
+
+    runPageLoaders();
+}
+
+
 function runPageLoaders() {
     loadDashboardUser();
     loadProfileDemo();
@@ -1161,8 +1255,13 @@ function runPageLoaders() {
     loadBibleChallengeProgressDemo();
 }
 
-document.addEventListener("DOMContentLoaded", runPageLoaders);
-window.addEventListener("pageshow", runPageLoaders);
+document.addEventListener("DOMContentLoaded", initializePage);
+
+window.addEventListener("pageshow", event => {
+    if (event.persisted) {
+        initializePage();
+    }
+});
 
 function getStoredQuestionsDemo() {
     return JSON.parse(localStorage.getItem("sessionQuestionsDemo")) || [];
