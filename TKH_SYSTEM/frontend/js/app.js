@@ -1,3 +1,5 @@
+const API_BASE_URL = "http://localhost:5000";
+
 const demoUsers = [
     {
         username: "admin",
@@ -29,51 +31,95 @@ const demoUsers = [
     }
 ];
 
-function loginDemo() {
-    const username = document.getElementById("username").value.trim();
-    const password = document.getElementById("password").value.trim();
+async function loginDemo() {
+    const usernameInput = document.getElementById("username");
+    const passwordInput = document.getElementById("password");
     const message = document.getElementById("loginMessage");
 
-    const importedStudents = getImportedStudentsDemo();
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
 
-    const adminUsers = demoUsers.filter(user => user.role === "admin");
-
-    const allUsers = [
-        ...adminUsers,
-        ...importedStudents
-    ];
-
-    const user = allUsers.find(item => item.username === username);
-
-    if (!user) {
+    if (!username || !password) {
         message.style.color = "red";
-        message.innerText = "Tài khoản không tồn tại.";
+        message.innerText = "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.";
         return;
     }
 
-    const savedPassword =
-        localStorage.getItem("password_" + username) ||
-        user.defaultPassword;
+    message.style.color = "#555";
+    message.innerText = "Đang đăng nhập...";
 
-    if (password !== savedPassword) {
-        message.style.color = "red";
-        message.innerText = "Sai mật khẩu.";
-        return;
-    }
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                username,
+                password
+            })
+        });
 
-    localStorage.setItem("currentUsername", user.username);
-    localStorage.setItem("currentUser", JSON.stringify(user));
+        const result = await response.json();
 
-    message.style.color = "green";
-    message.innerText = "Đăng nhập thành công!";
-
-    setTimeout(() => {
-        if (user.role === "admin") {
-            window.location.href = "admin-dashboard.html";
-        } else {
-            window.location.href = "dashboard.html";
+        if (!response.ok || !result.success) {
+            message.style.color = "red";
+            message.innerText =
+                result?.error?.message ||
+                "Đăng nhập không thành công.";
+            return;
         }
-    }, 800);
+
+        const backendUser = result.data.user;
+
+        const currentUser = {
+            id: backendUser.id,
+            memberId: backendUser.memberId,
+            username: backendUser.username,
+            role: String(backendUser.role).toLowerCase(),
+            fullName: backendUser.fullName || "Quản trị viên TKH",
+            tkhCode: backendUser.tkhCode,
+            groupName: null,
+            mustChangePassword: backendUser.mustChangePassword
+        };
+
+        localStorage.setItem(
+            "accessToken",
+            result.data.accessToken
+        );
+
+        localStorage.setItem(
+            "currentUsername",
+            currentUser.username
+        );
+
+        localStorage.setItem(
+            "currentUser",
+            JSON.stringify(currentUser)
+        );
+
+        message.style.color = "green";
+        message.innerText = "Đăng nhập thành công!";
+
+        setTimeout(() => {
+            if (currentUser.mustChangePassword) {
+                window.location.href = "change-password.html";
+                return;
+            }
+
+            if (currentUser.role === "admin") {
+                window.location.href = "admin-dashboard.html";
+            } else {
+                window.location.href = "dashboard.html";
+            }
+        }, 500);
+    } catch (error) {
+        console.error("Login error:", error);
+
+        message.style.color = "red";
+        message.innerText =
+            "Không thể kết nối đến hệ thống. Vui lòng thử lại.";
+    }
 }
 //đổi thành km nếu hơn 1000m
 function formatDistance(distance) {
@@ -87,8 +133,10 @@ function formatDistance(distance) {
 
 
 function logoutDemo() {
+    localStorage.removeItem("accessToken");
     localStorage.removeItem("currentUser");
     localStorage.removeItem("currentUsername");
+
     window.location.href = "index.html";
 }
 
