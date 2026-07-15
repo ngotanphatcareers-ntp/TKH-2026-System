@@ -4,6 +4,7 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 
 const groupRoutes = require("./routes/group.routes");
+const memberRoutes = require("./routes/member.routes");
 const seasonRoutes = require("./routes/season.routes");
 const { testDatabaseConnection } = require("./config/database");
 const authRoutes = require("./routes/auth.routes");
@@ -19,6 +20,7 @@ app.use(morgan("dev"));
 app.use("/api/auth", authRoutes);
 app.use("/api/seasons", seasonRoutes);
 app.use("/api/groups", groupRoutes);
+app.use("/api/admin/members", memberRoutes);
 app.use("/api/admin/test", adminTestRoutes);
 
 app.get("/api/health", (req, res) => {
