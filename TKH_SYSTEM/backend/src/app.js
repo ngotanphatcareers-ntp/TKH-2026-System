@@ -3,6 +3,8 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 
+const groupRoutes = require("./routes/group.routes");
+const seasonRoutes = require("./routes/season.routes");
 const { testDatabaseConnection } = require("./config/database");
 const authRoutes = require("./routes/auth.routes");
 const adminTestRoutes = require("./routes/admin-test.routes");
@@ -15,6 +17,8 @@ app.use(express.json());
 app.use(morgan("dev"));
 
 app.use("/api/auth", authRoutes);
+app.use("/api/seasons", seasonRoutes);
+app.use("/api/groups", groupRoutes);
 app.use("/api/admin/test", adminTestRoutes);
 
 app.get("/api/health", (req, res) => {
