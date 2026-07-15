@@ -16,10 +16,40 @@ async function findUserByUsername(username) {
         u.must_change_password,
         u.is_active,
         m.full_name,
-        m.tkh_code
+        m.tkh_code,
+
+        active_membership.season_membership_id,
+        active_membership.season_id,
+        active_membership.season_code,
+        active_membership.season_name,
+        g.id AS group_id,
+        g.code AS group_code,
+        g.name AS group_name
+
       FROM dbo.users AS u
       LEFT JOIN dbo.members AS m
         ON m.id = u.member_id
+
+        OUTER APPLY
+        (
+        SELECT TOP 1
+            sm.id AS season_membership_id,
+            sm.group_id,
+            s.id AS season_id,
+            s.code AS season_code,
+            s.name AS season_name
+        FROM dbo.season_memberships AS sm
+        INNER JOIN dbo.seasons AS s
+            ON s.id = sm.season_id
+        WHERE sm.member_id = m.id
+            AND sm.status = 'ACTIVE'
+            AND s.status = 'ACTIVE'
+        ORDER BY sm.id DESC
+        ) AS active_membership
+
+        LEFT JOIN dbo.groups AS g
+        ON g.id = active_membership.group_id
+
       WHERE u.username = @username;
     `);
 
@@ -57,10 +87,42 @@ async function findUserById(userId) {
         u.must_change_password,
         u.is_active,
         m.full_name,
-        m.tkh_code
+        m.tkh_code,
+
+        active_membership.season_membership_id,
+        active_membership.season_id,
+        active_membership.season_code,
+        active_membership.season_name,
+        g.id AS group_id,
+        g.code AS group_code,
+        g.name AS group_name
+
+
       FROM dbo.users AS u
       LEFT JOIN dbo.members AS m
         ON m.id = u.member_id
+
+        OUTER APPLY
+        (
+        SELECT TOP 1
+            sm.id AS season_membership_id,
+            sm.group_id,
+            s.id AS season_id,
+            s.code AS season_code,
+            s.name AS season_name
+        FROM dbo.season_memberships AS sm
+        INNER JOIN dbo.seasons AS s
+            ON s.id = sm.season_id
+        WHERE sm.member_id = m.id
+            AND sm.status = 'ACTIVE'
+            AND s.status = 'ACTIVE'
+        ORDER BY sm.id DESC
+        ) AS active_membership
+
+        LEFT JOIN dbo.groups AS g
+        ON g.id = active_membership.group_id
+
+
       WHERE u.id = @userId;
     `);
 

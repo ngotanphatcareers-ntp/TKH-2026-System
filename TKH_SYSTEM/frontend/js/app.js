@@ -862,26 +862,47 @@ function toggleMobileMenu() {
 }//hết
 
 function loadDashboardUser() {
-    if (!document.getElementById("welcomeName")) {
-        return;
-    }
-
-    const currentUser = getCurrentUserDemo();
-
-    if (!currentUser) {
-        window.location.href = "index.html";
-        return;
-    }
-
     const welcomeName = document.getElementById("welcomeName");
     const welcomeGroup = document.getElementById("welcomeGroup");
 
+    if (!welcomeName && !welcomeGroup) {
+        return;
+    }
+
+    const currentUser = JSON.parse(
+        localStorage.getItem("currentUser")
+    );
+
+    if (!currentUser) {
+        return;
+    }
+
     if (welcomeName) {
-        welcomeName.innerText = "Xin chào, " + currentUser.fullName;
+        const displayName =
+            currentUser.fullName ||
+            currentUser.username ||
+            "Học viên";
+
+        const tkhCode = currentUser.tkhCode
+            ? ` (${currentUser.tkhCode})`
+            : "";
+
+        welcomeName.innerText =
+            `Xin chào, ${displayName}${tkhCode}`;
     }
 
     if (welcomeGroup) {
-        welcomeGroup.innerText = "Nhóm: " + currentUser.groupName;
+        const groupName =
+            currentUser.group?.name ||
+            currentUser.groupName ||
+            "Chưa phân nhóm";
+
+        const seasonName =
+            currentUser.season?.name ||
+            "Thánh Kinh Hè 2026";
+
+        welcomeGroup.innerText =
+            `Nhóm: ${groupName} · ${seasonName}`;
     }
 }
 
@@ -1211,11 +1232,14 @@ async function validateCurrentSession() {
         const currentUser = {
             id: backendUser.id,
             memberId: backendUser.memberId,
+            seasonMembershipId: backendUser.seasonMembershipId,
             username: backendUser.username,
             role: String(backendUser.role).toLowerCase(),
             fullName: backendUser.fullName || "Quản trị viên TKH",
             tkhCode: backendUser.tkhCode,
-            groupName: null,
+            season: backendUser.season || null,
+            group: backendUser.group || null,
+            groupName: backendUser.group?.name || null,
             mustChangePassword: backendUser.mustChangePassword
         };
 

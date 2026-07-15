@@ -67,6 +67,36 @@ async function getCurrentUser(userId) {
     role: user.role,
     fullName: user.full_name,
     tkhCode: user.tkh_code,
+    seasonMembershipId: user.season_membership_id,
+    season: user.season_id
+    ? {
+        id: user.season_id,
+        code: user.season_code,
+        name: user.season_name,
+        }
+    : null,
+    group: user.group_id
+    ? {
+        id: user.group_id,
+        code: user.group_code,
+        name: user.group_name,
+        }
+    : null,
+    mustChangePassword: Boolean(user.must_change_password),
+    season: user.season_id
+    ? {
+        id: user.season_id,
+        code: user.season_code,
+        name: user.season_name,
+        }
+    : null,
+    group: user.group_id
+    ? {
+        id: user.group_id,
+        code: user.group_code,
+        name: user.group_name,
+        }
+    : null,
     mustChangePassword: Boolean(user.must_change_password),
   };
 }
