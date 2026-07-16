@@ -199,7 +199,192 @@ const attendanceCheckinConfigDemo = {
 };
 
 
-const CHECKIN_RADIUS_METERS = 200000;
+let currentCheckinRadiusMeters = 200;
+let currentAttendanceSessionApi = null;
+
+
+async function loadAttendancePageData() {
+    const sessionText =
+        document.getElementById("currentAttendanceSessionText");
+
+    const radiusText =
+        document.getElementById("checkinRadiusText");
+
+    const activeWindow =
+        document.getElementById("activeCheckinWindow");
+
+    if (!sessionText && !radiusText && !activeWindow) {
+        return;
+    }
+
+    const token = localStorage.getItem("accessToken");
+
+    if (!token) {
+        logoutDemo();
+        return;
+    }
+
+    if (sessionText) {
+        sessionText.innerText =
+            "Đang tải buổi học đang mở...";
+    }
+
+    if (radiusText) {
+        radiusText.innerText =
+            "Đang tải cấu hình điểm danh...";
+    }
+
+    if (activeWindow) {
+        activeWindow.innerText =
+            "Đang kiểm tra trạng thái điểm danh...";
+    }
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/attendance/current-session`,
+            {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        );
+
+        const result = await response.json();
+
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
+
+        if (response.status === 403) {
+            window.location.href =
+                "admin-dashboard.html";
+            return;
+        }
+
+        if (response.status === 404) {
+            currentAttendanceSessionApi = null;
+
+            if (sessionText) {
+                sessionText.innerText =
+                    result?.error?.message ||
+                    "Hiện chưa có buổi học nào đang mở.";
+            }
+
+            if (radiusText) {
+                radiusText.innerText =
+                    "Điểm danh hiện chưa được mở.";
+            }
+
+            if (activeWindow) {
+                activeWindow.innerText =
+                    "Chưa có buổi học đang mở điểm danh.";
+            }
+
+            return;
+        }
+
+        if (!response.ok || !result.success) {
+            currentAttendanceSessionApi = null;
+
+            if (sessionText) {
+                sessionText.innerText =
+                    "Không thể tải thông tin buổi học.";
+            }
+
+            if (radiusText) {
+                radiusText.innerText =
+                    result?.error?.message ||
+                    "Không thể tải cấu hình điểm danh.";
+            }
+
+            return;
+        }
+
+        const session = result.data.session;
+
+        currentAttendanceSessionApi = session;
+
+        currentCheckinRadiusMeters =
+            Number(session.attendanceRadiusM) || 200;
+
+        if (
+            session.location?.latitude !== null &&
+            session.location?.latitude !== undefined
+        ) {
+            CHURCH_LOCATION.lat =
+                Number(session.location.latitude);
+        }
+
+        if (
+            session.location?.longitude !== null &&
+            session.location?.longitude !== undefined
+        ) {
+            CHURCH_LOCATION.lng =
+                Number(session.location.longitude);
+        }
+
+        const startDate =
+            parseSqlLocalDateTime(
+                session.scheduledStartAt
+            );
+
+        const dateText = startDate
+            ? startDate.toLocaleDateString("vi-VN")
+            : "Chưa có ngày học";
+
+        const startTime = startDate
+            ? startDate.toLocaleTimeString("vi-VN", {
+                hour: "2-digit",
+                minute: "2-digit"
+            })
+            : "";
+
+        if (sessionText) {
+            sessionText.innerText =
+                `${session.name} · ${dateText}` +
+                (startTime ? ` · ${startTime}` : "");
+        }
+
+        if (radiusText) {
+            radiusText.innerText =
+                "Chỉ điểm danh được khi bạn ở trong bán kính " +
+                currentCheckinRadiusMeters +
+                " m từ " +
+                (session.location?.name ||
+                    "Nhà Thờ Nguyễn Tri Phương") +
+                ".";
+        }
+
+        if (activeWindow) {
+            activeWindow.innerText =
+                "Buổi học đang mở · Có thể điểm danh";
+        }
+    } catch (error) {
+        console.error(
+            "Load attendance session error:",
+            error
+        );
+
+        currentAttendanceSessionApi = null;
+
+        if (sessionText) {
+            sessionText.innerText =
+                "Không thể kết nối đến Backend.";
+        }
+
+        if (radiusText) {
+            radiusText.innerText =
+                "Vui lòng kiểm tra kết nối và thử lại.";
+        }
+
+        if (activeWindow) {
+            activeWindow.innerText =
+                "Không thể tải trạng thái điểm danh.";
+        }
+    }
+}
 
 
 function loadAttendanceConfig() {
@@ -218,126 +403,79 @@ function loadAttendanceConfig() {
 }
 
 
-function saveAttendanceDemo(distance) {
-    const currentUser = getCurrentUserDemo();
+async function saveAttendanceDemo({
+    latitude,
+    longitude,
+    accuracyM,
+    distanceM
+}) {
+    const token = localStorage.getItem("accessToken");
 
-    if (!currentUser) {
+    if (!token) {
+        logoutDemo();
+
         return {
             success: false,
-            message: "Không tìm thấy tài khoản đăng nhập."
+            message: "Phiên đăng nhập không hợp lệ."
         };
     }
 
-    const openWindows = getOpenCheckinWindowsDemo();
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/attendance/check-in`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    latitude,
+                    longitude,
+                    accuracyM,
+                    deviceInfo: navigator.userAgent
+                })
+            }
+        );
 
-    if (openWindows.length === 0) {
+        const result = await response.json();
+
+        if (response.status === 401) {
+            logoutDemo();
+
+            return {
+                success: false,
+                message: "Phiên đăng nhập đã hết hạn."
+            };
+        }
+
+        if (!response.ok || !result.success) {
+            return {
+                success: false,
+                code: result?.error?.code,
+                message:
+                    result?.error?.message ||
+                    "Không thể điểm danh.",
+                details: result?.error?.details || null
+            };
+        }
+
+        return {
+            success: true,
+            message:
+                result?.data?.message ||
+                "Điểm danh thành công.",
+            data: result.data
+        };
+    } catch (error) {
+        console.error("Attendance check-in error:", error);
+
         return {
             success: false,
-            message: "Hiện chưa có khung điểm danh nào đang mở."
+            message:
+                "Không thể kết nối đến Backend."
         };
     }
-
-    const checkinWindow = openWindows[0];
-
-    const attendanceHistory =
-        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
-
-    const today = new Date().toDateString();
-    const currentSession = getOpenSessionDemo();
-
-    if (!currentSession) {
-        return {
-            success: false,
-            message: "Hiện chưa có buổi học nào đang mở để điểm danh."
-        };
-    }
-
-    const session = currentSession.name;
-
-    const myTodayRecords = attendanceHistory.filter(item =>
-        item.username.toLowerCase() === currentUser.username.toLowerCase() &&
-        item.dateKey === today &&
-        item.session === session
-    );
-
-    const mainAttendanceRecords = myTodayRecords.filter(
-    item => item.windowKey !== "devotion"
-    );
-
-    const currentMainAttendancePoints = mainAttendanceRecords.reduce(
-        (total, item) => total + Number(item.points || 0),
-        0
-    );
-
-    if (
-        checkinWindow.key !== "devotion" &&
-        currentMainAttendancePoints + Number(checkinWindow.points) > 10
-    ) {
-        return {
-            success: false,
-            message: "Tổng điểm điểm danh của buổi học này đã đạt giới hạn tối đa 10 điểm."
-        };
-    }
-        
-    const alreadySameWindow = myTodayRecords.find(
-        item => item.windowKey === checkinWindow.key
-    );
-
-    if (alreadySameWindow) {
-        return {
-            success: false,
-            message: "Bạn đã điểm danh khung " + checkinWindow.label + " rồi."
-        };
-    }
-
-    const hasMorning = myTodayRecords.some(item => item.windowKey === "morning");
-    const hasBreak = myTodayRecords.some(item => item.windowKey === "break");
-
-    if (checkinWindow.key === "break" && hasMorning) {
-        return {
-            success: false,
-            message: "Bạn đã điểm danh đầu giờ rồi nên không thể điểm danh giờ ra chơi."
-        };
-    }
-
-    if (checkinWindow.key === "morning" && hasBreak) {
-        return {
-            success: false,
-            message: "Bạn đã điểm danh giờ ra chơi rồi nên không thể điểm danh đầu giờ."
-        };
-    }
-
-    attendanceHistory.unshift({
-        username: currentUser.username,
-        fullName: currentUser.fullName,
-        groupName: currentUser.groupName,
-        session: session,
-        status: "Có mặt",
-        windowKey: checkinWindow.key,
-        windowLabel: checkinWindow.label,
-        points: checkinWindow.points,
-        distance: formatDistance(distance),
-        deviceId: getDeviceIdDemo(),
-        dateKey: today,
-        checkInTime: new Date().toLocaleString("vi-VN")
-    });
-
-    localStorage.setItem(
-        "attendanceHistory",
-        JSON.stringify(attendanceHistory)
-    );
-
-    addAttendanceScoreDemo(currentUser, checkinWindow);
-
-    return {
-        success: true,
-        message:
-            "Điểm danh thành công khung " +
-            checkinWindow.label +
-            ". Bạn được +" +
-            checkinWindow.points +
-            " điểm."
-    };
 }
 
 function openGpsHelpModal() {
@@ -361,9 +499,24 @@ function retryGpsAfterHelp() {
     checkInDemo();
 }
 
-function checkInDemo() {
+async function checkInDemo() {
     const gpsMessage = document.getElementById("gpsMessage");
     const statusCard = document.getElementById("attendanceStatus");
+
+    if (!currentAttendanceSessionApi) {
+        statusCard.className =
+            "status-card status-fail";
+
+        statusCard.innerText =
+            "Chưa mở điểm danh";
+
+        gpsMessage.style.color = "red";
+
+        gpsMessage.innerText =
+            "Hiện chưa có buổi học nào đang mở điểm danh.";
+
+        return;
+    }
 
     gpsMessage.style.color = "#374151";
     gpsMessage.innerText = "Đang lấy vị trí GPS của bạn...";
@@ -381,7 +534,7 @@ function checkInDemo() {
     }
 
     navigator.geolocation.getCurrentPosition(
-        function(position) {
+        async function(position) {
             const currentLat = position.coords.latitude;
             const currentLng = position.coords.longitude;
             const accuracy = position.coords.accuracy;
@@ -406,29 +559,52 @@ function checkInDemo() {
                 return;
             }
 
-            if (distance <= CHECKIN_RADIUS_METERS) {
+            if (distance <= currentCheckinRadiusMeters) {
                 statusCard.className = "status-card status-success";
                 statusCard.innerText = "Điểm danh thành công";
 
                 gpsMessage.style.color = "green";
                 gpsMessage.innerText = "✅ Bạn đang trong khu vực điểm danh.";
 
-                const checkinResult = saveAttendanceDemo(distance);
+                const checkinResult = await saveAttendanceDemo({
+                    latitude: currentLat,
+                    longitude: currentLng,
+                    accuracyM: accuracy,
+                    distanceM: distance
+                });
 
-            if (!checkinResult.success) {
-                statusCard.className = "status-card status-fail";
-                statusCard.innerText = "Không thể điểm danh";
+                if (!checkinResult.success) {
+                    statusCard.className =
+                        "status-card status-fail";
 
-                gpsMessage.style.color = "red";
-                gpsMessage.innerText = checkinResult.message;
-                return;
+                    statusCard.innerText =
+                        checkinResult.code ===
+                        "ATTENDANCE_ALREADY_RECORDED"
+                            ? "Đã điểm danh"
+                            : "Không thể điểm danh";
+
+                    gpsMessage.style.color = "red";
+
+                    gpsMessage.innerText =
+                        checkinResult.message;
+
+                    return;
+                }
+
+                statusCard.className =
+                    "status-card status-success";
+
+                statusCard.innerText =
+                    "Điểm danh thành công";
+
+                gpsMessage.style.color = "green";
+
+                gpsMessage.innerText =
+                    "✅ " + checkinResult.message;
+
+                loadAttendanceHistoryDemo();
             }
-
-            gpsMessage.style.color = "green";
-            gpsMessage.innerText = "✅ " + checkinResult.message;
-
-            loadAttendanceHistoryDemo();
-            } else {
+             else {
                 statusCard.className = "status-card status-fail";
                 statusCard.innerText = "Ngoài khu vực điểm danh";
 
@@ -1142,8 +1318,7 @@ function loadProfileDemo() {
 
 
 //hàm lịch sử điểm danh
-function loadAttendanceHistoryDemo() {
-
+async function loadAttendanceHistoryDemo() {
     const historyContainer =
         document.getElementById("attendanceHistory");
 
@@ -1151,46 +1326,172 @@ function loadAttendanceHistoryDemo() {
         return;
     }
 
-    const currentUser =
-        JSON.parse(localStorage.getItem("currentUser")) ||
-        demoUsers.find(
-            user => user.username === localStorage.getItem("currentUsername")
-        );
+    const token = localStorage.getItem("accessToken");
 
-    if (!currentUser) {
+    if (!token) {
+        logoutDemo();
         return;
     }
 
-    const attendanceHistory =
-        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+    historyContainer.innerHTML = `
+        <p>Đang tải lịch sử điểm danh...</p>
+    `;
 
-    const myHistory =
-        attendanceHistory.filter(
-            item => item.username === currentUser.username
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/attendance/history`,
+            {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
         );
 
-    if (myHistory.length === 0) {
+        const result = await response.json();
+
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
+
+        if (response.status === 403) {
+            historyContainer.innerHTML = `
+                <p>
+                    ${result?.error?.message ||
+                    "Tài khoản chưa được liên kết với học viên."}
+                </p>
+            `;
+            return;
+        }
+
+        if (!response.ok || !result.success) {
+            historyContainer.innerHTML = `
+                <p>
+                    ${result?.error?.message ||
+                    "Không thể tải lịch sử điểm danh."}
+                </p>
+            `;
+            return;
+        }
+
+        const records = result.data.records || [];
+
+        if (records.length === 0) {
+            historyContainer.innerHTML = `
+                <p>Chưa có lịch sử điểm danh.</p>
+            `;
+            return;
+        }
+
+        historyContainer.innerHTML = records.map(record => {
+            const checkedInDate =
+                parseSqlLocalDateTime(
+                    record.checkedInAt
+                );
+
+            const checkedInText = checkedInDate
+                ? checkedInDate.toLocaleString("vi-VN")
+                : "—";
+
+            const scheduledDate =
+                parseSqlLocalDateTime(
+                    record.session?.scheduledStartAt
+                );
+
+            const sessionDateText = scheduledDate
+                ? scheduledDate.toLocaleDateString("vi-VN")
+                : "—";
+
+            const statusLabels = {
+                PRESENT: "Có mặt",
+                ABSENT: "Vắng",
+                LATE: "Đi trễ",
+                EXCUSED: "Có phép"
+            };
+
+            const statusLabel =
+                statusLabels[record.status] ||
+                record.status ||
+                "—";
+
+            const methodLabels = {
+                GPS: "GPS",
+                MANUAL: "Thủ công",
+                QR: "QR"
+            };
+
+            const methodLabel =
+                methodLabels[record.method] ||
+                record.method ||
+                "—";
+
+            const distanceText =
+                record.distanceM !== null &&
+                record.distanceM !== undefined
+                    ? formatDistance(
+                        Number(record.distanceM)
+                    )
+                    : "—";
+
+            const accuracyText =
+                record.accuracyM !== null &&
+                record.accuracyM !== undefined
+                    ? `${Number(record.accuracyM).toFixed(1)} m`
+                    : "—";
+
+            return `
+                <div class="question-card">
+                    <h3>
+                        ${record.session?.name || "Buổi học"}
+                    </h3>
+
+                    <p>
+                        <strong>Ngày học:</strong>
+                        ${sessionDateText}
+                    </p>
+
+                    <p>
+                        <strong>Trạng thái:</strong>
+                        ${statusLabel}
+                    </p>
+
+                    <p>
+                        <strong>Phương thức:</strong>
+                        ${methodLabel}
+                    </p>
+
+                    <p>
+                        <strong>Khoảng cách:</strong>
+                        ${distanceText}
+                    </p>
+
+                    <p>
+                        <strong>Độ chính xác GPS:</strong>
+                        ${accuracyText}
+                    </p>
+
+                    <p>
+                        <strong>Nhóm:</strong>
+                        ${record.group?.name || "Chưa phân nhóm"}
+                    </p>
+
+                    <p class="question-meta">
+                        Điểm danh lúc: ${checkedInText}
+                    </p>
+                </div>
+            `;
+        }).join("");
+    } catch (error) {
+        console.error(
+            "Load attendance history error:",
+            error
+        );
 
         historyContainer.innerHTML = `
-            <p>Chưa có lịch sử điểm danh.</p>
+            <p>Không thể kết nối đến Backend.</p>
         `;
-
-        return;
     }
-
-    historyContainer.innerHTML =
-    myHistory.map(item => `
-        <div class="question-card">
-            <h3>${item.session}</h3>
-            <p><strong>Khung:</strong> ${item.windowLabel || "Điểm danh"}</p>
-            <p><strong>Trạng thái:</strong> ${item.status}</p>
-            <p><strong>Điểm:</strong> +${item.points || 0}</p>
-            <p><strong>Khoảng cách:</strong> ${item.distance || "-"}</p>
-            <p class="question-meta">
-                ${item.checkInTime}
-            </p>
-        </div>
-    `).join("");
 }//hết
 
 const studyMaterialsDemo = [
@@ -1471,7 +1772,7 @@ function runPageLoaders() {
     loadStudentDirectoryDemo();
     loadGroupScoreDemo();
     loadGroupRankingDemo();
-    loadAttendanceConfig();
+    loadAttendancePageData();
     loadScoreStudentOptionsDemo();
     loadAdminScoreHistoryDemo();
     loadMyScoreDemo();
@@ -1495,7 +1796,6 @@ function runPageLoaders() {
     loadStudentSchedulesDemo();
     loadScheduleTimelineDemo();
     loadScheduleSessionOptionsDemo();
-    loadCurrentAttendanceSessionTextDemo();
     loadStudentDashboardStatsDemo();
     loadGroupScoreHistoryDemo();
     loadAdminScoreSummaryDemo();
@@ -4652,6 +4952,49 @@ function loadAdminGroupsDemo() {
     }).join("");
 }
 
+
+function parseSqlLocalDateTime(value) {
+    if (!value) {
+        return null;
+    }
+
+    if (value instanceof Date) {
+        return value;
+    }
+
+    const normalizedValue = String(value)
+        .replace("Z", "")
+        .replace(/\.\d{3,7}$/, "");
+
+    const match = normalizedValue.match(
+        /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/
+    );
+
+    if (!match) {
+        return new Date(value);
+    }
+
+    const [
+        ,
+        year,
+        month,
+        day,
+        hour,
+        minute,
+        second = "0"
+    ] = match;
+
+    return new Date(
+        Number(year),
+        Number(month) - 1,
+        Number(day),
+        Number(hour),
+        Number(minute),
+        Number(second)
+    );
+}
+
+
 function formatSessionDateDemo(dateText) {
     if (!dateText) {
         return "-";
@@ -4754,14 +5097,14 @@ async function loadAdminSessionsDemo() {
 
         tableBody.innerHTML = sessions.map(session => {
             const startDate =
-                session.scheduledStartAt
-                    ? new Date(session.scheduledStartAt)
-                    : null;
+                parseSqlLocalDateTime(
+                    session.scheduledStartAt
+                );
 
             const endDate =
-                session.scheduledEndAt
-                    ? new Date(session.scheduledEndAt)
-                    : null;
+                parseSqlLocalDateTime(
+                    session.scheduledEndAt
+                );
 
             const dateText = startDate
                 ? startDate.toLocaleDateString("vi-VN")
@@ -4926,9 +5269,9 @@ function loadCurrentSessionSummaryDemo() {
     }
 
     const startDate =
-        currentSession.scheduledStartAt
-            ? new Date(currentSession.scheduledStartAt)
-            : null;
+        parseSqlLocalDateTime(
+            currentSession.scheduledStartAt
+        );
 
     nameElement.innerText = currentSession.name;
 
