@@ -680,64 +680,132 @@ function saveStoredSessionsDemo(sessions) {
     localStorage.setItem("tkhSessionsDemo", JSON.stringify(sessions));
 }
 
-function createSessionDemo() {
-    const sessionName = document.getElementById("sessionName").value.trim();
-    const sessionDate = document.getElementById("sessionDate").value;
-    const sessionStart = document.getElementById("sessionStart").value;
-    const sessionEnd = document.getElementById("sessionEnd").value;
-    const message = document.getElementById("sessionMessage");
+async function createSessionDemo() {
+    const sessionName =
+        document.getElementById("sessionName").value.trim();
 
-    if (!sessionName || !sessionDate || !sessionStart || !sessionEnd) {
+    const sessionDate =
+        document.getElementById("sessionDate").value;
+
+    const sessionStart =
+        document.getElementById("sessionStart").value;
+
+    const sessionEnd =
+        document.getElementById("sessionEnd").value;
+
+    const message =
+        document.getElementById("sessionMessage");
+
+    if (
+        !sessionName ||
+        !sessionDate ||
+        !sessionStart ||
+        !sessionEnd
+    ) {
         message.style.color = "red";
-        message.innerText = "Vui lòng nhập đầy đủ thông tin buổi học.";
+        message.innerText =
+            "Vui lòng nhập đầy đủ thông tin buổi học.";
         return;
     }
 
     if (sessionStart >= sessionEnd) {
         message.style.color = "red";
-        message.innerText = "Giờ kết thúc phải sau giờ bắt đầu.";
+        message.innerText =
+            "Giờ kết thúc phải sau giờ bắt đầu.";
         return;
     }
 
-    const sessions = getStoredSessionsDemo();
+    const token = localStorage.getItem("accessToken");
 
-
-    const duplicatedSession = sessions.find(session =>
-        session.name.trim().toLowerCase() === sessionName.toLowerCase() &&
-        session.date === sessionDate &&
-        session.startTime === sessionStart &&
-        session.endTime === sessionEnd
-    );
-
-    if (duplicatedSession) {
-        message.style.color = "red";
-        message.innerText = "Buổi học này đã tồn tại. Vui lòng kiểm tra lại.";
+    if (!token) {
+        logoutDemo();
         return;
     }
 
-    sessions.unshift({
-        id: Date.now(),
+    const existingSessionNumbers =
+        adminSessionsApiCache
+            .map(session => Number(session.sessionNo))
+            .filter(Number.isInteger);
+
+    const nextSessionNo =
+        existingSessionNumbers.length > 0
+            ? Math.max(...existingSessionNumbers) + 1
+            : 1;
+
+    const scheduledStartAt =
+        `${sessionDate}T${sessionStart}:00`;
+
+    const scheduledEndAt =
+        `${sessionDate}T${sessionEnd}:00`;
+
+    const requestBody = {
         name: sessionName,
-        date: sessionDate,
-        startTime: sessionStart,
-        endTime: sessionEnd,
-        status: "Sắp diễn ra",
-        attendanceStatus: "Đã đóng",
-        randomStatus: "Đã khóa",
-        createdAt: new Date().toLocaleString("vi-VN")
-    });
+        sessionNo: nextSessionNo,
+        scheduledStartAt,
+        scheduledEndAt,
+        checkinOpenAt: null,
+        checkinCloseAt: null,
+        locationName:
+            "Hội Thánh Nguyễn Tri Phương",
+        latitude: 10.7659265,
+        longitude: 106.6643591,
+        attendanceRadiusM: 200
+    };
 
-    saveStoredSessionsDemo(sessions);
+    message.style.color = "#555";
+    message.innerText = "Đang tạo buổi học...";
 
-    document.getElementById("sessionName").value = "";
-    document.getElementById("sessionDate").value = "";
-    document.getElementById("sessionStart").value = "";
-    document.getElementById("sessionEnd").value = "";
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/admin/sessions`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify(requestBody)
+            }
+        );
 
-    message.style.color = "green";
-    message.innerText = "Đã tạo buổi học thành công!";
+        const result = await response.json();
 
-    loadAdminSessionsDemo();
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
+
+        if (response.status === 403) {
+            window.location.href =
+                "dashboard.html";
+            return;
+        }
+
+        if (!response.ok || !result.success) {
+            message.style.color = "red";
+            message.innerText =
+                result?.error?.message ||
+                "Không thể tạo buổi học.";
+            return;
+        }
+
+        document.getElementById("sessionName").value = "";
+        document.getElementById("sessionDate").value = "";
+        document.getElementById("sessionStart").value = "";
+        document.getElementById("sessionEnd").value = "";
+
+        message.style.color = "green";
+        message.innerText =
+            "Đã tạo buổi học thành công!";
+
+        await loadAdminSessionsDemo();
+    } catch (error) {
+        console.error("Create session error:", error);
+
+        message.style.color = "red";
+        message.innerText =
+            "Không thể kết nối đến Backend.";
+    }
 }//hết
 
 
@@ -4598,224 +4666,397 @@ function formatSessionDateDemo(dateText) {
     return parts[2] + "/" + parts[1] + "/" + parts[0];
 }
 
-function loadAdminSessionsDemo() {
-    const tableBody = document.getElementById("adminSessionTableBody");
+
+let adminSessionsApiCache = [];
+
+
+async function loadAdminSessionsDemo() {
+    const tableBody =
+        document.getElementById("adminSessionTableBody");
 
     if (!tableBody) {
         return;
     }
 
-    const sessions = getStoredSessionsDemo();
+    const token = localStorage.getItem("accessToken");
 
-    if (sessions.length === 0) {
+    if (!token) {
+        logoutDemo();
+        return;
+    }
+
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="6">
+                Đang tải danh sách buổi học...
+            </td>
+        </tr>
+    `;
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/admin/sessions`,
+            {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        );
+
+        const result = await response.json();
+
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
+
+        if (response.status === 403) {
+            window.location.href = "dashboard.html";
+            return;
+        }
+
+        if (!response.ok || !result.success) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6">
+                        ${result?.error?.message ||
+                        "Không thể tải danh sách buổi học."}
+                    </td>
+                </tr>
+            `;
+
+            adminSessionsApiCache = [];
+            loadCurrentSessionSummaryDemo();
+            return;
+        }
+
+        const sessions = result.data.sessions || [];
+
+        adminSessionsApiCache = sessions;
+
+        if (sessions.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6">
+                        Chưa có buổi học nào được tạo.
+                    </td>
+                </tr>
+            `;
+
+            loadCurrentSessionSummaryDemo();
+            return;
+        }
+
+        const openSession = sessions.find(
+            session => session.status === "OPEN"
+        );
+
+        tableBody.innerHTML = sessions.map(session => {
+            const startDate =
+                session.scheduledStartAt
+                    ? new Date(session.scheduledStartAt)
+                    : null;
+
+            const endDate =
+                session.scheduledEndAt
+                    ? new Date(session.scheduledEndAt)
+                    : null;
+
+            const dateText = startDate
+                ? startDate.toLocaleDateString("vi-VN")
+                : "—";
+
+            const startTime = startDate
+                ? startDate.toLocaleTimeString("vi-VN", {
+                    hour: "2-digit",
+                    minute: "2-digit"
+                })
+                : "—";
+
+            const endTime = endDate
+                ? endDate.toLocaleTimeString("vi-VN", {
+                    hour: "2-digit",
+                    minute: "2-digit"
+                })
+                : "—";
+
+            const statusLabels = {
+                DRAFT: "Sắp diễn ra",
+                OPEN: "Đang mở",
+                CLOSED: "Đã kết thúc",
+                CANCELLED: "Đã hủy"
+            };
+
+            const statusLabel =
+                statusLabels[session.status] ||
+                session.status;
+
+            const attendanceStatus =
+                session.status === "OPEN"
+                    ? "Có thể điểm danh"
+                    : "Đã đóng";
+
+            const randomStatus =
+                session.status === "OPEN"
+                    ? "Sẵn sàng"
+                    : "Đã khóa";
+
+            let rowClass = "session-row session-muted";
+
+            if (
+                openSession &&
+                Number(session.id) === Number(openSession.id)
+            ) {
+                rowClass = "session-row session-open";
+            } else if (session.status === "DRAFT") {
+                rowClass = "session-row session-next";
+            }
+
+            const openDisabled =
+                session.status === "OPEN" ||
+                session.status === "CANCELLED";
+
+            const closeDisabled =
+                session.status !== "OPEN";
+
+            return `
+                <tr class="${rowClass}">
+                    <td>${session.name}</td>
+
+                    <td>${dateText}</td>
+
+                    <td>
+                        ${startTime} - ${endTime}
+                    </td>
+
+                    <td>${statusLabel}</td>
+
+                    <td>${attendanceStatus}</td>
+
+                    <td>
+                        ${randomStatus}
+
+                        <br><br>
+
+                        <button
+                            class="edit-material-btn"
+                            onclick="openSessionDemo(${session.id})"
+                            ${openDisabled ? "disabled" : ""}
+                        >
+                            Mở
+                        </button>
+
+                        <button
+                            class="delete-material-btn"
+                            onclick="closeSessionDemo(${session.id})"
+                            ${closeDisabled ? "disabled" : ""}
+                        >
+                            Kết thúc
+                        </button>
+
+                        <button
+                            class="delete-material-btn"
+                            disabled
+                            title="API xóa buổi học sẽ được bổ sung sau"
+                        >
+                            Xóa
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join("");
+
+        loadCurrentSessionSummaryDemo();
+    } catch (error) {
+        console.error("Load sessions error:", error);
+
+        adminSessionsApiCache = [];
+
         tableBody.innerHTML = `
             <tr>
-                <td colspan="6">Chưa có buổi học nào được tạo.</td>
+                <td colspan="6">
+                    Không thể kết nối đến Backend.
+                </td>
             </tr>
         `;
 
         loadCurrentSessionSummaryDemo();
-        return;
     }
-
-    const openSession = sessions.find(
-        session => session.status === "Đang mở"
-    );
-
-    const upcomingSessions = sessions
-        .filter(session => session.status === "Sắp diễn ra")
-        .sort((a, b) => {
-            const dateA = new Date(a.date + "T" + a.startTime);
-            const dateB = new Date(b.date + "T" + b.startTime);
-
-            return dateA - dateB;
-        });
-
-    const nearestUpcomingSession =
-        !openSession && upcomingSessions.length > 0
-            ? upcomingSessions[0]
-            : null;
-
-    tableBody.innerHTML = sessions.map(session => {
-        let rowClass = "session-row session-muted";
-
-        if (
-            openSession &&
-            Number(session.id) === Number(openSession.id)
-        ) {
-            rowClass = "session-row session-open";
-        } else if (
-            nearestUpcomingSession &&
-            Number(session.id) === Number(nearestUpcomingSession.id)
-        ) {
-            rowClass = "session-row session-next";
-        }
-
-        return `
-            <tr class="${rowClass}">
-                <td>${session.name}</td>
-
-                <td>${formatSessionDateDemo(session.date)}</td>
-
-                <td>
-                    ${session.startTime} - ${session.endTime}
-                </td>
-
-                <td>${session.status}</td>
-
-                <td>${session.attendanceStatus}</td>
-
-                <td>
-                    ${session.randomStatus}
-
-                    <br><br>
-
-                    <button
-                        class="edit-material-btn"
-                        onclick="openSessionDemo(${session.id})"
-                    >
-                        Mở
-                    </button>
-
-                    <button
-                        class="delete-material-btn"
-                        onclick="closeSessionDemo(${session.id})"
-                    >
-                        Kết thúc
-                    </button>
-
-                    <button
-                        class="delete-material-btn"
-                        onclick="deleteSessionDemo(${session.id})"
-                    >
-                        Xóa
-                    </button>
-                </td>
-            </tr>
-        `;
-    }).join("");
-
-    loadCurrentSessionSummaryDemo();
-}
+}//hết
 
 function loadCurrentSessionSummaryDemo() {
-    const nameElement = document.getElementById("currentSessionName");
-    const dateElement = document.getElementById("currentSessionDate");
-    const statusElement = document.getElementById("currentSessionStatus");
-    const statusTextElement = document.getElementById("currentSessionStatusText");
-    const checkedInElement = document.getElementById("currentSessionCheckedIn");
+    const nameElement =
+        document.getElementById("currentSessionName");
+
+    const dateElement =
+        document.getElementById("currentSessionDate");
+
+    const statusElement =
+        document.getElementById("currentSessionStatus");
+
+    const statusTextElement =
+        document.getElementById(
+            "currentSessionStatusText"
+        );
+
+    const checkedInElement =
+        document.getElementById(
+            "currentSessionCheckedIn"
+        );
 
     if (!nameElement) {
         return;
     }
 
-    const sessions = getStoredSessionsDemo();
+    const currentSession =
+        adminSessionsApiCache.find(
+            session => session.status === "OPEN"
+        );
 
-    if (sessions.length === 0) {
+    if (!currentSession) {
         nameElement.innerText = "-";
-        dateElement.innerText = "Chưa có buổi học";
-        statusElement.innerText = "-";
-        statusTextElement.innerText = "Chưa có trạng thái";
+        dateElement.innerText =
+            "Chưa có buổi học đang mở";
+        statusElement.innerText = "Đã đóng";
+        statusTextElement.innerText =
+            "Điểm danh: Chưa mở";
         checkedInElement.innerText = "0";
         return;
     }
 
-    const currentSession = getCurrentSessionDemo();
-
-    if (!currentSession) {
-    nameElement.innerText = "-";
-    dateElement.innerText = "Chưa có buổi học";
-    statusElement.innerText = "-";
-    statusTextElement.innerText = "Chưa có trạng thái";
-    checkedInElement.innerText = "0";
-    return;
-    }
+    const startDate =
+        currentSession.scheduledStartAt
+            ? new Date(currentSession.scheduledStartAt)
+            : null;
 
     nameElement.innerText = currentSession.name;
-    dateElement.innerText = formatSessionDateDemo(currentSession.date);
-    statusElement.innerText = currentSession.status;
-    statusTextElement.innerText = "Điểm danh: " + currentSession.attendanceStatus;
 
-    const attendanceHistory =
-        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+    dateElement.innerText = startDate
+        ? startDate.toLocaleDateString("vi-VN")
+        : "Chưa có ngày học";
 
-    const today = new Date().toDateString();
+    statusElement.innerText = "Đang mở";
 
-    const todayRecords = attendanceHistory.filter(item =>
-        item.dateKey === today
+    statusTextElement.innerText =
+        "Điểm danh: Có thể điểm danh";
+
+    // Số người điểm danh thật sẽ kết nối sau.
+    checkedInElement.innerText = "0";
+}
+
+async function openSessionDemo(sessionId) {
+    const token = localStorage.getItem("accessToken");
+
+    if (!token) {
+        logoutDemo();
+        return;
+    }
+
+    const confirmed = confirm(
+        "Bạn có chắc muốn mở buổi học này không?\n\n" +
+        "Nếu đang có buổi học khác mở, buổi đó sẽ tự động đóng."
     );
 
-    const uniqueUsers = [];
+    if (!confirmed) {
+        return;
+    }
 
-    todayRecords.forEach(item => {
-        const existed = uniqueUsers.some(
-            username =>
-                username.toLowerCase() === item.username.toLowerCase()
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/admin/sessions/${sessionId}/open`,
+            {
+                method: "PUT",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
         );
 
-        if (!existed) {
-            uniqueUsers.push(item.username);
-        }
-    });
+        const result = await response.json();
 
-    checkedInElement.innerText = uniqueUsers.length;
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
+
+        if (response.status === 403) {
+            window.location.href = "dashboard.html";
+            return;
+        }
+
+        if (!response.ok || !result.success) {
+            alert(
+                result?.error?.message ||
+                "Không thể mở buổi học."
+            );
+            return;
+        }
+
+        alert("Đã mở buổi học thành công.");
+
+        await loadAdminSessionsDemo();
+    } catch (error) {
+        console.error("Open session error:", error);
+        alert("Không thể kết nối đến Backend.");
+    }
 }
 
-function openSessionDemo(sessionId) {
-    const sessions = getStoredSessionsDemo();
+async function closeSessionDemo(sessionId) {
+    const token = localStorage.getItem("accessToken");
 
-    const updatedSessions = sessions.map(session => {
-        if (Number(session.id) === Number(sessionId)) {
-            return {
-                ...session,
-                status: "Đang mở",
-                attendanceStatus: "Có thể điểm danh",
-                randomStatus: "Sẵn sàng"
-            };
+    if (!token) {
+        logoutDemo();
+        return;
+    }
+
+    const confirmed = confirm(
+        "Bạn có chắc muốn kết thúc buổi học này không?\n\n" +
+        "Sau khi đóng, học viên sẽ không thể tiếp tục điểm danh."
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/admin/sessions/${sessionId}/close`,
+            {
+                method: "PUT",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        );
+
+        const result = await response.json();
+
+        if (response.status === 401) {
+            logoutDemo();
+            return;
         }
 
-        if (session.status === "Đang mở") {
-            return {
-                ...session,
-                status: "Sắp diễn ra",
-                attendanceStatus: "Đã đóng",
-                randomStatus: "Đã khóa"
-            };
+        if (response.status === 403) {
+            window.location.href = "dashboard.html";
+            return;
         }
 
-        if (session.status === "Sắp diễn ra") {
-            return {
-                ...session,
-                attendanceStatus: "Đã đóng",
-                randomStatus: "Đã khóa"
-            };
+        if (!response.ok || !result.success) {
+            alert(
+                result?.error?.message ||
+                "Không thể đóng buổi học."
+            );
+            return;
         }
 
-        return session;
-    });
+        alert("Đã đóng buổi học thành công.");
 
-    saveStoredSessionsDemo(updatedSessions);
-    loadAdminSessionsDemo();
-}
-
-function closeSessionDemo(sessionId) {
-    const sessions = getStoredSessionsDemo();
-
-    const updatedSessions = sessions.map(session => {
-        if (Number(session.id) === Number(sessionId)) {
-            return {
-                ...session,
-                status: "Đã kết thúc",
-                attendanceStatus: "Đã đóng",
-                randomStatus: "Đã khóa"
-            };
-        }
-
-        return session;
-    });
-
-    saveStoredSessionsDemo(updatedSessions);
-    loadAdminSessionsDemo();
+        await loadAdminSessionsDemo();
+    } catch (error) {
+        console.error("Close session error:", error);
+        alert("Không thể kết nối đến Backend.");
+    }
 }
 
 function deleteSessionDemo(sessionId) {
