@@ -39,12 +39,28 @@ Nguồn điểm:
 
 Bao gồm:
 
-- Pre-test (tự động)
+- Pre-test (3 bài)
 - Bible Challenge / Kiểm tra bài cũ
 - Phát biểu
-- Kiểm tra cuối khóa
+- Final Test
 
 Điểm học tập tối đa: 200.
+
+### Pre-test
+
+- Có 3 bài Pre-test trong toàn chương trình.
+- Mỗi tuần tổ chức 1 bài.
+- Mỗi bài gồm 10 câu hỏi.
+- Mỗi câu trả lời đúng được 1 điểm.
+- Điểm tối đa mỗi bài: 10.
+- Tổng điểm tối đa của 3 bài: 30.
+
+### Final Test
+
+- Có 1 bài Final Test cuối chương trình.
+- Gồm 30 câu hỏi.
+- Mỗi câu trả lời đúng được 2 điểm.
+- Điểm tối đa: 60.
 
 ### Phát biểu
 
