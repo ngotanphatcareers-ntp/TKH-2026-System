@@ -1,6 +1,68 @@
 const scoreService = require("../services/score.service");
 
 
+async function getMemberScoreSummary(
+  req,
+  res,
+  next
+) {
+  try {
+    const result =
+      await scoreService.getMemberScoreSummary(
+        req.user.memberId
+      );
+
+    if (!result.success) {
+      const errorMap = {
+        MEMBER_ACCOUNT_REQUIRED: {
+          status: 403,
+          message:
+            "Tài khoản này chưa được liên kết với học viên.",
+        },
+
+        ACTIVE_MEMBERSHIP_NOT_FOUND: {
+          status: 404,
+          message:
+            "Không tìm thấy thông tin tham gia mùa hiện tại.",
+        },
+      };
+
+      const mappedError =
+        errorMap[result.code] || {
+          status: 400,
+          message:
+            "Không thể tải bảng điểm tổng hợp của học viên.",
+        };
+
+      return res
+        .status(mappedError.status)
+        .json({
+          success: false,
+          error: {
+            code:
+              result.code ||
+              "GET_MEMBER_SCORE_SUMMARY_ERROR",
+
+            message:
+              mappedError.message,
+          },
+        });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        season: result.season,
+        member: result.member,
+        score: result.score,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+
 async function getMyScores(req, res, next) {
   try {
     const result = await scoreService.getMyScores(
@@ -386,6 +448,7 @@ async function createAdminIndividualScore(
 
 
 module.exports = {
+  getMemberScoreSummary,
   getMyScores,
   getMyGroupScores,
   getGroupRankings,

@@ -16,6 +16,12 @@ const router = express.Router();
 
 
 router.get(
+  "/me-summary",
+  authenticateToken,
+  scoreController.getMemberScoreSummary
+);
+
+router.get(
   "/me",
   authenticateToken,
   scoreController.getMyScores
