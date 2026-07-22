@@ -265,10 +265,102 @@ async function findAttendanceHistoryByMemberId(memberId) {
 }
 
 
+async function findCurrentSessionAttendanceRoster() {
+  const pool = await getPool();
+
+  const result = await pool.request().query(`
+    DECLARE @CurrentSessionId INT;
+
+    SELECT TOP 1
+      @CurrentSessionId = se.id
+    FROM dbo.sessions AS se
+    INNER JOIN dbo.seasons AS s
+      ON s.id = se.season_id
+    WHERE s.status = 'ACTIVE'
+      AND se.status = 'OPEN'
+      AND (
+        se.checkin_open_at IS NULL
+        OR SYSDATETIME() >= se.checkin_open_at
+      )
+      AND (
+        se.checkin_close_at IS NULL
+        OR SYSDATETIME() <= se.checkin_close_at
+      )
+    ORDER BY
+      se.scheduled_start_at DESC,
+      se.id DESC;
+
+    SELECT
+      sm.id AS season_membership_id,
+      sm.season_id,
+      sm.member_id,
+      sm.group_id,
+      sm.status AS membership_status,
+
+      m.tkh_code,
+      m.full_name,
+      m.phone,
+      m.status AS member_status,
+
+      g.code AS group_code,
+      g.name AS group_name,
+
+      se.id AS session_id,
+      se.name AS session_name,
+      se.session_no,
+      se.scheduled_start_at,
+      se.scheduled_end_at,
+      se.status AS session_status,
+
+      ar.id AS attendance_record_id,
+      ar.checked_in_at,
+      ar.method,
+      ar.status AS attendance_status,
+      ar.latitude,
+      ar.longitude,
+      ar.accuracy_m,
+      ar.distance_m,
+      ar.device_info,
+      ar.note
+
+    FROM dbo.season_memberships AS sm
+
+    INNER JOIN dbo.seasons AS s
+      ON s.id = sm.season_id
+
+    INNER JOIN dbo.members AS m
+      ON m.id = sm.member_id
+
+    LEFT JOIN dbo.groups AS g
+      ON g.id = sm.group_id
+
+    LEFT JOIN dbo.sessions AS se
+      ON se.id = @CurrentSessionId
+
+    LEFT JOIN dbo.attendance_records AS ar
+      ON ar.session_id = @CurrentSessionId
+     AND ar.season_membership_id = sm.id
+
+    WHERE s.status = 'ACTIVE'
+      AND sm.status = 'ACTIVE'
+      AND m.status = 'ACTIVE'
+
+    ORDER BY
+      g.name ASC,
+      m.full_name ASC,
+      m.id ASC;
+  `);
+
+  return result.recordset;
+}
+
+
+
 module.exports = {
   findCurrentOpenSession,
   findActiveMembershipByMemberId,
   findAttendanceRecord,
   createAttendanceRecord,
   findAttendanceHistoryByMemberId,
+  findCurrentSessionAttendanceRoster,
 };

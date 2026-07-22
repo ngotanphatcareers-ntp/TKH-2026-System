@@ -2904,31 +2904,46 @@ function getImportedStudentsDemo() {
 }
 
 function getCurrentUserDemo() {
-    const currentUsername = localStorage.getItem("currentUsername");
+    const backendCurrentUser =
+        JSON.parse(
+            localStorage.getItem("currentUser")
+        );
+
+    if (backendCurrentUser) {
+        return backendCurrentUser;
+    }
+
+    const currentUsername =
+        localStorage.getItem("currentUsername");
 
     if (!currentUsername) {
         return null;
     }
 
-    const importedStudents = getImportedStudentsDemo();
+    const importedStudents =
+        getImportedStudentsDemo();
 
-    const importedUser = importedStudents.find(
-        user => user.username === currentUsername
-    );
+    const importedUser =
+        importedStudents.find(
+            user =>
+                user.username &&
+                user.username.toLowerCase() ===
+                currentUsername.toLowerCase()
+        );
 
     if (importedUser) {
         return importedUser;
     }
 
-    const demoUser = demoUsers.find(
-        user => user.username === currentUsername
-    );
+    const demoUser =
+        demoUsers.find(
+            user =>
+                user.username &&
+                user.username.toLowerCase() ===
+                currentUsername.toLowerCase()
+        );
 
-    if (demoUser) {
-        return demoUser;
-    }
-
-    return JSON.parse(localStorage.getItem("currentUser"));
+    return demoUser || null;
 }
 
 function loadImportedStudentsDemo() {
@@ -3344,84 +3359,127 @@ const groupRankingDemo = [
 ];
 
 
-function loadGroupRankingDemo() {
-
+async function loadGroupRankingDemo() {
     const tableBody =
-        document.getElementById("groupRankingTableBody");
+        document.getElementById(
+            "groupRankingTableBody"
+        );
 
     if (!tableBody) {
         return;
     }
 
-    const currentUser = getCurrentUserDemo();
+    const currentUser =
+        getCurrentUserDemo();
 
     if (!currentUser) {
         return;
     }
 
-    const students = getImportedStudentsDemo();
-    const scores = getStoredScoresDemo();
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="4">
+                Đang tải bảng xếp hạng...
+            </td>
+        </tr>
+    `;
 
-    // copy danh sách nhóm
-    const groups = groupRankingDemo.map(group => ({
-        groupName: group.groupName,
-        score: 0
-    }));
+    try {
+        const groups =
+            await getGroupRankingApiData();
 
-    // cộng điểm từng học viên vào nhóm
-    scores.forEach(score => {
-
-        const student = students.find(
-            item => item.username === score.username
-        );
-
-        if (!student) {
+        if (!groups) {
             return;
         }
 
-        const group = groups.find(
-            item =>
-                item.groupName.toLowerCase() ===
-                student.groupName.toLowerCase()
-        );
+        if (groups.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="4">
+                        Chưa có dữ liệu xếp hạng nhóm.
+                    </td>
+                </tr>
+            `;
 
-        if (!group) {
             return;
         }
 
-        group.score += Number(score.scoreValue);
+        const currentGroupId =
+            Number(currentUser.group?.id);
 
-    });
+        const currentGroupName =
+            currentUser.group?.name ||
+            currentUser.groupName ||
+            "";
 
-    groups.sort((a, b) => b.score - a.score);
+        tableBody.innerHTML =
+            groups.map(item => {
+                const group =
+                    item.group || {};
 
-    tableBody.innerHTML = groups.map((group, index) => {
+                const groupName =
+                    group.name ||
+                    "Chưa xác định";
 
-        const isMyGroup =
-            group.groupName.toLowerCase() ===
-            currentUser.groupName.toLowerCase();
+                const isMyGroup =
+                    (
+                        currentGroupId &&
+                        Number(group.id) ===
+                        currentGroupId
+                    ) ||
+                    (
+                        currentGroupName &&
+                        groupName.toLowerCase() ===
+                        currentGroupName.toLowerCase()
+                    );
 
-        let status = "Đang thi đua";
+                let status =
+                    "Đang thi đua";
 
-        if (index === 0) {
-            status = "Đang dẫn đầu";
-        }
+                if (Number(item.ranking) === 1) {
+                    status =
+                        "Đang dẫn đầu";
+                }
 
-        if (isMyGroup) {
-            status = "Nhóm của bạn";
-        }
+                if (isMyGroup) {
+                    status =
+                        "Nhóm của bạn";
+                }
 
-        return `
-            <tr class="${isMyGroup ? "highlight-row" : ""}">
-                <td>#${index + 1}</td>
-                <td>${group.groupName}</td>
-                <td>${group.score}</td>
-                <td>${status}</td>
+                return `
+                    <tr class="${
+                        isMyGroup
+                            ? "highlight-row"
+                            : ""
+                    }">
+                        <td>
+                            #${Number(item.ranking) || "-"}
+                        </td>
+
+                        <td>${groupName}</td>
+
+                        <td>
+                            ${Number(item.totalPoints) || 0}
+                        </td>
+
+                        <td>${status}</td>
+                    </tr>
+                `;
+            }).join("");
+    } catch (error) {
+        console.error(
+            "Load group ranking error:",
+            error
+        );
+
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="4">
+                    Không thể tải bảng xếp hạng nhóm.
+                </td>
             </tr>
         `;
-
-    }).join("");
-
+    }
 }
 
 function getStoredScoresDemo() {
@@ -3534,75 +3592,277 @@ function getTotalScoreByUsernameDemo(username) {
     );
 }
 
-function loadMyScoreDemo() {
-    const totalScoreElement = document.getElementById("myTotalScore");
-    const attendanceScoreElement = document.getElementById("myAttendanceScore");
-    const historyBody = document.getElementById("myScoreHistoryBody");
-    const groupRankText = document.getElementById("myGroupRankText");
+async function loadMyScoreDemo() {
+    const totalScoreElement =
+        document.getElementById("myTotalScore");
 
-    if (!totalScoreElement || !attendanceScoreElement || !historyBody) {
+    const attendanceScoreElement =
+        document.getElementById("myAttendanceScore");
+
+    const historyBody =
+        document.getElementById("myScoreHistoryBody");
+
+    const groupRankText =
+        document.getElementById("myGroupRankText");
+
+    if (
+        !totalScoreElement ||
+        !attendanceScoreElement ||
+        !historyBody
+    ) {
         return;
     }
 
-    const currentUser = getCurrentUserDemo();
+    const token =
+        localStorage.getItem("accessToken");
 
-    if (!currentUser) {
-        window.location.href = "index.html";
+    if (!token) {
+        logoutDemo();
         return;
     }
 
-    const myScores = getScoresByUsernameDemo(currentUser.username);
+    totalScoreElement.innerText = "...";
+    attendanceScoreElement.innerText = "...";
 
-    const totalScore = myScores.reduce(
-        (total, item) => total + Number(item.scoreValue),
-        0
-    );
+    historyBody.innerHTML = `
+        <tr>
+            <td colspan="3">
+                Đang tải lịch sử điểm...
+            </td>
+        </tr>
+    `;
 
-    const attendanceScore = myScores
-        .filter(item => item.scoreType === "attendance")
-        .reduce((total, item) => total + Number(item.scoreValue), 0);
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/scores/me`,
+            {
+                method: "GET",
+                headers: {
+                    Authorization:
+                        `Bearer ${token}`
+                }
+            }
+        );
 
-    totalScoreElement.innerText = totalScore;
-    attendanceScoreElement.innerText = attendanceScore;
+        const result = await response.json();
 
-    if (groupRankText) {
-        groupRankText.innerText = "Trong nhóm " + currentUser.groupName;
-    }
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
 
-    if (myScores.length === 0) {
+        if (response.status === 403) {
+            totalScoreElement.innerText = "0";
+            attendanceScoreElement.innerText = "0";
+
+            historyBody.innerHTML = `
+                <tr>
+                    <td colspan="3">
+                        ${
+                            result?.error?.message ||
+                            "Tài khoản chưa được liên kết với học viên."
+                        }
+                    </td>
+                </tr>
+            `;
+
+            return;
+        }
+
+        if (!response.ok || !result.success) {
+            totalScoreElement.innerText = "0";
+            attendanceScoreElement.innerText = "0";
+
+            historyBody.innerHTML = `
+                <tr>
+                    <td colspan="3">
+                        ${
+                            result?.error?.message ||
+                            "Không thể tải dữ liệu điểm cá nhân."
+                        }
+                    </td>
+                </tr>
+            `;
+
+            return;
+        }
+
+        const summary =
+            result.data?.summary || {};
+
+        const member =
+            result.data?.member || {};
+
+        const history =
+            Array.isArray(result.data?.history)
+                ? result.data.history
+                : [];
+
+        totalScoreElement.innerText =
+            Number(summary.totalPoints) || 0;
+
+        attendanceScoreElement.innerText =
+            Number(summary.attendancePoints) || 0;
+
+        if (groupRankText) {
+            groupRankText.innerText =
+                "Trong nhóm " +
+                (
+                    member.group?.name ||
+                    "Chưa phân nhóm"
+                );
+        }
+
+        if (history.length === 0) {
+            historyBody.innerHTML = `
+                <tr>
+                    <td colspan="3">
+                        Chưa có lịch sử điểm.
+                    </td>
+                </tr>
+            `;
+
+            return;
+        }
+
+        historyBody.innerHTML =
+            history.map(item => {
+                const createdDate =
+                    parseSqlLocalDateTime(
+                        item.createdAt
+                    );
+
+                const createdAtText =
+                    createdDate
+                        ? createdDate.toLocaleString(
+                            "vi-VN"
+                        )
+                        : "—";
+
+                const points =
+                    Number(item.points) || 0;
+
+                const description =
+                    item.description ||
+                    item.sourceTypeLabel ||
+                    "Cập nhật điểm";
+
+                return `
+                    <tr>
+                        <td>${createdAtText}</td>
+
+                        <td>
+                            ${description}
+                            <br>
+                            <small>
+                                ${
+                                    item.sourceTypeLabel ||
+                                    item.sourceType ||
+                                    ""
+                                }
+                            </small>
+                        </td>
+
+                        <td>
+                            ${points > 0 ? "+" : ""}${points}
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+    } catch (error) {
+        console.error(
+            "Load personal score error:",
+            error
+        );
+
+        totalScoreElement.innerText = "0";
+        attendanceScoreElement.innerText = "0";
+
         historyBody.innerHTML = `
             <tr>
-                <td colspan="3">Chưa có lịch sử điểm.</td>
+                <td colspan="3">
+                    Không thể kết nối đến Backend.
+                </td>
             </tr>
         `;
-        return;
     }
-
-    historyBody.innerHTML = myScores.map(item => `
-        <tr>
-            <td>${item.createdAt}</td>
-            <td>${item.reason}</td>
-            <td>${item.scoreValue > 0 ? "+" : ""}${item.scoreValue}</td>
-        </tr>
-    `).join("");
 }
 
-function loadDashboardPersonalScoreDemo() {
-    const scoreElement = document.getElementById("dashboardPersonalScore");
+async function loadDashboardPersonalScoreDemo() {
+    const scoreElement =
+        document.getElementById(
+            "dashboardPersonalScore"
+        );
 
     if (!scoreElement) {
         return;
     }
 
-    const currentUser = getCurrentUserDemo();
+    const token =
+        localStorage.getItem("accessToken");
 
-    if (!currentUser) {
+    if (!token) {
+        logoutDemo();
         return;
     }
 
-    const totalScore = getTotalScoreByUsernameDemo(currentUser.username);
+    scoreElement.innerText = "...";
 
-    scoreElement.innerText = totalScore;
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/scores/me`,
+            {
+                method: "GET",
+                headers: {
+                    Authorization:
+                        `Bearer ${token}`
+                }
+            }
+        );
+
+        const result = await response.json();
+
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
+
+        if (response.status === 403) {
+            scoreElement.innerText = "0";
+
+            console.error(
+                "Dashboard personal score:",
+                result?.error?.message ||
+                "Tài khoản chưa được liên kết với học viên."
+            );
+
+            return;
+        }
+
+        if (!response.ok || !result.success) {
+            scoreElement.innerText = "0";
+
+            console.error(
+                "Dashboard personal score error:",
+                result?.error?.message ||
+                "Không thể tải điểm cá nhân."
+            );
+
+            return;
+        }
+
+        scoreElement.innerText =
+            Number(
+                result.data?.summary?.totalPoints
+            ) || 0;
+    } catch (error) {
+        console.error(
+            "Load dashboard personal score error:",
+            error
+        );
+
+        scoreElement.innerText = "0";
+    }
 }
 
 
@@ -3636,30 +3896,180 @@ function getGroupTotalScoreDemo(groupName) {
 
 }
 
-function loadMyGroupSummaryDemo() {
 
-    const groupName =
+let myGroupScoreApiCache = null;
+let myGroupScoreApiPromise = null;
+
+async function getMyGroupScoreApiData() {
+    if (myGroupScoreApiCache) {
+        return myGroupScoreApiCache;
+    }
+
+    if (myGroupScoreApiPromise) {
+        return myGroupScoreApiPromise;
+    }
+
+    const token =
+        localStorage.getItem("accessToken");
+
+    if (!token) {
+        logoutDemo();
+        return null;
+    }
+
+    myGroupScoreApiPromise = fetch(
+        `${API_BASE_URL}/api/scores/my-group`,
+        {
+            method: "GET",
+            headers: {
+                Authorization:
+                    `Bearer ${token}`
+            }
+        }
+    )
+        .then(async response => {
+            const result =
+                await response.json();
+
+            if (response.status === 401) {
+                logoutDemo();
+                return null;
+            }
+
+            if (
+                !response.ok ||
+                !result.success
+            ) {
+                throw new Error(
+                    result?.error?.message ||
+                    "Không thể tải dữ liệu điểm nhóm."
+                );
+            }
+
+            myGroupScoreApiCache =
+                result.data;
+
+            return myGroupScoreApiCache;
+        })
+        .finally(() => {
+            myGroupScoreApiPromise = null;
+        });
+
+    return myGroupScoreApiPromise;
+}
+
+
+let groupRankingApiCache = null;
+let groupRankingApiPromise = null;
+
+async function getGroupRankingApiData() {
+    if (groupRankingApiCache) {
+        return groupRankingApiCache;
+    }
+
+    if (groupRankingApiPromise) {
+        return groupRankingApiPromise;
+    }
+
+    const token =
+        localStorage.getItem("accessToken");
+
+    if (!token) {
+        logoutDemo();
+        return null;
+    }
+
+    groupRankingApiPromise = fetch(
+        `${API_BASE_URL}/api/scores/groups`,
+        {
+            method: "GET",
+            headers: {
+                Authorization:
+                    `Bearer ${token}`
+            }
+        }
+    )
+        .then(async response => {
+            const result =
+                await response.json();
+
+            if (response.status === 401) {
+                logoutDemo();
+                return null;
+            }
+
+            if (
+                !response.ok ||
+                !result.success
+            ) {
+                throw new Error(
+                    result?.error?.message ||
+                    "Không thể tải bảng xếp hạng nhóm."
+                );
+            }
+
+            groupRankingApiCache =
+                Array.isArray(result.data?.groups)
+                    ? result.data.groups
+                    : [];
+
+            return groupRankingApiCache;
+        })
+        .finally(() => {
+            groupRankingApiPromise = null;
+        });
+
+    return groupRankingApiPromise;
+}
+
+
+
+async function loadMyGroupSummaryDemo() {
+    const groupNameElement =
         document.getElementById("myGroupName");
 
-    const totalScore =
-        document.getElementById("myGroupTotalScore");
+    const totalScoreElement =
+        document.getElementById(
+            "myGroupTotalScore"
+        );
 
-    if (!groupName || !totalScore) {
+    if (
+        !groupNameElement ||
+        !totalScoreElement
+    ) {
         return;
     }
 
-    const currentUser = getCurrentUserDemo();
+    groupNameElement.innerText = "...";
+    totalScoreElement.innerText = "...";
 
-    if (!currentUser) {
-        return;
+    try {
+        const data =
+            await getMyGroupScoreApiData();
+
+        if (!data) {
+            return;
+        }
+
+        groupNameElement.innerText =
+            data.group?.name ||
+            "Chưa phân nhóm";
+
+        totalScoreElement.innerText =
+            Number(
+                data.summary?.totalPoints
+            ) || 0;
+    } catch (error) {
+        console.error(
+            "Load group summary error:",
+            error
+        );
+
+        groupNameElement.innerText =
+            "Không thể tải";
+
+        totalScoreElement.innerText = "0";
     }
-
-    groupName.innerText =
-        currentUser.groupName;
-
-    totalScore.innerText =
-        getGroupTotalScoreDemo(currentUser.groupName);
-
 }
 
 function getPersonalRankingDemo() {
@@ -3780,55 +4190,111 @@ function getGroupRankingWithScoresDemo() {
     return groups;
 }
 
-function loadTopGroupRankingDemo() {
-    const list = document.getElementById("topGroupRankingList");
+async function loadTopGroupRankingDemo() {
+    const list =
+        document.getElementById(
+            "topGroupRankingList"
+        );
 
     if (!list) {
         return;
     }
 
-    const topGroups = getGroupRankingWithScoresDemo().slice(0, 3);
+    list.innerHTML = `
+        <p class="empty-note">
+            Đang tải Top nhóm...
+        </p>
+    `;
 
-    if (topGroups.length === 0) {
-        list.innerHTML = `<p class="empty-note">Chưa có dữ liệu nhóm.</p>`;
-        return;
+    try {
+        const groups =
+            await getGroupRankingApiData();
+
+        if (!groups) {
+            return;
+        }
+
+        const topGroups =
+            groups.slice(0, 3);
+
+        if (topGroups.length === 0) {
+            list.innerHTML = `
+                <p class="empty-note">
+                    Chưa có dữ liệu nhóm.
+                </p>
+            `;
+
+            return;
+        }
+
+        list.innerHTML =
+            topGroups.map(item => {
+                const groupName =
+                    item.group?.name ||
+                    "Chưa xác định";
+
+                return `
+                    <div class="question-card">
+                        <h3>
+                            #${Number(item.ranking) || "-"}
+                            ${groupName}
+                        </h3>
+
+                        <p>
+                            ⭐ ${Number(item.totalPoints) || 0} điểm
+                        </p>
+                    </div>
+                `;
+            }).join("");
+    } catch (error) {
+        console.error(
+            "Load top group ranking error:",
+            error
+        );
+
+        list.innerHTML = `
+            <p class="empty-note">
+                Không thể tải Top nhóm.
+            </p>
+        `;
     }
-
-    list.innerHTML = topGroups.map((group, index) => `
-        <div class="question-card">
-            <h3>#${index + 1} ${group.groupName}</h3>
-            <p>⭐ ${group.score} điểm</p>
-        </div>
-    `).join("");
 }
 
-function loadMyGroupRankDemo() {
-    const rankElement = document.getElementById("myGroupRankNumber");
+async function loadMyGroupRankDemo() {
+    const rankElement =
+        document.getElementById(
+            "myGroupRankNumber"
+        );
 
     if (!rankElement) {
         return;
     }
 
-    const currentUser = getCurrentUserDemo();
+    rankElement.innerText = "...";
 
-    if (!currentUser) {
-        return;
-    }
+    try {
+        const data =
+            await getMyGroupScoreApiData();
 
-    const ranking = getGroupRankingWithScoresDemo();
+        if (!data) {
+            return;
+        }
 
-    const myGroupIndex = ranking.findIndex(
-        group =>
-            group.groupName.toLowerCase() ===
-            currentUser.groupName.toLowerCase()
-    );
+        const ranking =
+            Number(data.ranking);
 
-    if (myGroupIndex === -1) {
+        rankElement.innerText =
+            ranking > 0
+                ? "#" + ranking
+                : "-";
+    } catch (error) {
+        console.error(
+            "Load group ranking error:",
+            error
+        );
+
         rankElement.innerText = "-";
-        return;
     }
-
-    rankElement.innerText = "#" + (myGroupIndex + 1);
 }
 
 function getOpenCheckinWindowsDemo() {
@@ -4103,7 +4569,14 @@ function loadDeviceWarningDemo() {
     `).join("");
 }
 
-function loadAdminAttendanceTableDemo() {
+
+let adminAttendanceRosterApiCache = [];
+let adminAttendanceSummaryApiCache = null;
+let adminAttendanceCurrentSessionApi = null;
+
+
+
+async function loadAdminAttendanceTableDemo() {
     const tableBody =
         document.getElementById("adminAttendanceTableBody");
 
@@ -4111,127 +4584,202 @@ function loadAdminAttendanceTableDemo() {
         return;
     }
 
-    const students = getImportedStudentsDemo();
+    const token = localStorage.getItem("accessToken");
 
-    const attendanceHistory =
-        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
-
-    const currentSession = getOpenSessionDemo();
-
-    if (!currentSession) {
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="7">
-                    Hiện chưa có buổi học nào đang mở.
-                </td>
-            </tr>
-        `;
-
-        loadAttendanceGroupFilterDemo();
-        updateAttendanceSearchResultDemo();
+    if (!token) {
+        logoutDemo();
         return;
     }
 
-    const sessionRecords = attendanceHistory.filter(
-        item => item.session === currentSession.name
-    );
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="7">
+                Đang tải dữ liệu điểm danh...
+            </td>
+        </tr>
+    `;
 
-    const tableRows = [];
-
-    students.forEach(student => {
-        const studentRecords = sessionRecords.filter(item =>
-            item.username &&
-            item.username.toLowerCase() ===
-            student.username.toLowerCase()
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/attendance/admin/current-session`,
+            {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
         );
 
-        if (studentRecords.length === 0) {
-            tableRows.push({
-                username: student.username,
-                fullName: student.fullName,
-                groupName: student.groupName,
-                windowLabel: "-",
-                checkInTime: "-",
-                distance: "-",
-                points: 0,
-                status: "Chưa điểm danh",
-                statusKey: "absent"
-            });
+        const result = await response.json();
 
+        if (response.status === 401) {
+            logoutDemo();
             return;
         }
 
-        studentRecords.forEach(record => {
-            tableRows.push({
-                username: student.username,
-                fullName: student.fullName,
-                groupName: student.groupName,
-                windowLabel: record.windowLabel || "Điểm danh",
-                checkInTime: record.checkInTime || "-",
-                distance: record.distance || "-",
-                points: Number(record.points || 0),
-                status: record.status || "Có mặt",
-                statusKey: "checkedin"
-            });
-        });
-    });
+        if (response.status === 403) {
+            window.location.href = "dashboard.html";
+            return;
+        }
 
-    if (tableRows.length === 0) {
+        if (!response.ok || !result.success) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="7">
+                        ${result?.error?.message ||
+                        "Không thể tải dữ liệu điểm danh."}
+                    </td>
+                </tr>
+            `;
+
+            adminAttendanceRosterApiCache = [];
+            adminAttendanceSummaryApiCache = null;
+            adminAttendanceCurrentSessionApi = null;
+
+            loadAdminAttendanceStatsDemo();
+            loadAttendanceGroupFilterDemo();
+            updateAttendanceSearchResultDemo();
+            return;
+        }
+
+        adminAttendanceRosterApiCache =
+            result.data.roster || [];
+
+        adminAttendanceSummaryApiCache =
+            result.data.summary || null;
+
+        adminAttendanceCurrentSessionApi =
+            result.data.currentSession || null;
+
+        if (adminAttendanceRosterApiCache.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="7">
+                        Chưa có dữ liệu học viên.
+                    </td>
+                </tr>
+            `;
+
+            loadAdminAttendanceStatsDemo();
+            loadAttendanceGroupFilterDemo();
+            updateAttendanceSearchResultDemo();
+            return;
+        }
+
+        tableBody.innerHTML =
+            adminAttendanceRosterApiCache.map(item => {
+                const checkedInDate =
+                    item.attendance?.checkedInAt
+                        ? parseSqlLocalDateTime(
+                            item.attendance.checkedInAt
+                        )
+                        : null;
+
+                const checkInTimeText =
+                    checkedInDate
+                        ? checkedInDate.toLocaleString("vi-VN")
+                        : "-";
+
+                const distanceText =
+                    item.attendance?.distanceM !== null &&
+                    item.attendance?.distanceM !== undefined
+                        ? formatDistance(
+                            Number(item.attendance.distanceM)
+                        )
+                        : "-";
+
+                const groupName =
+                    item.group?.name ||
+                    "Chưa phân nhóm";
+
+                const statusKey =
+                    item.isCheckedIn
+                        ? "checkedin"
+                        : "absent";
+
+                const statusText =
+                    item.isCheckedIn
+                        ? "Có mặt"
+                        : "Chưa điểm danh";
+
+                return `
+                    <tr
+                        class="${
+                            statusKey === "absent"
+                                ? "attendance-row-absent"
+                                : ""
+                        }"
+                        data-username="${String(
+                            item.tkhCode || ""
+                        ).toLowerCase()}"
+                        data-name="${String(
+                            item.fullName || ""
+                        ).toLowerCase()}"
+                        data-group="${String(
+                            groupName
+                        ).toLowerCase()}"
+                        data-status="${statusKey}"
+                    >
+                        <td>
+                            ${item.fullName || "-"}
+                            <br>
+                            <small>${item.tkhCode || "-"}</small>
+                        </td>
+
+                        <td>${groupName}</td>
+
+                        <td>
+                            ${item.isCheckedIn
+                                ? "Điểm danh"
+                                : "-"}
+                        </td>
+
+                        <td>${checkInTimeText}</td>
+
+                        <td>${distanceText}</td>
+
+                        <td>-</td>
+
+                        <td class="${
+                            statusKey === "checkedin"
+                                ? "attendance-status-checked"
+                                : "attendance-status-absent"
+                        }">
+                            ${
+                                item.isCheckedIn
+                                    ? "✅ " + statusText
+                                    : "❌ " + statusText
+                            }
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+
+        loadAdminAttendanceStatsDemo();
+        loadAttendanceGroupFilterDemo();
+        filterAttendanceTable();
+    } catch (error) {
+        console.error(
+            "Load admin attendance error:",
+            error
+        );
+
+        adminAttendanceRosterApiCache = [];
+        adminAttendanceSummaryApiCache = null;
+        adminAttendanceCurrentSessionApi = null;
+
         tableBody.innerHTML = `
             <tr>
                 <td colspan="7">
-                    Chưa có dữ liệu học viên.
+                    Không thể kết nối đến Backend.
                 </td>
             </tr>
         `;
 
+        loadAdminAttendanceStatsDemo();
         loadAttendanceGroupFilterDemo();
         updateAttendanceSearchResultDemo();
-        return;
     }
-
-    tableBody.innerHTML = tableRows.map(item => `
-        <tr
-            class="${
-                item.statusKey === "absent"
-                    ? "attendance-row-absent"
-                    : ""
-            }"
-            data-username="${String(item.username).toLowerCase()}"
-            data-name="${String(item.fullName).toLowerCase()}"
-            data-group="${String(item.groupName).toLowerCase()}"
-            data-status="${item.statusKey}"
-        >
-            <td>${item.fullName}</td>
-
-            <td>${item.groupName}</td>
-
-            <td>${item.windowLabel}</td>
-
-            <td>${item.checkInTime}</td>
-
-            <td>${item.distance}</td>
-
-            <td>
-                ${item.points > 0 ? "+" + item.points : "-"}
-            </td>
-
-            <td class="${
-                item.statusKey === "checkedin"
-                    ? "attendance-status-checked"
-                    : "attendance-status-absent"
-            }">
-                ${
-                    item.statusKey === "checkedin"
-                        ? "✅ " + item.status
-                        : "❌ Chưa điểm danh"
-                }
-            </td>
-        </tr>
-    `).join("");
-
-    loadAttendanceGroupFilterDemo();
-    filterAttendanceTable();
 }
 
 //hàm dropdown 8 nhóm nhỏ
@@ -4245,13 +4793,11 @@ function loadAttendanceGroupFilterDemo() {
 
     const previousValue = select.value;
 
-    const students = getImportedStudentsDemo();
-
     const groups = [
         ...new Set(
-            students
-                .map(student => student.groupName)
-                .filter(groupName => groupName)
+            adminAttendanceRosterApiCache
+                .map(item => item.group?.name)
+                .filter(Boolean)
         )
     ].sort((a, b) =>
         a.localeCompare(b, "vi")
@@ -4530,215 +5076,303 @@ function exportAttendanceExcelDemo() {
 
 
 function loadAdminAttendanceStatsDemo() {
-    const totalElement = document.getElementById("adminTotalStudents");
-    const checkedElement = document.getElementById("adminCheckedInStudents");
-    const absentElement = document.getElementById("adminAbsentStudents");
-    const percentElement = document.getElementById("adminCheckedInPercent");
+    const totalElement =
+        document.getElementById("adminTotalStudents");
 
-    const morningElement = document.getElementById("morningCheckinCount");
-    const breakElement = document.getElementById("breakCheckinCount");
-    const endElement = document.getElementById("endCheckinCount");
-    const devotionElement = document.getElementById("devotionCheckinCount");
+    const checkedElement =
+        document.getElementById("adminCheckedInStudents");
+
+    const absentElement =
+        document.getElementById("adminAbsentStudents");
+
+    const percentElement =
+        document.getElementById("adminCheckedInPercent");
+
+    const morningElement =
+        document.getElementById("morningCheckinCount");
+
+    const breakElement =
+        document.getElementById("breakCheckinCount");
+
+    const endElement =
+        document.getElementById("endCheckinCount");
+
+    const devotionElement =
+        document.getElementById("devotionCheckinCount");
 
     if (!totalElement) {
         return;
     }
 
-    const students = getImportedStudentsDemo();
-    const attendanceHistory =
-        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+    const summary =
+        adminAttendanceSummaryApiCache || {
+            totalStudents: 0,
+            checkedInCount: 0,
+            absentCount: 0,
+            checkedInPercent: 0
+        };
 
-    const today = new Date().toDateString();
-    const currentSession = getOpenSessionDemo();
+    totalElement.innerText =
+        summary.totalStudents || 0;
 
-    if (!currentSession) {
-        totalElement.innerText = students.length;
-        checkedElement.innerText = 0;
-        absentElement.innerText = students.length;
-        percentElement.innerText = "0%";
+    checkedElement.innerText =
+        summary.checkedInCount || 0;
 
-        morningElement.innerText = 0;
-        breakElement.innerText = 0;
-        endElement.innerText = 0;
-        devotionElement.innerText = 0;
+    absentElement.innerText =
+        summary.absentCount || 0;
 
-        return;
-    }
+    percentElement.innerText =
+        `${Number(
+            summary.checkedInPercent || 0
+        ).toFixed(1)}%`;
 
-    const session = currentSession.name;
-
-    const todayRecords = attendanceHistory.filter(item =>
-        item.dateKey === today &&
-        item.session === session
-    );
-
-    const uniqueCheckedUsers = [];
-
-    todayRecords.forEach(item => {
-        const existed = uniqueCheckedUsers.find(
-            username =>
-                username.toLowerCase() === item.username.toLowerCase()
-        );
-
-        if (!existed) {
-            uniqueCheckedUsers.push(item.username);
-        }
-    });
-
-    const totalStudents = students.length;
-    const checkedCount = uniqueCheckedUsers.length;
-    const absentCount = totalStudents - checkedCount;
-
-    const checkedPercent =
-        totalStudents > 0
-            ? ((checkedCount / totalStudents) * 100).toFixed(1)
-            : "0.0";
-
-    totalElement.innerText = totalStudents;
-    checkedElement.innerText = checkedCount;
-    absentElement.innerText = absentCount;
-    percentElement.innerText = checkedPercent + "%";
-
-    morningElement.innerText = todayRecords.filter(
-        item => item.windowKey === "morning"
-    ).length;
-
-    breakElement.innerText = todayRecords.filter(
-        item => item.windowKey === "break"
-    ).length;
-
-    endElement.innerText = todayRecords.filter(
-        item => item.windowKey === "end"
-    ).length;
-
-    devotionElement.innerText = todayRecords.filter(
-        item => item.windowKey === "devotion"
-    ).length;
+    /*
+     * Database Beta hiện hỗ trợ 1 lần điểm danh / buổi.
+     * Chưa tách các khung morning, break, end, devotion.
+     */
+    morningElement.innerText = 0;
+    breakElement.innerText = 0;
+    endElement.innerText = 0;
+    devotionElement.innerText = 0;
 }
 
-function loadAdminDashboardSummaryDemo() {
-    const totalStudentsElement = document.getElementById("adminDashboardTotalStudents");
-    const checkedInElement = document.getElementById("adminDashboardCheckedIn");
-    const checkedPercentElement = document.getElementById("adminDashboardCheckedInPercent");
-    const currentSessionElement = document.getElementById("adminDashboardCurrentSession");
-    const checkinStatusElement = document.getElementById("adminDashboardCheckinStatus");
+async function loadAdminDashboardSummaryDemo() {
+    const totalStudentsElement =
+        document.getElementById(
+            "adminDashboardTotalStudents"
+        );
+
+    const checkedInElement =
+        document.getElementById(
+            "adminDashboardCheckedIn"
+        );
+
+    const checkedPercentElement =
+        document.getElementById(
+            "adminDashboardCheckedInPercent"
+        );
+
+    const currentSessionElement =
+        document.getElementById(
+            "adminDashboardCurrentSession"
+        );
+
+    const checkinStatusElement =
+        document.getElementById(
+            "adminDashboardCheckinStatus"
+        );
 
     if (!totalStudentsElement) {
         return;
     }
 
-    const students = getImportedStudentsDemo();
-    const attendanceHistory = JSON.parse(localStorage.getItem("attendanceHistory")) || [];
-    const today = new Date().toDateString();
-    const currentSession = getOpenSessionDemo();
+    const token =
+        localStorage.getItem("accessToken");
 
-    let todayRecords = [];
-
-    if (currentSession) {
-        currentSessionElement.innerText = currentSession.name;
-
-        todayRecords = attendanceHistory.filter(item =>
-            item.dateKey === today &&
-            item.session === currentSession.name
-        );
-    } else {
-        currentSessionElement.innerText = "Chưa mở";
+    if (!token) {
+        logoutDemo();
+        return;
     }
 
-    const uniqueCheckedUsers = [];
+    totalStudentsElement.innerText = "...";
+    checkedInElement.innerText = "...";
 
-    todayRecords.forEach(item => {
-        const existed = uniqueCheckedUsers.some(
-            username => username.toLowerCase() === item.username.toLowerCase()
+    checkedPercentElement.innerText =
+        "Đang tải thống kê...";
+
+    currentSessionElement.innerText = "...";
+
+    checkinStatusElement.innerText =
+        "Trạng thái: Đang kiểm tra...";
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/attendance/admin/current-session`,
+            {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
         );
 
-        if (!existed) {
-            uniqueCheckedUsers.push(item.username);
+        const result = await response.json();
+
+        if (response.status === 401) {
+            logoutDemo();
+            return;
         }
-    });
 
-    const totalStudents = students.length;
-    const checkedCount = uniqueCheckedUsers.length;
+        if (response.status === 403) {
+            window.location.href =
+                "dashboard.html";
+            return;
+        }
 
-    const checkedPercent =
-        totalStudents > 0
-            ? ((checkedCount / totalStudents) * 100).toFixed(1)
-            : "0.0";
+        if (!response.ok || !result.success) {
+            totalStudentsElement.innerText = "0";
+            checkedInElement.innerText = "0";
 
-    totalStudentsElement.innerText = totalStudents;
-    checkedInElement.innerText = checkedCount;
-    checkedPercentElement.innerText = checkedPercent + "% thành viên";
+            checkedPercentElement.innerText =
+                "0.0% thành viên";
 
-    const openWindows = getOpenCheckinWindowsDemo();
+            currentSessionElement.innerText =
+                "Không thể tải";
 
-    if (!currentSession) {
-        checkinStatusElement.innerText = "Trạng thái: Chưa mở buổi học";
-    } else if (openWindows.length === 0) {
-        checkinStatusElement.innerText = "Trạng thái: Chưa mở điểm danh";
-    } else {
+            checkinStatusElement.innerText =
+                result?.error?.message ||
+                "Trạng thái: Không thể tải dữ liệu";
+
+            adminAttendanceRosterApiCache = [];
+            adminAttendanceSummaryApiCache = null;
+            adminAttendanceCurrentSessionApi = null;
+
+            loadAdminDashboardGroupStatsDemo();
+            return;
+        }
+
+        adminAttendanceRosterApiCache =
+            result.data.roster || [];
+
+        adminAttendanceSummaryApiCache =
+            result.data.summary || null;
+
+        adminAttendanceCurrentSessionApi =
+            result.data.currentSession || null;
+
+        const summary =
+            adminAttendanceSummaryApiCache || {
+                totalStudents: 0,
+                checkedInCount: 0,
+                absentCount: 0,
+                checkedInPercent: 0
+            };
+
+        totalStudentsElement.innerText =
+            Number(summary.totalStudents) || 0;
+
+        checkedInElement.innerText =
+            Number(summary.checkedInCount) || 0;
+
+        checkedPercentElement.innerText =
+            `${Number(
+                summary.checkedInPercent || 0
+            ).toFixed(1)}% thành viên`;
+
+        if (adminAttendanceCurrentSessionApi) {
+            currentSessionElement.innerText =
+                adminAttendanceCurrentSessionApi.name ||
+                "Buổi học";
+
+            checkinStatusElement.innerText =
+                "Trạng thái: Đang mở điểm danh";
+        } else {
+            currentSessionElement.innerText =
+                "Chưa mở";
+
+            checkinStatusElement.innerText =
+                "Trạng thái: Chưa mở buổi học";
+        }
+
+        loadAdminDashboardGroupStatsDemo();
+    } catch (error) {
+        console.error(
+            "Load admin dashboard summary error:",
+            error
+        );
+
+        adminAttendanceRosterApiCache = [];
+        adminAttendanceSummaryApiCache = null;
+        adminAttendanceCurrentSessionApi = null;
+
+        totalStudentsElement.innerText = "0";
+        checkedInElement.innerText = "0";
+
+        checkedPercentElement.innerText =
+            "0.0% thành viên";
+
+        currentSessionElement.innerText =
+            "Không thể tải";
+
         checkinStatusElement.innerText =
-            "Đang mở: " + openWindows.map(item => item.label).join(", ");
+            "Trạng thái: Không thể kết nối Backend";
+
+        loadAdminDashboardGroupStatsDemo();
     }
 }
 
 function loadAdminDashboardGroupStatsDemo() {
-    const tableBody = document.getElementById("adminDashboardGroupStatsBody");
+    const tableBody =
+        document.getElementById(
+            "adminDashboardGroupStatsBody"
+        );
 
     if (!tableBody) {
         return;
     }
 
-    const students = getImportedStudentsDemo();
-    const attendanceHistory = JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+    const roster =
+        Array.isArray(adminAttendanceRosterApiCache)
+            ? adminAttendanceRosterApiCache
+            : [];
 
-    const today = new Date().toDateString();
-    const currentSession = getOpenSessionDemo();
+    if (roster.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="4">
+                    Chưa có dữ liệu học viên trong buổi học hiện tại.
+                </td>
+            </tr>
+        `;
+        return;
+    }
 
-    const todayRecords = currentSession
-        ? attendanceHistory.filter(item =>
-            item.dateKey === today &&
-            item.session === currentSession.name
-        )
-        : [];
+    const groupMap = new Map();
 
-    const groupStats = groupRankingDemo.map(group => {
-        const groupStudents = students.filter(student =>
-            student.groupName &&
-            student.groupName.toLowerCase() === group.groupName.toLowerCase()
-        );
+    roster.forEach(item => {
+        const groupName =
+            item.group?.name || "Chưa phân nhóm";
 
-        const checkedUsers = [];
+        if (!groupMap.has(groupName)) {
+            groupMap.set(groupName, {
+                groupName,
+                totalMembers: 0,
+                checkedIn: 0
+            });
+        }
 
-        todayRecords.forEach(record => {
-            const isSameGroup =
-                record.groupName &&
-                record.groupName.toLowerCase() === group.groupName.toLowerCase();
+        const groupStats =
+            groupMap.get(groupName);
 
-            const alreadyCounted = checkedUsers.some(
-                username => username.toLowerCase() === record.username.toLowerCase()
-            );
+        groupStats.totalMembers += 1;
 
-            if (isSameGroup && !alreadyCounted) {
-                checkedUsers.push(record.username);
-            }
-        });
-
-        return {
-            groupName: group.groupName,
-            totalMembers: groupStudents.length,
-            checkedIn: checkedUsers.length,
-            totalScore: getGroupTotalScoreDemo(group.groupName)
-        };
+        if (item.isCheckedIn) {
+            groupStats.checkedIn += 1;
+        }
     });
 
-    tableBody.innerHTML = groupStats.map(item => `
-        <tr>
-            <td>${item.groupName}</td>
-            <td>${item.totalMembers}</td>
-            <td>${item.checkedIn}</td>
-            <td>${item.totalScore}</td>
-        </tr>
-    `).join("");
+    const groupStatsList =
+        Array.from(groupMap.values())
+            .sort((a, b) =>
+                a.groupName.localeCompare(
+                    b.groupName,
+                    "vi"
+                )
+            );
+
+    tableBody.innerHTML =
+        groupStatsList.map(item => `
+            <tr>
+                <td>${item.groupName}</td>
+                <td>${item.totalMembers}</td>
+                <td>${item.checkedIn}</td>
+                <td>
+                    ${getGroupTotalScoreDemo(
+                        item.groupName
+                    )}
+                </td>
+            </tr>
+        `).join("");
 }
 
 function loadAdminDashboardExtraStatsDemo() {
@@ -4911,45 +5545,168 @@ function downloadQuestionsByTypeDemo(questionType) {
     URL.revokeObjectURL(url);
 }
 
-function loadAdminGroupsDemo() {
-    const totalGroupsElement = document.getElementById("adminGroupsTotalGroups");
-    const totalStudentsElement = document.getElementById("adminGroupsTotalStudents");
-    const topGroupElement = document.getElementById("adminGroupsTopGroup");
-    const topGroupScoreElement = document.getElementById("adminGroupsTopGroupScore");
-    const tableBody = document.getElementById("adminGroupsTableBody");
+async function loadAdminGroupsDemo() {
+    const totalGroupsElement =
+        document.getElementById(
+            "adminGroupsTotalGroups"
+        );
+
+    const totalStudentsElement =
+        document.getElementById(
+            "adminGroupsTotalStudents"
+        );
+
+    const topGroupElement =
+        document.getElementById(
+            "adminGroupsTopGroup"
+        );
+
+    const topGroupScoreElement =
+        document.getElementById(
+            "adminGroupsTopGroupScore"
+        );
+
+    const tableBody =
+        document.getElementById(
+            "adminGroupsTableBody"
+        );
 
     if (!totalGroupsElement || !tableBody) {
         return;
     }
 
-    const students = getImportedStudentsDemo();
-    const ranking = getGroupRankingWithScoresDemo();
+    const token =
+        localStorage.getItem("accessToken");
 
-    totalGroupsElement.innerText = groupRankingDemo.length;
-    totalStudentsElement.innerText = students.length;
-
-    if (ranking.length > 0) {
-        topGroupElement.innerText = ranking[0].groupName;
-        topGroupScoreElement.innerText = ranking[0].score + " điểm";
+    if (!token) {
+        logoutDemo();
+        return;
     }
 
-    tableBody.innerHTML = ranking.map((group, index) => {
-        const memberCount = students.filter(
-            student =>
-                student.groupName.toLowerCase() ===
-                group.groupName.toLowerCase()
-        ).length;
+    totalGroupsElement.innerText = "...";
+    totalStudentsElement.innerText = "...";
+    topGroupElement.innerText = "Chưa có";
+    topGroupScoreElement.innerText = "0 điểm";
 
-        return `
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="5">
+                Đang tải dữ liệu nhóm...
+            </td>
+        </tr>
+    `;
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/groups`,
+            {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        );
+
+        const result = await response.json();
+
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
+
+        if (response.status === 403) {
+            window.location.href =
+                "dashboard.html";
+            return;
+        }
+
+        if (!response.ok || !result.success) {
+            throw new Error(
+                result?.error?.message ||
+                "Không thể tải dữ liệu nhóm."
+            );
+        }
+
+        const groups =
+            Array.isArray(result.data?.groups)
+                ? result.data.groups
+                : [];
+
+        const totalStudents =
+            groups.reduce(
+                (total, group) =>
+                    total +
+                    Number(group.memberCount || 0),
+                0
+            );
+
+        totalGroupsElement.innerText =
+            groups.length;
+
+        totalStudentsElement.innerText =
+            totalStudents;
+
+        /*
+         * Module Score chưa chuyển Backend.
+         * Chưa xác định nhóm dẫn đầu thật.
+         */
+        topGroupElement.innerText =
+            "Chưa có dữ liệu";
+
+        topGroupScoreElement.innerText =
+            "0 điểm";
+
+        if (groups.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="5">
+                        Chưa có dữ liệu nhóm.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tableBody.innerHTML =
+            groups.map(group => `
+                <tr>
+                    <td>${group.code || "-"}</td>
+
+                    <td>${group.name || "-"}</td>
+
+                    <td>
+                        ${Number(
+                            group.memberCount || 0
+                        )}
+                    </td>
+
+                    <td>0</td>
+
+                    <td>-</td>
+                </tr>
+            `).join("");
+    } catch (error) {
+        console.error(
+            "Load admin groups error:",
+            error
+        );
+
+        totalGroupsElement.innerText = "0";
+        totalStudentsElement.innerText = "0";
+        topGroupElement.innerText =
+            "Không thể tải";
+
+        topGroupScoreElement.innerText =
+            "0 điểm";
+
+        tableBody.innerHTML = `
             <tr>
-                <td>G${String(index + 1).padStart(2, "0")}</td>
-                <td>${group.groupName}</td>
-                <td>${memberCount}</td>
-                <td>${group.score}</td>
-                <td>#${index + 1}</td>
+                <td colspan="5">
+                    Không thể tải dữ liệu nhóm.
+                </td>
             </tr>
         `;
-    }).join("");
+    }
 }
 
 
@@ -5674,12 +6431,21 @@ function getOpenSessionDemo() {
     ) || null;
 }
 
-function loadStudentDashboardStatsDemo() {
-    const attendanceElement = document.getElementById("dashboardAttendanceCount");
-    const groupScoreElement = document.getElementById("dashboardGroupScore");
-    const groupNameText = document.getElementById("dashboardGroupNameText");
+async function loadStudentDashboardStatsDemo() {
+    const attendanceElement =
+        document.getElementById("dashboardAttendanceCount");
 
-    if (!attendanceElement || !groupScoreElement || !groupNameText) {
+    const groupScoreElement =
+        document.getElementById("dashboardGroupScore");
+
+    const groupNameText =
+        document.getElementById("dashboardGroupNameText");
+
+    if (
+        !attendanceElement ||
+        !groupScoreElement ||
+        !groupNameText
+    ) {
         return;
     }
 
@@ -5689,58 +6455,220 @@ function loadStudentDashboardStatsDemo() {
         return;
     }
 
-    const attendanceHistory =
-        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
+    attendanceElement.innerText = "...";
 
-    const myAttendance = attendanceHistory.filter(item =>
-        item.username &&
-        item.username.toLowerCase() === currentUser.username.toLowerCase()
-    );
+    const token = localStorage.getItem("accessToken");
 
-    attendanceElement.innerText = myAttendance.length;
+    if (!token) {
+        logoutDemo();
+        return;
+    }
 
-    const groupScore = getGroupTotalScoreDemo(currentUser.groupName);
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/attendance/history`,
+            {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        );
 
-    groupScoreElement.innerText = groupScore;
-    groupNameText.innerText = "Nhóm " + currentUser.groupName;
+        const result = await response.json();
+
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
+
+        if (response.status === 403) {
+            attendanceElement.innerText = "0";
+        } else if (!response.ok || !result.success) {
+            attendanceElement.innerText = "0";
+
+            console.error(
+                "Dashboard attendance error:",
+                result?.error?.message ||
+                "Không thể tải số lần điểm danh."
+            );
+        } else {
+            attendanceElement.innerText =
+                Number(result.data.total) || 0;
+        }
+    } catch (error) {
+        console.error(
+            "Load dashboard attendance error:",
+            error
+        );
+
+        attendanceElement.innerText = "0";
+    }
+
+        try {
+        const scoreResponse = await fetch(
+            `${API_BASE_URL}/api/scores/my-group`,
+            {
+                method: "GET",
+                headers: {
+                    Authorization:
+                        `Bearer ${token}`
+                }
+            }
+        );
+
+        const scoreResult =
+            await scoreResponse.json();
+
+        if (scoreResponse.status === 401) {
+            logoutDemo();
+            return;
+        }
+
+        if (
+            !scoreResponse.ok ||
+            !scoreResult.success
+        ) {
+            groupScoreElement.innerText = "0";
+
+            groupNameText.innerText =
+                scoreResult?.error?.message ||
+                "Không thể tải điểm nhóm.";
+
+            return;
+        }
+
+        const group =
+            scoreResult.data?.group || {};
+
+        const summary =
+            scoreResult.data?.summary || {};
+
+        groupScoreElement.innerText =
+            Number(summary.totalPoints) || 0;
+
+        groupNameText.innerText =
+            "Nhóm " +
+            (
+                group.name ||
+                "Chưa phân nhóm"
+            );
+    } catch (error) {
+        console.error(
+            "Load dashboard group score error:",
+            error
+        );
+
+        groupScoreElement.innerText = "0";
+
+        groupNameText.innerText =
+            "Không thể tải điểm nhóm";
+    }
 }
 
-function loadGroupScoreHistoryDemo() {
-    const tableBody = document.getElementById("groupScoreHistoryBody");
+async function loadGroupScoreHistoryDemo() {
+    const tableBody =
+        document.getElementById(
+            "groupScoreHistoryBody"
+        );
 
     if (!tableBody) {
         return;
     }
 
-    const currentUser = getCurrentUserDemo();
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="3">
+                Đang tải lịch sử điểm nhóm...
+            </td>
+        </tr>
+    `;
 
-    if (!currentUser) {
-        return;
-    }
+    try {
+        const data =
+            await getMyGroupScoreApiData();
 
-    const scores = getStoredScoresDemo();
+        if (!data) {
+            return;
+        }
 
-    const groupScores = scores.filter(item =>
-        item.groupName &&
-        item.groupName.toLowerCase() === currentUser.groupName.toLowerCase()
-    );
+        const history =
+            Array.isArray(data.history)
+                ? data.history
+                : [];
 
-    if (groupScores.length === 0) {
+        if (history.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="3">
+                        Nhóm của bạn chưa có lịch sử điểm nhóm.
+                    </td>
+                </tr>
+            `;
+
+            return;
+        }
+
+        tableBody.innerHTML =
+            history.map(item => {
+                const createdDate =
+                    parseSqlLocalDateTime(
+                        item.createdAt
+                    );
+
+                const createdAtText =
+                    createdDate
+                        ? createdDate.toLocaleString(
+                            "vi-VN"
+                        )
+                        : "—";
+
+                const points =
+                    Number(item.points) || 0;
+
+                const description =
+                    item.description ||
+                    item.sourceTypeLabel ||
+                    "Cập nhật điểm nhóm";
+
+                return `
+                    <tr>
+                        <td>${createdAtText}</td>
+
+                        <td>
+                            ${description}
+
+                            <br>
+
+                            <small>
+                                ${
+                                    item.sourceTypeLabel ||
+                                    item.sourceType ||
+                                    ""
+                                }
+                            </small>
+                        </td>
+
+                        <td>
+                            ${points > 0 ? "+" : ""}${points}
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+    } catch (error) {
+        console.error(
+            "Load group score history error:",
+            error
+        );
+
         tableBody.innerHTML = `
             <tr>
-                <td colspan="3">Nhóm của bạn chưa có lịch sử điểm.</td>
+                <td colspan="3">
+                    Không thể tải lịch sử điểm nhóm.
+                </td>
             </tr>
         `;
-        return;
     }
-
-    tableBody.innerHTML = groupScores.map(item => `
-        <tr>
-            <td>${item.createdAt}</td>
-            <td>${item.reason} - ${item.fullName}</td>
-            <td>${item.scoreValue > 0 ? "+" : ""}${item.scoreValue}</td>
-        </tr>
-    `).join("");
 }
 
 function resetStudentPasswordDemo(username) {

@@ -4,6 +4,7 @@ const {
   findAttendanceRecord,
   createAttendanceRecord,
   findAttendanceHistoryByMemberId,
+  findCurrentSessionAttendanceRoster,
 } = require("../repositories/attendance.repository");
 
 function mapCurrentSession(session) {
@@ -316,8 +317,113 @@ async function getAttendanceHistory(memberId) {
 }
 
 
+function mapAttendanceRosterItem(item) {
+  const hasAttendance =
+    item.attendance_record_id !== null &&
+    item.attendance_record_id !== undefined;
+
+  return {
+    seasonMembershipId: item.season_membership_id,
+    memberId: item.member_id,
+    tkhCode: item.tkh_code,
+    fullName: item.full_name,
+    phone: item.phone,
+
+    group: item.group_id
+      ? {
+          id: item.group_id,
+          code: item.group_code,
+          name: item.group_name,
+        }
+      : null,
+
+    session: item.session_id
+      ? {
+          id: item.session_id,
+          name: item.session_name,
+          sessionNo: item.session_no,
+          scheduledStartAt: item.scheduled_start_at,
+          scheduledEndAt: item.scheduled_end_at,
+          status: item.session_status,
+        }
+      : null,
+
+    attendance: hasAttendance
+      ? {
+          id: item.attendance_record_id,
+          checkedInAt: item.checked_in_at,
+          method: item.method,
+          status: item.attendance_status,
+          latitude:
+            item.latitude !== null
+              ? Number(item.latitude)
+              : null,
+          longitude:
+            item.longitude !== null
+              ? Number(item.longitude)
+              : null,
+          accuracyM:
+            item.accuracy_m !== null
+              ? Number(item.accuracy_m)
+              : null,
+          distanceM:
+            item.distance_m !== null
+              ? Number(item.distance_m)
+              : null,
+          deviceInfo: item.device_info,
+          note: item.note,
+        }
+      : null,
+
+    isCheckedIn: hasAttendance,
+  };
+}
+
+
+async function getCurrentSessionAttendanceRoster() {
+  const rows =
+    await findCurrentSessionAttendanceRoster();
+
+  const roster = rows.map(mapAttendanceRosterItem);
+
+  const checkedInCount = roster.filter(
+    item => item.isCheckedIn
+  ).length;
+
+  const totalStudents = roster.length;
+
+  const absentCount =
+    Math.max(totalStudents - checkedInCount, 0);
+
+  const checkedInPercent =
+    totalStudents > 0
+      ? Number(
+          (
+            (checkedInCount / totalStudents) *
+            100
+          ).toFixed(1)
+        )
+      : 0;
+
+  const currentSession =
+    roster.find(item => item.session)?.session || null;
+
+  return {
+    roster,
+    summary: {
+      totalStudents,
+      checkedInCount,
+      absentCount,
+      checkedInPercent,
+    },
+    currentSession,
+  };
+}
+
+
 module.exports = {
   getCurrentOpenSession,
   checkIn,
   getAttendanceHistory,
+  getCurrentSessionAttendanceRoster,
 };

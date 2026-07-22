@@ -185,8 +185,28 @@ async function getHistory(req, res, next) {
 }
 
 
+async function getCurrentSessionRoster(req, res, next) {
+  try {
+    const result =
+      await attendanceService.getCurrentSessionAttendanceRoster();
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        currentSession: result.currentSession,
+        summary: result.summary,
+        roster: result.roster,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+
 module.exports = {
   getCurrentSession,
   checkIn,
   getHistory,
+  getCurrentSessionRoster,
 };

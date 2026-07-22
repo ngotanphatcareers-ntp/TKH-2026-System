@@ -14,6 +14,7 @@ function mapGroup(group) {
     name: group.name,
     logoPath: group.logo_path,
     displayOrder: group.display_order,
+    memberCount: Number(group.member_count) || 0,
     isActive: Boolean(group.is_active),
   };
 }

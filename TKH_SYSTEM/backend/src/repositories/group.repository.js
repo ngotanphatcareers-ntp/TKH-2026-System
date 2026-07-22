@@ -8,17 +8,30 @@ async function findGroupsBySeasonId(seasonId) {
     .input("seasonId", sql.Int, seasonId)
     .query(`
       SELECT
-        id,
-        season_id,
-        code,
-        name,
-        logo_path,
-        display_order,
-        is_active
-      FROM dbo.groups
-      WHERE season_id = @seasonId
-        AND is_active = 1
-      ORDER BY display_order ASC, id ASC;
+        g.id,
+        g.season_id,
+        g.code,
+        g.name,
+        g.logo_path,
+        g.display_order,
+        g.is_active,
+        COUNT(sm.id) AS member_count
+      FROM dbo.groups AS g
+      LEFT JOIN dbo.season_memberships AS sm
+        ON sm.group_id = g.id
+      WHERE g.season_id = @seasonId
+        AND g.is_active = 1
+      GROUP BY
+        g.id,
+        g.season_id,
+        g.code,
+        g.name,
+        g.logo_path,
+        g.display_order,
+        g.is_active
+      ORDER BY
+        g.display_order ASC,
+        g.id ASC;
     `);
 
   return result.recordset;
