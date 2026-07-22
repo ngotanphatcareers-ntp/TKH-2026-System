@@ -8,7 +8,12 @@ const {
   findGroupScoreHistory,
   findAllGroupScoreRankings,
   createGroupScoreTransaction,
+  findScoreTransactionsBySeasonMembershipId,
 } = require("../repositories/score.repository");
+
+const {
+  calculateMemberSummary,
+} = require("../utils/score-calculator");
 
 
 const ADMIN_SOURCE_TYPES = new Set([
@@ -278,6 +283,51 @@ function mapCreatedGroupScoreTransaction(
 
     createdAt:
       transaction.created_at,
+  };
+}
+
+
+async function getMemberScoreSummary(memberId) {
+  const normalizedMemberId =
+    Number(memberId);
+
+  if (
+    !Number.isInteger(normalizedMemberId) ||
+    normalizedMemberId <= 0
+  ) {
+    return {
+      success: false,
+      code: "MEMBER_ACCOUNT_REQUIRED",
+    };
+  }
+
+  const membership =
+    await findActiveMembershipByMemberId(
+      normalizedMemberId
+    );
+
+  if (!membership) {
+    return {
+      success: false,
+      code: "ACTIVE_MEMBERSHIP_NOT_FOUND",
+    };
+  }
+
+  const transactions =
+    await findScoreTransactionsBySeasonMembershipId(
+      membership.season_membership_id
+    );
+
+  const score =
+    calculateMemberSummary(
+      transactions
+    );
+
+  return {
+    success: true,
+    season: mapSeason(membership),
+    member: mapMember(membership),
+    score,
   };
 }
 
@@ -727,6 +777,7 @@ async function createAdminIndividualScore({
 
 
 module.exports = {
+  getMemberScoreSummary,
   getMyScores,
   getMyGroupScores,
   getGroupRankings,

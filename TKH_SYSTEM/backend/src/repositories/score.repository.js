@@ -612,6 +612,78 @@ async function createGroupScoreTransaction({
 }
 
 
+async function findScoreTransactionsBySeasonMembershipId(
+  seasonMembershipId
+) {
+  const pool = await getPool();
+
+  const result = await pool
+    .request()
+    .input(
+      "seasonMembershipId",
+      sql.Int,
+      seasonMembershipId
+    )
+    .query(`
+      SELECT
+        st.id,
+
+        st.season_membership_id
+          AS seasonMembershipId,
+
+        st.score_category
+          AS scoreCategory,
+
+        st.score_type
+          AS scoreType,
+
+        st.requested_points
+          AS requestedPoints,
+
+        st.applied_points
+          AS appliedPoints,
+
+        st.source_type
+          AS sourceType,
+
+        st.source_id
+          AS sourceId,
+
+        st.source_key
+          AS sourceKey,
+
+        st.description,
+        st.status,
+
+        st.created_by_user_id
+          AS createdByUserId,
+
+        st.created_at
+          AS createdAt,
+
+        st.reversed_by_user_id
+          AS reversedByUserId,
+
+        st.reversed_at
+          AS reversedAt,
+
+        st.reversal_reason
+          AS reversalReason
+
+      FROM dbo.score_transactions AS st
+
+      WHERE st.season_membership_id =
+            @seasonMembershipId
+
+      ORDER BY
+        st.created_at ASC,
+        st.id ASC;
+    `);
+
+  return result.recordset;
+}
+
+
 module.exports = {
   findActiveMembershipByMemberId,
   findActiveMembershipByUsername,
@@ -622,4 +694,5 @@ module.exports = {
   findGroupScoreHistory,
   findAllGroupScoreRankings,
   createGroupScoreTransaction,
+  findScoreTransactionsBySeasonMembershipId,
 };
