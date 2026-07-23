@@ -7,6 +7,11 @@ const {
   findCurrentSessionAttendanceRoster,
 } = require("../repositories/attendance.repository");
 
+
+const {
+  createScoreTransaction,
+} = require("../repositories/score.repository");
+
 function mapCurrentSession(session) {
   if (!session) {
     return null;
@@ -221,6 +226,28 @@ async function checkIn({
       accuracyM,
       distanceM,
       deviceInfo,
+    });
+
+    await createScoreTransaction({
+      seasonMembershipId: membership.id,
+
+      scoreCategory: "ATTENDANCE",
+
+      scoreType: "ATTENDANCE",
+
+      requestedPoints: 10,
+
+      appliedPoints: 10,
+
+      sourceType: "ATTENDANCE",
+
+      sourceId: record.id,
+
+      sourceKey: `ATTENDANCE_SESSION_${session.id}_MEMBER_${membership.id}`,
+
+      description: `Attendance - ${session.name}`,
+
+      createdByUserId: null,
     });
 
     return {
