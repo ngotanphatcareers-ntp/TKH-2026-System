@@ -7,6 +7,7 @@ const groupRoutes = require("./routes/group.routes");
 const memberRoutes = require("./routes/member.routes");
 const seasonRoutes = require("./routes/season.routes");
 const sessionRoutes = require("./routes/session.routes");
+const sessionPublicRoutes = require("./routes/session-public.routes");
 const attendanceRoutes = require("./routes/attendance.routes");
 const scoreRoutes = require("./routes/score.routes");
 const bibleChallengeRoutes = require(
@@ -39,6 +40,7 @@ app.use(
 );
 app.use("/api/admin/members", memberRoutes);
 app.use("/api/admin/sessions", sessionRoutes);
+app.use("/api/sessions", sessionPublicRoutes);
 app.use("/api/admin/test", adminTestRoutes);
 
 app.get("/api/health", (req, res) => {

@@ -27,6 +27,44 @@ async function getSessions(req, res, next) {
   }
 }
 
+
+async function getSessionOptions(req, res, next) {
+  try {
+    const result =
+      await sessionService.getCurrentSeasonSessions();
+
+    if (!result.season) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "ACTIVE_SEASON_NOT_FOUND",
+          message: "Không tìm thấy mùa đang hoạt động.",
+        },
+      });
+    }
+
+    const sessions = result.sessions.map(
+      (session) => ({
+        id: session.id,
+        name: session.name,
+        sessionNo: session.sessionNo,
+      })
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        sessions,
+        total: sessions.length,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+
+
 async function getSessionById(req, res, next) {
   try {
     const sessionId = Number(req.params.sessionId);
@@ -300,6 +338,7 @@ async function closeSession(req, res, next) {
 
 module.exports = {
   getSessions,
+  getSessionOptions,
   getSessionById,
   createSession,
   openSession,

@@ -35,6 +35,7 @@ router.get(
   sessionController.getSessions
 );
 
+
 router.get(
   "/:sessionId",
   authenticateToken,
