@@ -150,7 +150,11 @@ Random học viên trả bài Kinh Thánh theo buổi học.
                 Random Group
             </button>
 
-            <button onclick="bcResetBibleChallengeDemo()">
+            <button
+                type="button"
+                disabled
+                title="Chức năng reset backend chưa được triển khai"
+            >
                 Reset Bible Challenge
             </button>
 
@@ -167,8 +171,59 @@ Random học viên trả bài Kinh Thánh theo buổi học.
 
         <div class="admin-actions">
             <button onclick="bcBackToGroupsDemo()">Quay lại nhóm</button>
-            <button onclick="bcRandomMemberDemo()">Random Member</button>
+            <button
+                id="bcRandomMemberBtn"
+                onclick="bcRandomMemberDemo()"
+            >
+                Random Member
+            </button>
         </div>
+
+        <div id="bcResultPanel" class="attendance-box hidden">
+            <h3>Kết quả Bible Challenge</h3>
+
+            <p>
+                <strong id="bcResultMemberName">
+                    Học viên
+                </strong>
+            </p>
+
+            <p
+                id="bcResultMemberCode"
+                class="empty-note"
+            ></p>
+
+            <div class="admin-actions">
+                <button
+                    type="button"
+                    onclick="bcSubmitResultDemo('FULL')"
+                >
+                    Hoàn thành · +10
+                </button>
+
+                <button
+                    type="button"
+                    onclick="bcSubmitResultDemo('PARTIAL')"
+                >
+                    Một phần · +5
+                </button>
+
+                <button
+                    type="button"
+                    onclick="bcSubmitResultDemo('FAILED')"
+                >
+                    Chưa hoàn thành · 0
+                </button>
+
+                <button
+                    type="button"
+                    onclick="bcSubmitResultDemo('SKIPPED')"
+                >
+                    Bỏ qua · 0
+                </button>
+            </div>
+        </div>
+
     </div>
 
 </section>
@@ -231,7 +286,7 @@ Random học viên trả bài Kinh Thánh theo buổi học.
         </div>
     </div>
 </div>
-<script src="js/app.js?v=137"></script>
+<script src="js/app.js?v=141"></script>
 
 </body>
 </html>
