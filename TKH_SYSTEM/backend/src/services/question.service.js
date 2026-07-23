@@ -196,6 +196,148 @@ async function submitQuestion({
 }
 
 
+
+async function getMyQuestions({ memberId }) {
+  if (!memberId) {
+    return {
+      success: false,
+      code: "MEMBER_NOT_FOUND",
+    };
+  }
+
+  const activeSeason =
+    await findActiveSeason();
+
+  if (!activeSeason) {
+    return {
+      success: false,
+      code: "ACTIVE_SEASON_NOT_FOUND",
+    };
+  }
+
+  const membership =
+    await findActiveMembershipByMemberId(
+      memberId
+    );
+
+  if (!membership) {
+    return {
+      success: false,
+      code: "ACTIVE_MEMBERSHIP_NOT_FOUND",
+    };
+  }
+
+  if (
+    Number(membership.season_id) !==
+    Number(activeSeason.id)
+  ) {
+    return {
+      success: false,
+      code: "MEMBERSHIP_NOT_IN_ACTIVE_SEASON",
+    };
+  }
+
+  const questions =
+    await findQuestionsByMembershipId(
+      membership.id
+    );
+
+  return {
+    success: true,
+    questions: questions.map(mapQuestion),
+  };
+}
+
+
+async function getAdminQuestions() {
+  const activeSeason = await findActiveSeason();
+
+  if (!activeSeason) {
+    return {
+      success: false,
+      code: "ACTIVE_SEASON_NOT_FOUND",
+    };
+  }
+
+  const questions = await findQuestionsBySeasonId(
+    activeSeason.id
+  );
+
+  return {
+    success: true,
+    questions: questions.map(mapQuestion),
+  };
+}
+
+
+
+async function replyQuestion({
+  questionId,
+  adminResponse,
+  respondedByUserId,
+}) {
+  const normalizedQuestionId =
+    Number(questionId);
+
+  if (
+    !Number.isInteger(normalizedQuestionId) ||
+    normalizedQuestionId <= 0
+  ) {
+    return {
+      success: false,
+      code: "INVALID_QUESTION_ID",
+    };
+  }
+
+  const normalizedResponse =
+    String(adminResponse || "").trim();
+
+  if (!normalizedResponse) {
+    return {
+      success: false,
+      code: "ADMIN_RESPONSE_REQUIRED",
+    };
+  }
+
+  if (normalizedResponse.length > 4000) {
+    return {
+      success: false,
+      code: "ADMIN_RESPONSE_TOO_LONG",
+    };
+  }
+
+  const question =
+    await findQuestionById(
+      normalizedQuestionId
+    );
+
+  if (!question) {
+    return {
+      success: false,
+      code: "QUESTION_NOT_FOUND",
+    };
+  }
+
+  const updatedQuestion =
+    await respondToQuestion({
+      questionId:
+        normalizedQuestionId,
+      adminResponse:
+        normalizedResponse,
+      respondedByUserId,
+    });
+
+  return {
+    success: true,
+    question: mapQuestion(
+      updatedQuestion
+    ),
+  };
+}
+
 module.exports = {
   submitQuestion,
+  getMyQuestions,
+  getAdminQuestions,
+  replyQuestion,
 };
