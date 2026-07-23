@@ -856,7 +856,7 @@ function saveStoredSessionsDemo(sessions) {
     localStorage.setItem("tkhSessionsDemo", JSON.stringify(sessions));
 }
 
-async function createSessionDemo() {
+async function createSession() {
     const sessionName =
         document.getElementById("sessionName").value.trim();
 
@@ -974,7 +974,7 @@ async function createSessionDemo() {
         message.innerText =
             "Đã tạo buổi học thành công!";
 
-        await loadAdminSessionsDemo();
+        await loadAdminSessions();
     } catch (error) {
         console.error("Create session error:", error);
 
@@ -1791,7 +1791,7 @@ function runPageLoaders() {
     loadAdminDashboardGroupStatsDemo();
     loadAdminDashboardExtraStatsDemo();
     loadAdminGroupsDemo();
-    loadAdminSessionsDemo();
+    loadAdminSessions();
     loadAdminSchedulesDemo();
     loadStudentSchedulesDemo();
     loadScheduleTimelineDemo();
@@ -5770,7 +5770,7 @@ function formatSessionDateDemo(dateText) {
 let adminSessionsApiCache = [];
 
 
-async function loadAdminSessionsDemo() {
+async function loadAdminSessions() {
     const tableBody =
         document.getElementById("adminSessionTableBody");
 
@@ -5941,7 +5941,7 @@ async function loadAdminSessionsDemo() {
 
                         <button
                             class="edit-material-btn"
-                            onclick="openSessionDemo(${session.id})"
+                            onclick="openSession(${session.id})"
                             ${openDisabled ? "disabled" : ""}
                         >
                             Mở
@@ -5949,7 +5949,7 @@ async function loadAdminSessionsDemo() {
 
                         <button
                             class="delete-material-btn"
-                            onclick="closeSessionDemo(${session.id})"
+                            onclick="closeSession(${session.id})"
                             ${closeDisabled ? "disabled" : ""}
                         >
                             Kết thúc
@@ -6045,7 +6045,7 @@ function loadCurrentSessionSummaryDemo() {
     checkedInElement.innerText = "0";
 }
 
-async function openSessionDemo(sessionId) {
+async function openSession(sessionId) {
     const token = localStorage.getItem("accessToken");
 
     if (!token) {
@@ -6095,14 +6095,14 @@ async function openSessionDemo(sessionId) {
 
         alert("Đã mở buổi học thành công.");
 
-        await loadAdminSessionsDemo();
+        await loadAdminSessions();
     } catch (error) {
         console.error("Open session error:", error);
         alert("Không thể kết nối đến Backend.");
     }
 }
 
-async function closeSessionDemo(sessionId) {
+async function closeSession(sessionId) {
     const token = localStorage.getItem("accessToken");
 
     if (!token) {
@@ -6152,7 +6152,7 @@ async function closeSessionDemo(sessionId) {
 
         alert("Đã đóng buổi học thành công.");
 
-        await loadAdminSessionsDemo();
+        await loadAdminSessions();
     } catch (error) {
         console.error("Close session error:", error);
         alert("Không thể kết nối đến Backend.");
@@ -6178,7 +6178,7 @@ function deleteSessionDemo(sessionId) {
 
     saveStoredSchedulesDemo(schedules);
 
-    loadAdminSessionsDemo();
+    loadAdminSessions();
     loadAdminSchedulesDemo();
     loadStudentSchedulesDemo();
     loadScheduleSessionOptionsDemo();
