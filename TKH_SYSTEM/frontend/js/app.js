@@ -6266,47 +6266,7 @@ function deleteSessionDemo(sessionId) {
 }
 
 function getCurrentSessionDemo() {
-    const sessions = getStoredSessionsDemo();
-
-    if (sessions.length === 0) {
-        return null;
-    }
-
-    const openSession = sessions.find(
-        session => session.status === "Đang mở"
-    );
-
-    if (openSession) {
-        return openSession;
-    }
-
-    const upcomingSessions = sessions
-        .filter(session => session.status === "Sắp diễn ra")
-        .sort((a, b) => {
-            const dateA = new Date(a.date + "T" + a.startTime);
-            const dateB = new Date(b.date + "T" + b.startTime);
-
-            return dateA - dateB;
-        });
-
-    if (upcomingSessions.length > 0) {
-        return upcomingSessions[0];
-    }
-
-    const endedSessions = sessions
-        .filter(session => session.status === "Đã kết thúc")
-        .sort((a, b) => {
-            const dateA = new Date(a.date + "T" + a.startTime);
-            const dateB = new Date(b.date + "T" + b.startTime);
-
-            return dateB - dateA;
-        });
-
-    if (endedSessions.length > 0) {
-        return endedSessions[0];
-    }
-
-    return sessions[0];
+    return getCurrentSession();
 }
 
 function loadAdminSchedulesDemo() {
@@ -6545,11 +6505,7 @@ function loadCurrentAttendanceSessionTextDemo() {
 }
 
 function getOpenSessionDemo() {
-    const sessions = getStoredSessionsDemo();
-
-    return sessions.find(
-        session => session.status === "Đang mở"
-    ) || null;
+    return getOpenSession();
 }
 
 async function loadStudentDashboardStatsDemo() {
