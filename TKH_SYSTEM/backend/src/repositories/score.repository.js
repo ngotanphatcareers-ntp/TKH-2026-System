@@ -612,6 +612,143 @@ async function createGroupScoreTransaction({
 }
 
 
+async function createScoreTransaction({
+  seasonMembershipId,
+  scoreCategory,
+  scoreType,
+  requestedPoints,
+  appliedPoints,
+  sourceType,
+  sourceId = null,
+  sourceKey = null,
+  description = null,
+  createdByUserId = null,
+}) {
+  const pool = await getPool();
+
+  const result = await pool
+    .request()
+    .input(
+      "seasonMembershipId",
+      sql.Int,
+      seasonMembershipId
+    )
+    .input(
+      "scoreCategory",
+      sql.VarChar(20),
+      scoreCategory
+    )
+    .input(
+      "scoreType",
+      sql.VarChar(50),
+      scoreType
+    )
+    .input(
+      "requestedPoints",
+      sql.Decimal(10, 2),
+      requestedPoints
+    )
+    .input(
+      "appliedPoints",
+      sql.Decimal(10, 2),
+      appliedPoints
+    )
+    .input(
+      "sourceType",
+      sql.VarChar(50),
+      sourceType
+    )
+    .input(
+      "sourceId",
+      sql.Int,
+      sourceId
+    )
+    .input(
+      "sourceKey",
+      sql.NVarChar(150),
+      sourceKey
+    )
+    .input(
+      "description",
+      sql.NVarChar(500),
+      description
+    )
+    .input(
+      "createdByUserId",
+      sql.Int,
+      createdByUserId
+    )
+    .query(`
+      INSERT INTO dbo.score_transactions
+      (
+        season_membership_id,
+        score_category,
+        score_type,
+        requested_points,
+        applied_points,
+        source_type,
+        source_id,
+        source_key,
+        description,
+        status,
+        created_by_user_id
+      )
+
+      OUTPUT
+        INSERTED.id,
+
+        INSERTED.season_membership_id
+          AS seasonMembershipId,
+
+        INSERTED.score_category
+          AS scoreCategory,
+
+        INSERTED.score_type
+          AS scoreType,
+
+        INSERTED.requested_points
+          AS requestedPoints,
+
+        INSERTED.applied_points
+          AS appliedPoints,
+
+        INSERTED.source_type
+          AS sourceType,
+
+        INSERTED.source_id
+          AS sourceId,
+
+        INSERTED.source_key
+          AS sourceKey,
+
+        INSERTED.description,
+        INSERTED.status,
+
+        INSERTED.created_by_user_id
+          AS createdByUserId,
+
+        INSERTED.created_at
+          AS createdAt
+
+      VALUES
+      (
+        @seasonMembershipId,
+        @scoreCategory,
+        @scoreType,
+        @requestedPoints,
+        @appliedPoints,
+        @sourceType,
+        @sourceId,
+        @sourceKey,
+        @description,
+        'ACTIVE',
+        @createdByUserId
+      );
+    `);
+
+  return result.recordset[0] || null;
+}
+
 async function findScoreTransactionsBySeasonMembershipId(
   seasonMembershipId
 ) {
@@ -694,5 +831,6 @@ module.exports = {
   findGroupScoreHistory,
   findAllGroupScoreRankings,
   createGroupScoreTransaction,
+  createScoreTransaction,
   findScoreTransactionsBySeasonMembershipId,
 };

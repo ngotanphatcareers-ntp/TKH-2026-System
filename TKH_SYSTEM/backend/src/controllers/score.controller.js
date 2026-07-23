@@ -333,16 +333,17 @@ async function createAdminIndividualScore(
   try {
     const {
       username,
-      sourceType,
+      scoreType,
       points,
       description,
     } = req.body;
 
     const result =
-      await scoreService.createAdminIndividualScore({
+      await scoreService.createAdminScoreTransaction({
         username,
-        sourceType,
-        points,
+        scoreType,
+        requestedPoints: points,
+        sourceType: "MANUAL",
         description,
         adminUserId: req.user.id,
       });

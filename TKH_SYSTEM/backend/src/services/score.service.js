@@ -1,4 +1,9 @@
 const {
+  randomUUID,
+} = require("node:crypto");
+
+
+const {
   findActiveMembershipByMemberId,
   findActiveMembershipByUsername,
   findIndividualScoreSummary,
@@ -9,6 +14,7 @@ const {
   findAllGroupScoreRankings,
   createGroupScoreTransaction,
   findScoreTransactionsBySeasonMembershipId,
+  createScoreTransaction,
 } = require("../repositories/score.repository");
 
 const {
@@ -36,6 +42,27 @@ const SOURCE_TYPE_LABELS = {
   TEST: "Bài kiểm tra",
   OTHER: "Khác",
 };
+
+const SCORE_TYPE_CATEGORY = {
+  ATTENDANCE: "ATTENDANCE",
+  ATTENDANCE_ADJUSTMENT: "ATTENDANCE",
+
+  PRE_TEST: "LEARNING",
+  BIBLE_CHALLENGE: "LEARNING",
+  PARTICIPATION: "LEARNING",
+  FINAL_TEST: "LEARNING",
+
+  DISCIPLINE_CLEANING: "DISCIPLINE",
+  DISCIPLINE_COMPLIANCE: "DISCIPLINE",
+  DISCIPLINE_SPIRIT: "DISCIPLINE",
+};
+
+const SCORE_TYPES =
+  new Set(
+    Object.keys(
+      SCORE_TYPE_CATEGORY
+    )
+  );
 
 
 function getSourceTypeLabel(sourceType) {
@@ -329,6 +356,160 @@ async function getMemberScoreSummary(memberId) {
     member: mapMember(membership),
     score,
   };
+}
+
+
+async function createAdminScoreTransaction({
+  username,
+  scoreType,
+  requestedPoints,
+  sourceType,
+  description,
+  adminUserId,
+}) {
+  const normalizedUsername =
+    String(username || "").trim();
+
+    if (!normalizedUsername) {
+    return {
+        success: false,
+        code: "USERNAME_REQUIRED",
+    };
+    }
+
+    const normalizedScoreType =
+    String(scoreType || "").trim().toUpperCase();
+
+    if (!SCORE_TYPES.has(normalizedScoreType)) {
+    return {
+        success: false,
+        code: "INVALID_SCORE_TYPE",
+    };
+    }
+
+    const normalizedRequestedPoints =
+    Number(requestedPoints);
+
+    if (
+    !Number.isFinite(normalizedRequestedPoints)
+    ) {
+    return {
+        success: false,
+        code: "INVALID_POINTS",
+    };
+    }
+
+    const normalizedSourceType =
+    String(sourceType || "").trim().toUpperCase();
+
+    if (!normalizedSourceType) {
+    return {
+        success: false,
+        code: "SOURCE_TYPE_REQUIRED",
+    };
+    }
+
+    const normalizedDescription =
+    String(description || "").trim();
+
+    if (!normalizedDescription) {
+    return {
+        success: false,
+        code: "DESCRIPTION_REQUIRED",
+    };
+    }
+
+    if (normalizedDescription.length > 500) {
+    return {
+        success: false,
+        code: "DESCRIPTION_TOO_LONG",
+        maximumLength: 500,
+    };
+    }
+
+    const normalizedAdminUserId =
+    Number(adminUserId);
+
+    if (
+    !Number.isInteger(normalizedAdminUserId) ||
+    normalizedAdminUserId <= 0
+    ) {
+    return {
+        success: false,
+        code: "ADMIN_USER_REQUIRED",
+    };
+    }
+
+    const scoreCategory =
+        SCORE_TYPE_CATEGORY[
+            normalizedScoreType
+        ];
+
+        const membership =
+        await findActiveMembershipByUsername(
+            normalizedUsername
+        );
+
+        if (!membership) {
+        return {
+            success: false,
+            code: "ACTIVE_MEMBERSHIP_NOT_FOUND",
+        };
+        }
+
+        const appliedPoints =
+        Math.round(
+            normalizedRequestedPoints * 100
+        ) / 100;
+
+        const sourceKey =
+        `MANUAL:${randomUUID()}`;
+
+        const transaction =
+        await createScoreTransaction({
+            seasonMembershipId:
+            membership.season_membership_id,
+
+            scoreCategory,
+
+            scoreType:
+            normalizedScoreType,
+
+            requestedPoints:
+            normalizedRequestedPoints,
+
+            appliedPoints,
+
+            sourceType:
+            normalizedSourceType,
+
+            sourceId: null,
+
+            sourceKey,
+
+            description:
+            normalizedDescription,
+
+            createdByUserId:
+            normalizedAdminUserId,
+        });
+
+        if (!transaction) {
+        return {
+            success: false,
+            code: "SCORE_TRANSACTION_NOT_CREATED",
+        };
+        }
+
+        return {
+        success: true,
+
+        season: mapSeason(membership),
+
+        member: mapMember(membership),
+
+        transaction,
+        };
 }
 
 
@@ -778,9 +959,12 @@ async function createAdminIndividualScore({
 
 module.exports = {
   getMemberScoreSummary,
+  createAdminScoreTransaction,
+
   getMyScores,
   getMyGroupScores,
   getGroupRankings,
+
   createAdminIndividualScore,
   createAdminGroupScore,
 };
