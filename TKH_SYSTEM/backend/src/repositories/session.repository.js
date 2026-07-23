@@ -301,10 +301,53 @@ async function closeSession(sessionId) {
 }
 
 
+async function findCurrentOpenSessionForActivity() {
+  const pool = await getPool();
+
+  const result = await pool.request().query(`
+    SELECT TOP 1
+      se.id,
+      se.season_id,
+      se.name,
+      se.session_no,
+      se.scheduled_start_at,
+      se.scheduled_end_at,
+      se.checkin_open_at,
+      se.checkin_close_at,
+      se.status,
+      se.location_name,
+      se.latitude,
+      se.longitude,
+      se.attendance_radius_m,
+      se.created_at,
+      se.updated_at,
+
+      s.code AS season_code,
+      s.name AS season_name,
+      s.status AS season_status
+
+    FROM dbo.sessions AS se
+
+    INNER JOIN dbo.seasons AS s
+      ON s.id = se.season_id
+
+    WHERE s.status = 'ACTIVE'
+      AND se.status = 'OPEN'
+
+    ORDER BY
+      se.scheduled_start_at DESC,
+      se.id DESC;
+  `);
+
+  return result.recordset[0] || null;
+}
+
+
 module.exports = {
-    findSessionsBySeasonId,
-    findSessionById,
-    createSession,
-    openSession,
-    closeSession
+  findSessionsBySeasonId,
+  findSessionById,
+  findCurrentOpenSessionForActivity,
+  createSession,
+  openSession,
+  closeSession,
 };

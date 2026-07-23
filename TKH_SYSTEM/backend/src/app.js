@@ -9,6 +9,9 @@ const seasonRoutes = require("./routes/season.routes");
 const sessionRoutes = require("./routes/session.routes");
 const attendanceRoutes = require("./routes/attendance.routes");
 const scoreRoutes = require("./routes/score.routes");
+const bibleChallengeRoutes = require(
+  "./routes/bible-challenge.routes"
+);
 const { testDatabaseConnection } = require("./config/database");
 const authRoutes = require("./routes/auth.routes");
 const adminTestRoutes = require("./routes/admin-test.routes");
@@ -25,6 +28,11 @@ app.use("/api/seasons", seasonRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/scores", scoreRoutes);
+
+app.use(
+  "/api/bible-challenge",
+  bibleChallengeRoutes
+);
 app.use("/api/admin/members", memberRoutes);
 app.use("/api/admin/sessions", sessionRoutes);
 app.use("/api/admin/test", adminTestRoutes);
