@@ -1008,7 +1008,7 @@ function createScheduleDemo() {
     }
     //mới....
     const sessions =
-        getStoredSessionsDemo();
+        getSessions();
 
         const selectedSession =
         sessions.find(
@@ -1022,6 +1022,29 @@ function createScheduleDemo() {
 
             return;
         }
+
+        const sessionStartDate =
+            parseSqlLocalDateTime(
+                selectedSession.scheduledStartAt
+            );
+
+        if (!sessionStartDate) {
+            message.style.color = "red";
+            message.innerText =
+                "Ngày của buổi học không hợp lệ.";
+
+            return;
+        }
+
+        const selectedSessionDate = [
+            sessionStartDate.getFullYear(),
+            String(
+                sessionStartDate.getMonth() + 1
+            ).padStart(2, "0"),
+            String(
+                sessionStartDate.getDate()
+            ).padStart(2, "0")
+        ].join("-");
     //hết....
 
     const schedules = getStoredSchedulesDemo();
@@ -1043,7 +1066,7 @@ function createScheduleDemo() {
             ...schedules[existingScheduleIndex],
             sessionId: selectedSession.id,
             sessionName: selectedSession.name,
-            date: selectedSession.date,
+            date: selectedSessionDate,
             title: scheduleTitle,
             bibleVerse: bibleVerse,
             activity: scheduleActivity,
@@ -1073,7 +1096,7 @@ function createScheduleDemo() {
 
     sessionName: selectedSession.name,
 
-    date: selectedSession.date,
+    date: selectedSessionDate,
 
     title: scheduleTitle,
 
@@ -5769,6 +5792,67 @@ function formatSessionDateDemo(dateText) {
 
 let adminSessionsApiCache = [];
 
+
+let adminSessionsApiRequest = null;
+
+async function fetchAdminSessions() {
+    if (adminSessionsApiRequest) {
+        return adminSessionsApiRequest;
+    }
+
+    const token = localStorage.getItem("accessToken");
+
+    if (!token) {
+        throw new Error("AUTH_REQUIRED");
+    }
+
+    adminSessionsApiRequest = (async () => {
+        try {
+            const response = await fetch(
+                `${API_BASE_URL}/api/admin/sessions`,
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                }
+            );
+
+            const result = await response.json();
+
+            if (response.status === 401) {
+                throw new Error("AUTH_REQUIRED");
+            }
+
+            if (response.status === 403) {
+                throw new Error("FORBIDDEN");
+            }
+
+            if (!response.ok || !result.success) {
+                throw new Error(
+                    result?.error?.message ||
+                    "Không thể tải danh sách buổi học."
+                );
+            }
+
+            const sessions =
+                result.data?.sessions || [];
+
+            adminSessionsApiCache = sessions;
+
+            return sessions;
+        } catch (error) {
+            adminSessionsApiCache = [];
+            throw error;
+        } finally {
+            adminSessionsApiRequest = null;
+        }
+    })();
+
+    return adminSessionsApiRequest;
+}
+
+
 function getSessions() {
     return [...adminSessionsApiCache];
 }
@@ -5809,13 +5893,6 @@ async function loadAdminSessions() {
         return;
     }
 
-    const token = localStorage.getItem("accessToken");
-
-    if (!token) {
-        logoutDemo();
-        return;
-    }
-
     tableBody.innerHTML = `
         <tr>
             <td colspan="6">
@@ -5825,46 +5902,8 @@ async function loadAdminSessions() {
     `;
 
     try {
-        const response = await fetch(
-            `${API_BASE_URL}/api/admin/sessions`,
-            {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            }
-        );
-
-        const result = await response.json();
-
-        if (response.status === 401) {
-            logoutDemo();
-            return;
-        }
-
-        if (response.status === 403) {
-            window.location.href = "dashboard.html";
-            return;
-        }
-
-        if (!response.ok || !result.success) {
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="6">
-                        ${result?.error?.message ||
-                        "Không thể tải danh sách buổi học."}
-                    </td>
-                </tr>
-            `;
-
-            adminSessionsApiCache = [];
-            loadCurrentSessionSummaryDemo();
-            return;
-        }
-
-        const sessions = result.data.sessions || [];
-
-        adminSessionsApiCache = sessions;
+        const sessions =
+            await fetchAdminSessions();
 
         if (sessions.length === 0) {
             tableBody.innerHTML = `
@@ -6002,12 +6041,23 @@ async function loadAdminSessions() {
     } catch (error) {
         console.error("Load sessions error:", error);
 
+        if (error.message === "AUTH_REQUIRED") {
+            logoutDemo();
+            return;
+        }
+
+        if (error.message === "FORBIDDEN") {
+            window.location.href = "dashboard.html";
+            return;
+        }
+
         adminSessionsApiCache = [];
 
         tableBody.innerHTML = `
             <tr>
                 <td colspan="6">
-                    Không thể kết nối đến Backend.
+                    ${error.message ||
+                    "Không thể kết nối đến Backend."}
                 </td>
             </tr>
         `;
@@ -6372,64 +6422,104 @@ function changeScheduleWeek(direction) {
 }
 
 
-function loadScheduleSessionOptionsDemo() {
-
+async function loadScheduleSessionOptionsDemo() {
     const select =
-        document.getElementById(
-            "scheduleSession"
-        );
+        document.getElementById("scheduleSession");
 
     if (!select) {
         return;
     }
 
-    const sessions =
-        getStoredSessionsDemo();
-
-    if (sessions.length === 0) {
-
-        select.innerHTML = `
-            <option value="">
-                Chưa có buổi học
-            </option>
-        `;
-
-        return;
-    }
-
     select.innerHTML = `
         <option value="">
-            -- Chọn buổi học --
+            Đang tải buổi học...
         </option>
     `;
 
-    sessions
-        .sort((a, b) => {
+    try {
+        const sessions =
+            await fetchAdminSessions();
 
-            const dateA =
-                new Date(
-                    a.date + "T" + a.startTime
+        if (sessions.length === 0) {
+            select.innerHTML = `
+                <option value="">
+                    Chưa có buổi học
+                </option>
+            `;
+
+            return;
+        }
+
+        const orderedSessions =
+            [...sessions].sort((a, b) => {
+                const dateA =
+                    parseSqlLocalDateTime(
+                        a.scheduledStartAt
+                    );
+
+                const dateB =
+                    parseSqlLocalDateTime(
+                        b.scheduledStartAt
+                    );
+
+                if (!dateA || !dateB) {
+                    return 0;
+                }
+
+                return dateA - dateB;
+            });
+
+        select.innerHTML = `
+            <option value="">
+                -- Chọn buổi học --
+            </option>
+        `;
+
+        orderedSessions.forEach(session => {
+            const startDate =
+                parseSqlLocalDateTime(
+                    session.scheduledStartAt
                 );
 
-            const dateB =
-                new Date(
-                    b.date + "T" + b.startTime
-                );
-
-            return dateA - dateB;
-
-        })
-        .forEach(session => {
+            const dateText = startDate
+                ? startDate.toLocaleDateString("vi-VN")
+                : "Chưa có ngày";
 
             select.innerHTML += `
                 <option value="${session.id}">
                     ${session.name}
-                    (${formatSessionDateDemo(session.date)})
+                    (${dateText})
+                </option>
+            `;
+        });
+    } catch (error) {
+        console.error(
+            "Load schedule session options error:",
+            error
+        );
+
+        if (error.message === "AUTH_REQUIRED") {
+            logoutDemo();
+            return;
+        }
+
+        if (error.message === "FORBIDDEN") {
+            select.innerHTML = `
+                <option value="">
+                    Không có quyền truy cập
                 </option>
             `;
 
-        });
+            return;
+        }
 
+        select.innerHTML = `
+            <option value="">
+                ${error.message ||
+                "Không thể tải buổi học"}
+            </option>
+        `;
+    }
 }
 
 function loadCurrentAttendanceSessionTextDemo() {
