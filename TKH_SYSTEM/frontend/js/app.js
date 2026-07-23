@@ -7731,16 +7731,9 @@ function bcSpinToWinnerDemo(cards, winnerIndex, finishCallback, minSteps = 50, s
 let bcGroupRollingDemo = false;
 let bcMemberRollingDemo = false;
 
-function getBibleChallengeStateDemo() {
-    return JSON.parse(localStorage.getItem("bibleChallengeStateDemo")) || {
-        usedGroups: [],
-        usedMembers: {}
-    };
-}
 
-function saveBibleChallengeStateDemo(state) {
-    localStorage.setItem("bibleChallengeStateDemo", JSON.stringify(state));
-}
+
+
 
 function bcShowGroupWinnerDemo(groupName) {
     const backdrop = document.getElementById("bcWinnerBackdrop");
@@ -7769,37 +7762,7 @@ function bcShowGroupWinnerDemo(groupName) {
     }, 4500);
 }
 
-function bcResetBibleChallengeDemo() {
-    const confirmReset = confirm(
-        "Bạn có chắc muốn reset toàn bộ trạng thái Bible Challenge không? Các nhóm và thành viên đã quay sẽ được mở lại."
-    );
 
-    if (!confirmReset) {
-        return;
-    }
-
-    localStorage.removeItem("bibleChallengeStateDemo");
-
-    bcCurrentGroupNameDemo = "";
-    bcAvailableMembersDemo = [];
-    bcGroupRollingDemo = false;
-    bcMemberRollingDemo = false;
-
-    const memberPanel = document.getElementById("bcMemberPanel");
-    const panels = document.querySelectorAll(".bc-random-panel");
-
-    if (panels[0]) {
-        panels[0].classList.remove("hidden");
-    }
-
-    if (memberPanel) {
-        memberPanel.classList.add("hidden");
-    }
-
-    loadBibleChallengeDemo();
-
-    alert("Đã reset Bible Challenge thành công.");
-}
 
 async function loadBibleChallengeSummaryDemo() {
     const sessionElement =
@@ -7846,45 +7809,11 @@ async function loadBibleChallengeSummaryDemo() {
     }
 }
 
-function getBibleChallengeHistoryDemo() {
-    return JSON.parse(localStorage.getItem("bibleChallengeHistoryDemo")) || [];
-}
 
-function saveBibleChallengeHistoryDemo(history) {
-    localStorage.setItem("bibleChallengeHistoryDemo", JSON.stringify(history));
-}
 
-function addBibleChallengeHistoryDemo(winner) {
-    const currentSession = getOpenSessionDemo();
 
-    if (!currentSession || !winner) {
-        return;
-    }
 
-    const history = getBibleChallengeHistoryDemo();
 
-    const alreadyExists = history.find(item =>
-        item.username === winner.username &&
-        item.session === currentSession.name
-    );
-
-    if (alreadyExists) {
-        return;
-    }
-
-    history.unshift({
-        id: Date.now(),
-        session: currentSession.name,
-        username: winner.username,
-        fullName: winner.fullName,
-        groupName: winner.groupName,
-        createdAt: new Date().toLocaleString("vi-VN"),
-        status: "Chưa cộng điểm",
-        scoreAdded: false
-    });
-
-    saveBibleChallengeHistoryDemo(history);
-}
 
 async function loadBibleChallengeHistoryDemo() {
     const tableBody =
@@ -7987,53 +7916,7 @@ async function loadBibleChallengeHistoryDemo() {
 }
 
 
-function addBibleChallengeScoreDemo(historyId, points) {
-    const history = getBibleChallengeHistoryDemo();
 
-    const item = history.find(record =>
-        Number(record.id) === Number(historyId)
-    );
-
-    if (!item) {
-        alert("Không tìm thấy lịch sử Bible Challenge.");
-        return;
-    }
-
-    if (item.scoreAdded) {
-        alert("Học viên này đã được cộng điểm rồi.");
-        return;
-    }
-
-    const scores = getStoredScoresDemo();
-
-    scores.unshift({
-        id: Date.now(),
-        username: item.username,
-        fullName: item.fullName,
-        groupName: item.groupName,
-        scoreType: "bible_challenge",
-        scoreTypeLabel: "Trả bài cũ / Bible Challenge",
-        scoreValue: Number(points),
-        reason: "Bible Challenge - " + item.session,
-        createdAt: new Date().toLocaleString("vi-VN")
-    });
-
-    saveStoredScoresDemo(scores);
-
-    item.scoreAdded = true;
-    item.scoreValue = Number(points);
-    item.status = "Đã cộng điểm: " + points;
-
-    saveBibleChallengeHistoryDemo(history);
-
-    loadBibleChallengeHistoryDemo();
-    loadBibleChallengeProgressDemo();
-    loadBibleChallengeSummaryDemo();
-    loadAdminScoreSummaryDemo();
-    loadAdminScoreHistoryDemo();
-
-    alert("Đã cộng " + points + " điểm cho " + item.fullName + ".");
-}
 
 async function loadBibleChallengeProgressDemo() {
     const progressBar =
