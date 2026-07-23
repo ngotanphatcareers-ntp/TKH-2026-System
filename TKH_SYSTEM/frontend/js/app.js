@@ -5769,6 +5769,37 @@ function formatSessionDateDemo(dateText) {
 
 let adminSessionsApiCache = [];
 
+function getSessions() {
+    return [...adminSessionsApiCache];
+}
+
+function getOpenSession() {
+    return adminSessionsApiCache.find(
+        session => session.status === "OPEN"
+    ) || null;
+}
+
+function getCurrentSession() {
+    const openSession = getOpenSession();
+
+    if (openSession) {
+        return openSession;
+    }
+
+    const orderedSessions = [...adminSessionsApiCache].sort((a, b) => {
+        const dateA = parseSqlLocalDateTime(a.scheduledStartAt);
+        const dateB = parseSqlLocalDateTime(b.scheduledStartAt);
+
+        if (!dateA || !dateB) {
+            return 0;
+        }
+
+        return dateA - dateB;
+    });
+
+    return orderedSessions[0] || null;
+}
+
 
 async function loadAdminSessions() {
     const tableBody =
