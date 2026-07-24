@@ -1819,6 +1819,7 @@ function runPageLoaders() {
     loadStudentSchedulesDemo();
     loadScheduleTimelineDemo();
     loadScheduleSessionOptionsDemo();
+    loadQuestionSessionOptions();
     loadStudentDashboardStatsDemo();
     loadGroupScoreHistoryDemo();
     loadAdminScoreSummaryDemo();
@@ -1836,6 +1837,76 @@ window.addEventListener("pageshow", event => {
     }
 });
 
+
+async function loadQuestionSessionOptions() {
+
+    const sessionSelect =
+        document.getElementById("questionSession");
+
+    if (!sessionSelect) {
+        return;
+    }
+
+    const token =
+        localStorage.getItem("accessToken");
+
+    if (!token) {
+        return;
+    }
+
+    try {
+
+        sessionSelect.innerHTML =
+            '<option>Đang tải...</option>';
+
+        const response =
+            await fetch(
+                `${API_BASE_URL}/api/sessions/options`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                }
+            );
+
+        const result =
+            await response.json();
+
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+            throw new Error();
+        }
+
+        sessionSelect.innerHTML = "";
+
+        result.data.sessions.forEach(session => {
+
+            const option =
+                document.createElement("option");
+
+            option.value = session.id;
+
+            option.textContent =
+                session.name;
+
+            sessionSelect.appendChild(option);
+
+        });
+
+    } catch (error) {
+
+        sessionSelect.innerHTML =
+            '<option>Không tải được danh sách buổi học</option>';
+
+        console.error(error);
+
+    }
+
+}
+
+
 function getStoredQuestionsDemo() {
     return JSON.parse(localStorage.getItem("sessionQuestionsDemo")) || [];
 }
@@ -1844,145 +1915,438 @@ function saveStoredQuestionsDemo(questions) {
     localStorage.setItem("sessionQuestionsDemo", JSON.stringify(questions));
 }
 
-function submitQuestionDemo() {
-    const session = document.getElementById("questionSession").value;
-    const questionText = document.getElementById("questionText").value.trim();
-    const message = document.getElementById("questionMessage");
+async function submitQuestionDemo() {
+    const sessionSelect =
+        document.getElementById("questionSession");
 
-    const questionType = document.querySelector(
-        'input[name="questionType"]:checked'
-    ).value;
+    const questionInput =
+        document.getElementById("questionText");
 
-    const currentUser =
-        JSON.parse(localStorage.getItem("currentUser")) ||
-        demoUsers.find(user => user.username === localStorage.getItem("currentUsername"));
+    const message =
+        document.getElementById("questionMessage");
 
-    if (!currentUser) {
+    const selectedQuestionType =
+        document.querySelector(
+            'input[name="questionType"]:checked'
+        );
+
+    const token =
+        localStorage.getItem("accessToken");
+
+    const sessionId =
+        Number(sessionSelect?.value);
+
+    const questionText =
+        questionInput?.value.trim();
+
+    if (!token) {
         window.location.href = "index.html";
+        return;
+    }
+
+    if (
+        !Number.isInteger(sessionId) ||
+        sessionId <= 0
+    ) {
+        message.style.color = "red";
+        message.innerText =
+            "Vui lòng chọn buổi học hợp lệ.";
+        return;
+    }
+
+    if (!selectedQuestionType) {
+        message.style.color = "red";
+        message.innerText =
+            "Vui lòng chọn loại câu hỏi.";
         return;
     }
 
     if (!questionText) {
         message.style.color = "red";
-        message.innerText = "Vui lòng nhập câu hỏi hoặc ghi chú.";
+        message.innerText =
+            "Vui lòng nhập câu hỏi hoặc ghi chú.";
         return;
     }
 
-    const questions = getStoredQuestionsDemo();
+    const visibility =
+        selectedQuestionType.value === "private"
+            ? "PRIVATE"
+            : "PUBLIC";
 
-    questions.unshift({
-    session: session,
-    text: questionText,
-    questionType: questionType,
-    typeLabel: questionType === "private" ? "🔒 Riêng tư" : "🌍 Công khai",
-    userFullName: currentUser.fullName,
-    username: currentUser.username,
-    groupName: currentUser.groupName,
-    createdAt: new Date().toLocaleString("vi-VN"),
-    status: "Mới",
-    adminReply: ""
-    });
+    try {
+        message.style.color = "#555";
+        message.innerText = "Đang gửi câu hỏi...";
 
-    saveStoredQuestionsDemo(questions);
+        const response = await fetch(
+            `${API_BASE_URL}/api/questions`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    sessionId,
+                    visibility,
+                    questionText,
+                }),
+            }
+        );
 
-    document.getElementById("questionText").value = "";
+        const result = await response.json();
 
-    message.style.color = "green";
+        if (response.status === 401) {
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("currentUser");
 
-    if (questionType === "private") {
+            window.location.href = "index.html";
+            return;
+        }
+
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+            throw new Error(
+                result?.error?.message ||
+                "Không thể gửi câu hỏi."
+            );
+        }
+
+        message.style.color = "green";
         message.innerText =
-            "🔒 Đã gửi câu hỏi riêng tư. BTC sẽ chuyển đến Diễn giả và phản hồi lại cho bạn trong thời gian sớm nhất.";
-    } else {
+            "Đã gửi câu hỏi thành công.";
+
+        questionInput.value = "";
+
+        await loadMyQuestionsDemo();
+
+    } catch (error) {
+        console.error(
+            "Submit question error:",
+            error
+        );
+
+        message.style.color = "red";
         message.innerText =
-            "🌍 Đã gửi câu hỏi công khai. BTC và Diễn giả sẽ cố gắng giải đáp câu hỏi của bạn trước Ban Thanh Niên trong phần giải đáp thắc mắc.";
+            error.message ||
+            "Không thể gửi câu hỏi. Vui lòng thử lại.";
     }
-
-    loadMyQuestionsDemo();
 }
 
-function loadMyQuestionsDemo() {
-    const list = document.getElementById("myQuestionList");
+async function loadMyQuestionsDemo() {
+    const list =
+        document.getElementById("myQuestionList");
 
     if (!list) {
         return;
     }
 
-    const currentUser =
-        JSON.parse(localStorage.getItem("currentUser")) ||
-        demoUsers.find(user => user.username === localStorage.getItem("currentUsername"));
+    const token =
+        localStorage.getItem("accessToken");
 
-    if (!currentUser) {
+    if (!token) {
+        window.location.href = "index.html";
         return;
     }
 
-    const questions = getStoredQuestionsDemo()
-        .filter(q => q.username === currentUser.username);
+    try {
+        list.innerHTML =
+            `<p class="empty-note">Đang tải câu hỏi...</p>`;
 
-    if (questions.length === 0) {
-        list.innerHTML = `<p class="empty-note">Chưa có câu hỏi nào được gửi trong phiên demo này.</p>`;
-        return;
-    }
+        const response = await fetch(
+            `${API_BASE_URL}/api/questions/my`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
 
-    list.innerHTML = questions.map(q => `
-    <div class="question-card">
-        <h3>${q.session}</h3>
-        <p><strong>Loại:</strong> ${q.typeLabel || "🔒 Riêng tư"}</p>
-        <p>${q.text}</p>
-        <p class="question-meta">Trạng thái: ${q.status} · ${q.createdAt}</p>
-        ${
-            q.adminReply
-            ? `
-                <p><strong>Phản hồi từ BTC:</strong> ${q.adminReply}</p>
-                <p class="question-meta">Thời gian phản hồi: ${q.answeredAt || "Chưa có thông tin"}</p>
-            `
-            : ""
+        const result = await response.json();
+
+        if (response.status === 401) {
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("currentUser");
+
+            window.location.href = "index.html";
+            return;
         }
-    </div>
-    `).join("");
+
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+            throw new Error(
+                result?.error?.message ||
+                "Không thể tải danh sách câu hỏi."
+            );
+        }
+
+        const questions =
+            Array.isArray(result.questions)
+                ? result.questions
+                : [];
+
+        if (questions.length === 0) {
+            list.innerHTML =
+                `<p class="empty-note">Bạn chưa gửi câu hỏi nào.</p>`;
+            return;
+        }
+
+        list.innerHTML = questions.map(q => {
+            const sessionName =
+                q.session?.name ||
+                `Buổi ${q.session?.number || ""}`;
+
+            const typeLabel =
+                q.visibility === "PRIVATE"
+                    ? "🔒 Riêng tư"
+                    : "🌍 Công khai";
+
+            const statusLabel =
+                q.status === "ANSWERED"
+                    ? "Đã trả lời"
+                    : "Đang chờ phản hồi";
+
+            const createdAt =
+                q.createdAt
+                    ? new Date(q.createdAt)
+                        .toLocaleString("vi-VN")
+                    : "Chưa có thông tin";
+
+            const answeredAt =
+                q.respondedAt
+                    ? new Date(q.respondedAt)
+                        .toLocaleString("vi-VN")
+                    : "Chưa có thông tin";
+
+            return `
+                <div class="question-card">
+                    <h3>${sessionName}</h3>
+
+                    <p>
+                        <strong>Loại:</strong>
+                        ${typeLabel}
+                    </p>
+
+                    <p>${q.questionText}</p>
+
+                    <p class="question-meta">
+                        Trạng thái:
+                        ${statusLabel}
+                        ·
+                        ${createdAt}
+                    </p>
+
+                    ${
+                        q.adminResponse
+                            ? `
+                                <p>
+                                    <strong>Phản hồi từ BTC:</strong>
+                                    ${q.adminResponse}
+                                </p>
+
+                                <p class="question-meta">
+                                    Thời gian phản hồi:
+                                    ${answeredAt}
+                                </p>
+                            `
+                            : ""
+                    }
+                </div>
+            `;
+        }).join("");
+
+    } catch (error) {
+        console.error(
+            "Load my questions error:",
+            error
+        );
+
+        list.innerHTML =
+            `<p class="empty-note">
+                Không thể tải danh sách câu hỏi.
+            </p>`;
+    }
 }
 
-function loadAdminQuestionsDemo() {
-    const list = document.getElementById("adminQuestionList");
+async function loadAdminQuestionsDemo() {
+    const list =
+        document.getElementById("adminQuestionList");
 
     if (!list) {
         return;
     }
 
-    const questions = getStoredQuestionsDemo();
+    const token =
+        localStorage.getItem("accessToken");
 
-    if (questions.length === 0) {
-        list.innerHTML = `<p class="empty-note">Chưa có câu hỏi nào trong phiên demo này.</p>`;
+    if (!token) {
+        window.location.href = "index.html";
         return;
     }
 
-    list.innerHTML = questions.map((q, index) => `
-    <div class="question-card">
-        <h3>${q.session}</h3>
-        <p><strong>${q.userFullName}</strong> (${q.username}) · Nhóm ${q.groupName}</p>
-        <p><strong>Loại:</strong> ${q.typeLabel || "🔒 Riêng tư"}</p>
-        <p>${q.text}</p>
-        <p class="question-meta">Trạng thái: ${q.status} · ${q.createdAt}</p>
+    try {
+        list.innerHTML =
+            `<p class="empty-note">Đang tải câu hỏi...</p>`;
 
-        ${
-            q.adminReply
-            ? `
-                <p><strong>Phản hồi từ BTC:</strong> ${q.adminReply}</p>
-                <p class="question-meta">Thời gian phản hồi: ${q.answeredAt || "Chưa có thông tin"}</p>
-            `
-            : `
-                <textarea
-                    class="form-input question-reply-box"
-                    id="reply_${index}"
-                    placeholder="Nhập phản hồi từ BTC / Diễn giả..."
-                ></textarea>
+        const response = await fetch(
+            `${API_BASE_URL}/api/admin/questions`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
 
-                <button class="profile-btn" onclick="replyQuestionDemo(${index})">
-                    Gửi phản hồi
-                </button>
-            `
+        const result = await response.json();
+
+        if (response.status === 401) {
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("currentUser");
+
+            window.location.href = "index.html";
+            return;
         }
-    </div>
-    `).join("");
+
+        if (response.status === 403) {
+            list.innerHTML =
+                `<p class="empty-note">
+                    Bạn không có quyền xem danh sách câu hỏi.
+                </p>`;
+            return;
+        }
+
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+            throw new Error(
+                result?.error?.message ||
+                "Không thể tải danh sách câu hỏi."
+            );
+        }
+
+        const questions =
+            Array.isArray(result.questions)
+                ? result.questions
+                : [];
+
+        if (questions.length === 0) {
+            list.innerHTML =
+                `<p class="empty-note">
+                    Chưa có câu hỏi nào.
+                </p>`;
+            return;
+        }
+
+        list.innerHTML = questions.map(q => {
+            const sessionName =
+                q.session?.name ||
+                `Buổi ${q.session?.number || ""}`;
+
+            const memberName =
+                q.member?.fullName ||
+                "Không rõ học viên";
+
+            const username =
+                q.member?.username ||
+                "Không rõ tài khoản";
+
+            const groupName =
+                q.group?.name ||
+                "Chưa có nhóm";
+
+            const typeLabel =
+                q.visibility === "PRIVATE"
+                    ? "🔒 Riêng tư"
+                    : "🌍 Công khai";
+
+            const statusLabel =
+                q.status === "ANSWERED"
+                    ? "Đã trả lời"
+                    : "Đang chờ phản hồi";
+
+            const createdAt =
+                q.createdAt
+                    ? new Date(q.createdAt)
+                        .toLocaleString("vi-VN")
+                    : "Chưa có thông tin";
+
+            const answeredAt =
+                q.respondedAt
+                    ? new Date(q.respondedAt)
+                        .toLocaleString("vi-VN")
+                    : "Chưa có thông tin";
+
+            return `
+                <div class="question-card">
+                    <h3>${sessionName}</h3>
+
+                    <p>
+                        <strong>${memberName}</strong>
+                        (${username})
+                        · Nhóm ${groupName}
+                    </p>
+
+                    <p>
+                        <strong>Loại:</strong>
+                        ${typeLabel}
+                    </p>
+
+                    <p>${q.questionText}</p>
+
+                    <p class="question-meta">
+                        Trạng thái:
+                        ${statusLabel}
+                        ·
+                        ${createdAt}
+                    </p>
+
+                    ${
+                        q.adminResponse
+                            ? `
+                                <p>
+                                    <strong>Phản hồi từ BTC:</strong>
+                                    ${q.adminResponse}
+                                </p>
+
+                                <p class="question-meta">
+                                    Thời gian phản hồi:
+                                    ${answeredAt}
+                                </p>
+                            `
+                            : `
+                                <textarea
+                                    class="form-input question-reply-box"
+                                    id="reply_${q.id}"
+                                    placeholder="Nhập phản hồi từ BTC / Diễn giả..."
+                                ></textarea>
+
+                                <button
+                                    class="profile-btn"
+                                    onclick="replyQuestionDemo(${q.id})"
+                                >
+                                    Gửi phản hồi
+                                </button>
+                            `
+                    }
+                </div>
+            `;
+        }).join("");
+
+    } catch (error) {
+        console.error(
+            "Load admin questions error:",
+            error
+        );
+
+        list.innerHTML =
+            `<p class="empty-note">
+                Không thể tải danh sách câu hỏi.
+            </p>`;
+    }
 }
 
 
@@ -2007,27 +2371,98 @@ function showAdminShortcutDemo() {
 //hết
 
 //hàm phản hồi về học viên
-function replyQuestionDemo(index) {
-    const questions = getStoredQuestionsDemo();
-    const replyInput = document.getElementById("reply_" + index);
+async function replyQuestionDemo(questionId) {
+    const replyInput =
+        document.getElementById(`reply_${questionId}`);
 
     if (!replyInput) {
         return;
     }
 
-    const replyText = replyInput.value.trim();
+    const replyText =
+        replyInput.value.trim();
 
     if (!replyText) {
         alert("Vui lòng nhập nội dung phản hồi.");
         return;
     }
 
-    questions[index].adminReply = replyText;
-    questions[index].status = "Đã trả lời";
-    questions[index].answeredAt = new Date().toLocaleString("vi-VN");
+    const token =
+        localStorage.getItem("accessToken");
 
-    saveStoredQuestionsDemo(questions);
-    loadAdminQuestionsDemo();
+    if (!token) {
+        window.location.href = "index.html";
+        return;
+    }
+
+    const originalButton =
+        replyInput.nextElementSibling;
+
+    try {
+        if (originalButton) {
+            originalButton.disabled = true;
+            originalButton.innerText = "Đang gửi...";
+        }
+
+        const response = await fetch(
+            `${API_BASE_URL}/api/admin/questions/${questionId}/reply`,
+            {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    adminResponse: replyText,
+                }),
+            }
+        );
+
+        const result = await response.json();
+
+        if (response.status === 401) {
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("currentUser");
+
+            window.location.href = "index.html";
+            return;
+        }
+
+        if (response.status === 403) {
+            alert("Bạn không có quyền phản hồi câu hỏi.");
+            return;
+        }
+
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+            throw new Error(
+                result?.error?.message ||
+                "Không thể gửi phản hồi."
+            );
+        }
+
+        await loadAdminQuestionsDemo();
+
+        alert("Đã gửi phản hồi thành công.");
+
+    } catch (error) {
+        console.error(
+            "Reply question error:",
+            error
+        );
+
+        alert(
+            error.message ||
+            "Không thể gửi phản hồi. Vui lòng thử lại."
+        );
+
+        if (originalButton) {
+            originalButton.disabled = false;
+            originalButton.innerText = "Gửi phản hồi";
+        }
+    }
 }// hết
 
 
