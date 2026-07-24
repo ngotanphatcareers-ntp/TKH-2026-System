@@ -17,6 +17,15 @@ const { testDatabaseConnection } = require("./config/database");
 const authRoutes = require("./routes/auth.routes");
 const questionRoutes = require("./routes/question.routes");
 const adminQuestionRoutes = require("./routes/admin-question.routes");
+
+const encouragementRoutes = require(
+  "./routes/encouragement.routes"
+);
+
+const adminEncouragementRoutes = require(
+  "./routes/admin-encouragement.routes"
+);
+
 const adminTestRoutes = require("./routes/admin-test.routes");
 
 const app = express();
@@ -29,6 +38,17 @@ app.use(morgan("dev"));
 app.use("/api/auth", authRoutes);
 app.use("/api/questions", questionRoutes);
 app.use("/api/admin/questions", adminQuestionRoutes);
+
+app.use(
+  "/api/encouragements",
+  encouragementRoutes
+);
+
+app.use(
+  "/api/admin/encouragements",
+  adminEncouragementRoutes
+);
+
 app.use("/api/seasons", seasonRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/attendance", attendanceRoutes);
