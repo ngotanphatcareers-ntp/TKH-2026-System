@@ -1,4 +1,10 @@
 const {
+  getPool,
+  sql,
+} = require("../config/database");
+
+
+const {
   findCurrentOpenSessionForActivity,
 } = require("../repositories/session.repository");
 
@@ -840,13 +846,20 @@ async function submitResult({
       0
     );
 
-  const appliedPoints =
-    Math.min(
-      requestedPoints,
-      remainingPoints
-    );
+    const appliedPoints =
+      Math.min(
+        requestedPoints,
+        remainingPoints
+      );
 
-  try {
+    const pool = await getPool();
+
+    const transaction =
+      new sql.Transaction(pool);
+
+    await transaction.begin();
+
+    try {
     const history =
       await createHistoryRecord({
         seasonId,
@@ -863,6 +876,7 @@ async function submitResult({
           "RANDOMIZER",
         createdByUserId:
           normalizedAdminUserId,
+        transaction,
       });
 
     const scoreTransaction =
@@ -894,9 +908,11 @@ async function submitResult({
 
         createdByUserId:
           normalizedAdminUserId,
+        transaction,
       });
+      await transaction.commit();
 
-    return {
+      return {
       success: true,
 
       session:
@@ -947,7 +963,7 @@ async function submitResult({
       },
 
       member:
-        mapMember(membership),
+      mapMember(membership),
 
       history: {
         id:
@@ -958,9 +974,13 @@ async function submitResult({
 
       scoreTransaction,
     };
-  } catch (error) {
-    if (
-      error.number === 2601 ||
+    } catch (error) {
+      if (transaction._aborted !== true) {
+        await transaction.rollback();
+      }
+
+      if (
+        error.number === 2601 ||
       error.number === 2627
     ) {
       return {

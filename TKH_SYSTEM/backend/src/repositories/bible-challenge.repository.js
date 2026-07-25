@@ -485,11 +485,13 @@ async function createHistoryRecord({
   awardedPoints,
   source,
   createdByUserId,
+  transaction = null,
 }) {
-  const pool = await getPool();
+  const request = transaction
+    ? new sql.Request(transaction)
+    : (await getPool()).request();
 
-  const queryResult = await pool
-    .request()
+  const queryResult = await request
     .input("seasonId", sql.Int, seasonId)
     .input("sessionId", sql.Int, sessionId)
     .input("groupId", sql.Int, groupId)

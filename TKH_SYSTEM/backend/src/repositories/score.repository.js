@@ -623,11 +623,13 @@ async function createScoreTransaction({
   sourceKey = null,
   description = null,
   createdByUserId = null,
+  transaction = null,
 }) {
-  const pool = await getPool();
+  const request = transaction
+    ? new sql.Request(transaction)
+    : (await getPool()).request();
 
-  const result = await pool
-    .request()
+  const result = await request
     .input(
       "seasonMembershipId",
       sql.Int,
