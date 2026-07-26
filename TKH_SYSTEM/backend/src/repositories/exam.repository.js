@@ -17,6 +17,95 @@ async function createRequest(
 }
 
 
+
+async function createExamRecord(
+  {
+    seasonId,
+    name,
+    type,
+    scheduledStartAt,
+    timePerQuestion,
+    resultVisibility,
+  },
+  transaction = null
+) {
+  const request = await createRequest(
+    transaction
+  );
+
+  const result = await request
+    .input(
+      "seasonId",
+      sql.Int,
+      seasonId
+    )
+    .input(
+      "name",
+      sql.NVarChar(200),
+      name
+    )
+    .input(
+      "type",
+      sql.VarChar(30),
+      type
+    )
+    .input(
+      "scheduledStartAt",
+      sql.DateTime2,
+      scheduledStartAt
+    )
+    .input(
+      "timePerQuestion",
+      sql.Int,
+      timePerQuestion
+    )
+    .input(
+      "resultVisibility",
+      sql.VarChar(30),
+      resultVisibility
+    )
+    .query(`
+      INSERT INTO dbo.exams
+      (
+        season_id,
+        name,
+        type,
+        status,
+        scheduled_start_at,
+        time_per_question,
+        result_visibility,
+        created_at,
+        updated_at
+      )
+      OUTPUT
+        inserted.id,
+        inserted.season_id,
+        inserted.name,
+        inserted.type,
+        inserted.status,
+        inserted.scheduled_start_at,
+        inserted.time_per_question,
+        inserted.result_visibility,
+        inserted.created_at,
+        inserted.updated_at
+      VALUES
+      (
+        @seasonId,
+        @name,
+        @type,
+        'DRAFT',
+        @scheduledStartAt,
+        @timePerQuestion,
+        @resultVisibility,
+        SYSDATETIME(),
+        SYSDATETIME()
+      );
+    `);
+
+  return result.recordset[0] || null;
+}
+
+
 async function findExamsBySeasonId(
   seasonId,
   transaction = null
@@ -423,7 +512,184 @@ async function createExamQuestion(
   return result.recordset[0] || null;
 }
 
+/*
+=====================================================
+Delete one DRAFT exam safely
+
+The transaction locks the exam row, verifies that it
+is still DRAFT, blocks deletion when attempts exist,
+then removes waiting-room entries, questions and exam.
+Answer choices are stored inside exam_questions.
+=====================================================
+*/
+
+async function deleteDraftExamById(examId) {
+  const pool = await getPool();
+
+  const transaction =
+    new sql.Transaction(pool);
+
+  let transactionStarted = false;
+
+  try {
+    await transaction.begin(
+      sql.ISOLATION_LEVEL.SERIALIZABLE
+    );
+
+    transactionStarted = true;
+
+    const examResult =
+      await new sql.Request(transaction)
+        .input(
+          "examId",
+          sql.Int,
+          examId
+        )
+        .query(`
+          SELECT TOP (1)
+            e.id,
+            e.status
+
+          FROM dbo.exams AS e
+            WITH (UPDLOCK, HOLDLOCK)
+
+          WHERE e.id = @examId;
+        `);
+
+    const exam =
+      examResult.recordset[0] || null;
+
+    if (!exam) {
+      await transaction.rollback();
+      transactionStarted = false;
+
+      return {
+        status: "NOT_FOUND",
+      };
+    }
+
+    if (
+      String(exam.status).toUpperCase() !==
+      "DRAFT"
+    ) {
+      await transaction.rollback();
+      transactionStarted = false;
+
+      return {
+        status: "NOT_DRAFT",
+      };
+    }
+
+    const attemptResult =
+      await new sql.Request(transaction)
+        .input(
+          "examId",
+          sql.Int,
+          examId
+        )
+        .query(`
+          SELECT
+            COUNT(*) AS total_attempts
+
+          FROM dbo.exam_attempts AS ea
+            WITH (UPDLOCK, HOLDLOCK)
+
+          WHERE ea.exam_id = @examId;
+        `);
+
+    const totalAttempts =
+      Number(
+        attemptResult.recordset[0]
+          ?.total_attempts
+      ) || 0;
+
+    if (totalAttempts > 0) {
+      await transaction.rollback();
+      transactionStarted = false;
+
+      return {
+        status: "HAS_ATTEMPTS",
+        totalAttempts,
+      };
+    }
+
+    const waitingRoomResult =
+      await new sql.Request(transaction)
+        .input(
+          "examId",
+          sql.Int,
+          examId
+        )
+        .query(`
+          DELETE FROM dbo.exam_waiting_room
+          WHERE exam_id = @examId;
+        `);
+
+    const questionsResult =
+      await new sql.Request(transaction)
+        .input(
+          "examId",
+          sql.Int,
+          examId
+        )
+        .query(`
+          DELETE FROM dbo.exam_questions
+          WHERE exam_id = @examId;
+        `);
+
+    const examDeleteResult =
+      await new sql.Request(transaction)
+        .input(
+          "examId",
+          sql.Int,
+          examId
+        )
+        .query(`
+          DELETE FROM dbo.exams
+          WHERE id = @examId;
+        `);
+
+    await transaction.commit();
+    transactionStarted = false;
+
+    return {
+      status: "DELETED",
+
+      deletedWaitingRoomEntries:
+        Number(
+          waitingRoomResult.rowsAffected[0]
+        ) || 0,
+
+      deletedQuestions:
+        Number(
+          questionsResult.rowsAffected[0]
+        ) || 0,
+
+      deletedExams:
+        Number(
+          examDeleteResult.rowsAffected[0]
+        ) || 0,
+    };
+  } catch (error) {
+    if (transactionStarted) {
+      try {
+        await transaction.rollback();
+      } catch (rollbackError) {
+        console.error(
+          "Delete Exam rollback error:",
+          rollbackError
+        );
+      }
+    }
+
+    throw error;
+  }
+}
+
+
 module.exports = {
+  deleteDraftExamById,
+  createExamRecord,
   findExamsBySeasonId,
   findExamById,
   findWaitingRoomEntry,

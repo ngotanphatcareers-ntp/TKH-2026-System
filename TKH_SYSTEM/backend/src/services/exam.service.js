@@ -1,5 +1,6 @@
 const {
   findExamsBySeasonId,
+  createExamRecord,
   findExamById,
   findWaitingRoomEntry,
   findLatestAttemptByExamAndMembership,
@@ -209,6 +210,35 @@ async function getExams({
 
 /*
 =====================================================
+Admin: Get all exams in active season
+=====================================================
+*/
+
+async function getAdminExams() {
+  const activeSeason =
+    await findActiveSeason();
+
+  if (!activeSeason) {
+    return {
+      success: false,
+      code: "ACTIVE_SEASON_NOT_FOUND",
+    };
+  }
+
+  const exams =
+    await findExamsBySeasonId(
+      activeSeason.id
+    );
+
+  return {
+    success: true,
+    exams: exams.map(mapExam),
+  };
+}
+
+
+/*
+=====================================================
 2. Join exam waiting room
 
 This function only creates or returns a waiting-room
@@ -362,9 +392,139 @@ async function joinWaitingRoom({
 }
 
 
+
 /*
 =====================================================
-3. Import Exam questions from Excel
+3. Admin: Create Exam
+=====================================================
+*/
+
+async function createExam({
+  name,
+  type,
+  scheduledStartAt,
+  timePerQuestion,
+}) {
+  const normalizedName =
+    typeof name === "string"
+      ? name.trim()
+      : "";
+
+  if (
+    !normalizedName ||
+    normalizedName.length > 200
+  ) {
+    return {
+      success: false,
+      code: "INVALID_EXAM_NAME",
+    };
+  }
+
+  const normalizedType =
+    typeof type === "string"
+      ? type.trim().toUpperCase()
+      : "";
+
+  const allowedTypes = [
+    "PRE_TEST",
+    "FINAL_TEST",
+  ];
+
+  if (
+    !allowedTypes.includes(
+      normalizedType
+    )
+  ) {
+    return {
+      success: false,
+      code: "INVALID_EXAM_TYPE",
+    };
+  }
+
+  const normalizedTimePerQuestion =
+    Number(timePerQuestion);
+
+  if (
+    !Number.isInteger(
+      normalizedTimePerQuestion
+    ) ||
+    normalizedTimePerQuestion <= 0
+  ) {
+    return {
+      success: false,
+      code:
+        "INVALID_TIME_PER_QUESTION",
+    };
+  }
+
+  let normalizedScheduledStartAt = null;
+
+  if (
+    scheduledStartAt !== null &&
+    scheduledStartAt !== undefined &&
+    String(scheduledStartAt).trim()
+  ) {
+    normalizedScheduledStartAt =
+      new Date(scheduledStartAt);
+
+    if (
+      Number.isNaN(
+        normalizedScheduledStartAt.getTime()
+      )
+    ) {
+      return {
+        success: false,
+        code:
+          "INVALID_SCHEDULED_START_AT",
+      };
+    }
+  }
+
+  const activeSeason =
+    await findActiveSeason();
+
+  if (!activeSeason) {
+    return {
+      success: false,
+      code:
+        "ACTIVE_SEASON_NOT_FOUND",
+    };
+  }
+
+  const createdExam =
+    await createExamRecord({
+      seasonId:
+        activeSeason.id,
+
+      name:
+        normalizedName,
+
+      type:
+        normalizedType,
+
+      scheduledStartAt:
+        normalizedScheduledStartAt,
+
+      timePerQuestion:
+        normalizedTimePerQuestion,
+
+      resultVisibility:
+        "FULL_RESULT",
+    });
+
+  return {
+    success: true,
+
+    data: {
+      exam:
+        mapExam(createdExam),
+    },
+  };
+}
+
+/*
+=====================================================
+4. Import Exam questions from Excel
 =====================================================
 */
 
@@ -532,8 +692,137 @@ async function importExamQuestionsFromExcel({
   }
 }
 
+/*
+=====================================================
+5. Admin: Delete a DRAFT Exam
+=====================================================
+*/
+
+async function deleteExam({
+  examId,
+}) {
+  const normalizedExamId =
+    Number(examId);
+
+  if (
+    !Number.isInteger(normalizedExamId) ||
+    normalizedExamId <= 0
+  ) {
+    return {
+      success: false,
+      code: "INVALID_EXAM_ID",
+    };
+  }
+
+  const activeSeason =
+    await findActiveSeason();
+
+  if (!activeSeason) {
+    return {
+      success: false,
+      code: "ACTIVE_SEASON_NOT_FOUND",
+    };
+  }
+
+  const exam =
+    await findExamById(
+      normalizedExamId
+    );
+
+  if (!exam) {
+    return {
+      success: false,
+      code: "EXAM_NOT_FOUND",
+    };
+  }
+
+  if (
+    Number(exam.season_id) !==
+    Number(activeSeason.id)
+  ) {
+    return {
+      success: false,
+      code: "EXAM_NOT_IN_ACTIVE_SEASON",
+    };
+  }
+
+  if (
+    String(exam.status).toUpperCase() !==
+    "DRAFT"
+  ) {
+    return {
+      success: false,
+      code: "EXAM_NOT_DRAFT",
+    };
+  }
+
+  const {
+    deleteDraftExamById,
+  } = require(
+    "../repositories/exam.repository"
+  );
+
+  const deletionResult =
+    await deleteDraftExamById(
+      normalizedExamId
+    );
+
+  if (
+    deletionResult.status ===
+    "NOT_FOUND"
+  ) {
+    return {
+      success: false,
+      code: "EXAM_NOT_FOUND",
+    };
+  }
+
+  if (
+    deletionResult.status ===
+    "NOT_DRAFT"
+  ) {
+    return {
+      success: false,
+      code: "EXAM_NOT_DRAFT",
+    };
+  }
+
+  if (
+    deletionResult.status ===
+    "HAS_ATTEMPTS"
+  ) {
+    return {
+      success: false,
+      code: "EXAM_HAS_ATTEMPTS",
+
+      totalAttempts:
+        deletionResult.totalAttempts,
+    };
+  }
+
+  return {
+    success: true,
+
+    deletedExam: {
+      id: normalizedExamId,
+      name: exam.name,
+    },
+
+    deletedQuestions:
+      deletionResult.deletedQuestions,
+
+    deletedWaitingRoomEntries:
+      deletionResult
+        .deletedWaitingRoomEntries,
+  };
+}
+
+
 module.exports = {
+  deleteExam,
   getExams,
+  getAdminExams,
+  createExam,
   joinWaitingRoom,
   importExamQuestionsFromExcel,
 };

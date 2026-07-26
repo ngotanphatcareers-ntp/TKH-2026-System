@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TKH 2026 - Quản lý bài kiểm tra</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=156">
 </head>
 <body class="app-page">
 
@@ -41,6 +41,128 @@
             <p>Tạo và quản lý nội dung bài kiểm tra TKH 2026.</p>
         </div>
     </div>
+
+
+
+    <section class="form-section admin-exam-create-section">
+        <h2>Tạo bài kiểm tra mới</h2>
+
+        <form
+            id="adminExamCreateForm"
+            onsubmit="createAdminExamFromApi(event)"
+        >
+            <div class="admin-exam-create-grid">
+                <div class="admin-exam-create-field admin-exam-create-field-wide">
+                    <label for="adminExamCreateName">
+                        Tên bài kiểm tra
+                    </label>
+
+                    <input
+                        type="text"
+                        id="adminExamCreateName"
+                        class="form-input"
+                        maxlength="200"
+                        required
+                        placeholder="Ví dụ: Pre-test tuần 1"
+                    >
+                </div>
+
+                <div class="admin-exam-create-field">
+                    <label for="adminExamCreateType">
+                        Loại bài kiểm tra
+                    </label>
+
+                    <select
+                        id="adminExamCreateType"
+                        class="form-input"
+                        required
+                    >
+                        <option value="PRE_TEST">
+                            Pre-test
+                        </option>
+
+                        <option value="FINAL_TEST">
+                            Final Test
+                        </option>
+                    </select>
+                </div>
+
+                <div class="admin-exam-create-field">
+                    <label for="adminExamCreateScheduledStartAt">
+                        Ngày giờ dự kiến
+                    </label>
+
+                    <input
+                        type="datetime-local"
+                        id="adminExamCreateScheduledStartAt"
+                        class="form-input"
+                    >
+                </div>
+
+                <div class="admin-exam-create-field">
+                    <label for="adminExamCreateTimePerQuestion">
+                        Thời gian mỗi câu (giây)
+                    </label>
+
+                    <input
+                        type="number"
+                        id="adminExamCreateTimePerQuestion"
+                        class="form-input"
+                        min="1"
+                        step="1"
+                        value="20"
+                        required
+                    >
+                </div>
+
+            </div>
+
+            <button
+                type="submit"
+                id="adminExamCreateButton"
+                class="profile-btn"
+            >
+                Tạo bài kiểm tra
+            </button>
+
+            <p
+                id="adminExamCreateMessage"
+                class="empty-note hidden"
+            ></p>
+        </form>
+    </section>
+
+        <section class="admin-exams-section">
+            <h2>Danh sách bài kiểm tra</h2>
+
+            <p
+                id="adminExamsMessage"
+                class="empty-note"
+            >
+                Đang tải danh sách bài kiểm tra...
+            </p>
+
+            <div
+                id="adminExamsTableWrapper"
+                class="admin-exams-table-wrapper hidden"
+            >
+                <table class="admin-exams-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Tên bài kiểm tra</th>
+                            <th>Loại</th>
+                            <th>Trạng thái</th>
+                            <th>Thời gian bắt đầu</th>
+                            <th>Số câu hỏi</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="adminExamsTableBody"></tbody>
+                </table>
+            </div>
+        </section>
 
     <section class="form-section">
         <h2>Import câu hỏi từ Excel</h2>
@@ -99,7 +221,7 @@
                 </div>
         </div>
 </div>
-<script src="js/app.js?v=152"></script>
+<script src="js/app.js?v=156"></script>
 
 </body>
 </html>

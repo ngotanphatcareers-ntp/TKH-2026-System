@@ -13,6 +13,9 @@ const uploadExamQuestionsFile = require(
 );
 
 const {
+  getAdminExamsController,
+  createExamController,
+  deleteExamController,
   importExamQuestionsFromExcelController,
 } = require(
   "../controllers/exam.controller"
@@ -49,6 +52,45 @@ router.get(
       },
     });
   }
+);
+
+
+/*
+=====================================================
+GET /api/admin/test/exams
+Get all exams in active season
+=====================================================
+*/
+
+router.get(
+  "/exams",
+  getAdminExamsController
+);
+
+
+
+/*
+=====================================================
+POST /api/admin/test/exams
+Create a new Exam
+=====================================================
+*/
+
+router.post(
+  "/exams",
+  createExamController
+);
+
+/*
+=====================================================
+DELETE /api/admin/test/exams/:examId
+Delete one DRAFT Exam
+=====================================================
+*/
+
+router.delete(
+  "/exams/:examId",
+  deleteExamController
 );
 
 

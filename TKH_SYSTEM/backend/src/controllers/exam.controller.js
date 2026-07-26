@@ -1,5 +1,8 @@
 const {
   getExams,
+  getAdminExams,
+  createExam,
+  deleteExam,
   joinWaitingRoom,
   importExamQuestionsFromExcel,
 } = require(
@@ -19,6 +22,10 @@ const STATUS_BY_CODE = {
   ACTIVE_MEMBERSHIP_NOT_FOUND: 404,
   MEMBERSHIP_NOT_IN_ACTIVE_SEASON: 400,
 
+  INVALID_EXAM_NAME: 400,
+  INVALID_EXAM_TYPE: 400,
+  INVALID_SCHEDULED_START_AT: 400,
+  INVALID_TIME_PER_QUESTION: 400,
   INVALID_EXAM_ID: 400,
   EXAM_NOT_FOUND: 404,
   EXAM_NOT_IN_ACTIVE_SEASON: 400,
@@ -32,6 +39,8 @@ const STATUS_BY_CODE = {
   EXCEL_HAS_NO_QUESTIONS: 400,
 
   EXAM_NOT_EDITABLE: 409,
+  EXAM_NOT_DRAFT: 409,
+  EXAM_HAS_ATTEMPTS: 409,
 };
 
 
@@ -134,7 +143,96 @@ async function joinWaitingRoomController(
 
 /*
 =====================================================
-3. Import Exam questions from Excel
+Admin: Get all exams
+=====================================================
+*/
+
+async function getAdminExamsController(
+  req,
+  res
+) {
+  try {
+    const result =
+      await getAdminExams();
+
+    if (!result.success) {
+      return sendErrorResponse(
+        res,
+        result
+      );
+    }
+
+    return res
+      .status(200)
+      .json(result);
+  } catch (error) {
+    console.error(
+      "Get Admin exams error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      code: "INTERNAL_SERVER_ERROR",
+    });
+  }
+}
+
+
+
+/*
+=====================================================
+Admin: Create Exam
+=====================================================
+*/
+
+async function createExamController(
+  req,
+  res
+) {
+  try {
+    const result =
+      await createExam({
+        name:
+          req.body?.name,
+
+        type:
+          req.body?.type,
+
+        scheduledStartAt:
+          req.body?.scheduledStartAt,
+
+        timePerQuestion:
+          req.body?.timePerQuestion,
+
+      });
+
+    if (!result.success) {
+      return sendErrorResponse(
+        res,
+        result
+      );
+    }
+
+    return res
+      .status(201)
+      .json(result);
+  } catch (error) {
+    console.error(
+      "Create Exam error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      code: "INTERNAL_SERVER_ERROR",
+    });
+  }
+}
+
+/*
+=====================================================
+4. Import Exam questions from Excel
 Admin only
 =====================================================
 */
@@ -176,8 +274,52 @@ async function importExamQuestionsFromExcelController(
   }
 }
 
+/*
+=====================================================
+Admin: Delete Exam
+=====================================================
+*/
+
+async function deleteExamController(
+  req,
+  res
+) {
+  try {
+    const result =
+      await deleteExam({
+        examId:
+          req.params.examId,
+      });
+
+    if (!result.success) {
+      return sendErrorResponse(
+        res,
+        result
+      );
+    }
+
+    return res
+      .status(200)
+      .json(result);
+  } catch (error) {
+    console.error(
+      "Delete Exam error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      code: "INTERNAL_SERVER_ERROR",
+    });
+  }
+}
+
+
 module.exports = {
+  deleteExamController,
   getExamsController,
+  getAdminExamsController,
+  createExamController,
   joinWaitingRoomController,
   importExamQuestionsFromExcelController,
 };

@@ -9436,6 +9436,933 @@ async function loadBibleChallengeProgressDemo() {
 
 /*
 =====================================================
+Admin Exam list
+=====================================================
+*/
+
+function escapeAdminExamHtml(value) {
+    return String(value ?? "")
+        .replace(
+            /[&<>"']/g,
+            character => ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#039;"
+            })[character]
+        );
+}
+
+
+function getAdminExamTypeLabel(type) {
+    const labels = {
+        PRE_TEST: "Pre-test",
+        FINAL_TEST: "Final Test"
+    };
+
+    return labels[type] || type || "Chưa xác định";
+}
+
+
+function getAdminExamStatusLabel(status) {
+    const labels = {
+        DRAFT: "Bản nháp",
+        SCHEDULED: "Đã lên lịch",
+        WAITING_ROOM_OPEN:
+            "Đang mở phòng chờ",
+        IN_PROGRESS: "Đang diễn ra",
+        PAUSED: "Tạm dừng",
+        COMPLETED: "Đã hoàn tất",
+        CANCELLED: "Đã hủy"
+    };
+
+    return labels[status] ||
+        status ||
+        "Chưa xác định";
+}
+
+
+function getAdminExamStatusClass(status) {
+    const classByStatus = {
+        DRAFT: "draft",
+        SCHEDULED: "scheduled",
+        WAITING_ROOM_OPEN: "open",
+        IN_PROGRESS: "progress",
+        PAUSED: "paused",
+        COMPLETED: "completed",
+        CANCELLED: "cancelled"
+    };
+
+    return classByStatus[status] ||
+        "default";
+}
+
+
+function formatAdminExamDate(value) {
+    if (!value) {
+        return "Chưa lên lịch";
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return "Thời gian không hợp lệ";
+    }
+
+    return date.toLocaleString(
+        "vi-VN",
+        {
+            dateStyle: "short",
+            timeStyle: "short"
+        }
+    );
+}
+
+
+function selectAdminExamForImport(examId) {
+    const normalizedExamId =
+        Number(examId);
+
+    if (
+        !Number.isInteger(
+            normalizedExamId
+        ) ||
+        normalizedExamId <= 0
+    ) {
+        return;
+    }
+
+    const examIdInput =
+        document.getElementById(
+            "adminExamImportId"
+        );
+
+    const importMessage =
+        document.getElementById(
+            "adminExamImportMessage"
+        );
+
+    if (!examIdInput) {
+        return;
+    }
+
+    examIdInput.value =
+        String(normalizedExamId);
+
+    if (importMessage) {
+        importMessage.style.color =
+            "#555";
+
+        importMessage.innerText =
+            `Đã chọn bài kiểm tra ID ${normalizedExamId} để import câu hỏi.`;
+    }
+
+    const importSection =
+        examIdInput.closest("section");
+
+    if (importSection) {
+        importSection.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
+    }
+
+    examIdInput.focus();
+}
+
+
+function renderAdminExams(exams) {
+    const message =
+        document.getElementById(
+            "adminExamsMessage"
+        );
+
+    const tableWrapper =
+        document.getElementById(
+            "adminExamsTableWrapper"
+        );
+
+    const tableBody =
+        document.getElementById(
+            "adminExamsTableBody"
+        );
+
+    if (
+        !message ||
+        !tableWrapper ||
+        !tableBody
+    ) {
+        return;
+    }
+
+    const validExams =
+        exams.filter(exam => {
+            const examId =
+                Number(exam?.id);
+
+            return (
+                Number.isInteger(examId) &&
+                examId > 0
+            );
+        });
+
+    if (validExams.length === 0) {
+        tableBody.innerHTML = "";
+
+        tableWrapper.classList.add(
+            "hidden"
+        );
+
+        message.classList.remove(
+            "hidden"
+        );
+
+        message.style.color = "#555";
+        message.innerText =
+            "Chưa có bài kiểm tra trong mùa đang hoạt động.";
+
+        return;
+    }
+
+    tableBody.innerHTML =
+        validExams.map(exam => {
+            const examId =
+                Number(exam.id);
+
+            const status =
+                String(
+                    exam.status || ""
+                ).toUpperCase();
+
+            return `
+                <tr>
+                    <td>${examId}</td>
+
+                    <td>
+                        ${escapeAdminExamHtml(
+                            exam.name
+                        )}
+                    </td>
+
+                    <td>
+                        ${escapeAdminExamHtml(
+                            getAdminExamTypeLabel(
+                                exam.type
+                            )
+                        )}
+                    </td>
+
+                    <td>
+                        <span
+                            class="admin-exam-status admin-exam-status-${getAdminExamStatusClass(status)}"
+                        >
+                            ${escapeAdminExamHtml(
+                                getAdminExamStatusLabel(
+                                    status
+                                )
+                            )}
+                        </span>
+                    </td>
+
+                    <td>
+                        ${escapeAdminExamHtml(
+                            formatAdminExamDate(
+                                exam.scheduledStartAt
+                            )
+                        )}
+                    </td>
+
+                    <td>
+                        ${Number(
+                            exam.totalQuestions
+                        ) || 0}
+                    </td>
+
+                    <td>
+                        <div class="admin-exam-actions">
+                            <button
+                                type="button"
+                                class="admin-exam-select-btn"
+                                data-exam-id="${examId}"
+                            >
+                                Chọn để import
+                            </button>
+
+                            <button
+                                type="button"
+                                class="admin-exam-delete-btn"
+                                data-exam-id="${examId}"
+                                ${String(
+                                    exam.status || ""
+                                ).toUpperCase() ===
+                                "DRAFT"
+                                    ? ""
+                                    : "disabled"}
+                                title="${String(
+                                    exam.status || ""
+                                ).toUpperCase() ===
+                                "DRAFT"
+                                    ? "Xóa bài kiểm tra"
+                                    : "Chỉ được xóa bài đang ở trạng thái Nháp"}"
+                            >
+                                Xóa
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join("");
+
+    tableBody
+        .querySelectorAll(
+            ".admin-exam-select-btn"
+        )
+        .forEach(button => {
+            button.addEventListener(
+                "click",
+                () => {
+                    selectAdminExamForImport(
+                        button.dataset.examId
+                    );
+                }
+            );
+        });
+
+    tableBody
+        .querySelectorAll(
+            ".admin-exam-delete-btn"
+        )
+        .forEach(button => {
+            button.addEventListener(
+                "click",
+                () => {
+                    const examId =
+                        Number(
+                            button.dataset
+                                .examId
+                        );
+
+                    const exam =
+                        validExams.find(
+                            item =>
+                                Number(
+                                    item.id
+                                ) === examId
+                        );
+
+                    deleteAdminExamFromApi({
+                        examId,
+                        examName:
+                            exam?.name || "",
+                        button
+                    });
+                }
+            );
+        });
+
+    message.classList.add(
+        "hidden"
+    );
+
+    tableWrapper.classList.remove(
+        "hidden"
+    );
+}
+
+
+
+async function deleteAdminExamFromApi({
+    examId,
+    examName,
+    button
+}) {
+    const normalizedExamId =
+        Number(examId);
+
+    if (
+        !Number.isInteger(
+            normalizedExamId
+        ) ||
+        normalizedExamId <= 0
+    ) {
+        window.alert(
+            "ID bài kiểm tra không hợp lệ."
+        );
+        return;
+    }
+
+    const displayName =
+        String(examName || "").trim() ||
+        `ID ${normalizedExamId}`;
+
+    const confirmed =
+        window.confirm(
+            `Bạn có chắc muốn xóa bài kiểm tra “${displayName}” không?\n\nToàn bộ câu hỏi và đáp án của bài này cũng sẽ bị xóa. Hành động này không thể hoàn tác.`
+        );
+
+    if (!confirmed) {
+        return;
+    }
+
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
+
+    if (!token) {
+        window.location.href =
+            "index.html";
+        return;
+    }
+
+    const originalButtonText =
+        button?.innerText || "Xóa";
+
+    if (button) {
+        button.disabled = true;
+        button.innerText = "Đang xóa...";
+    }
+
+    try {
+        const response =
+            await fetch(
+                `${API_BASE_URL}/api/admin/test/exams/${normalizedExamId}`,
+                {
+                    method: "DELETE",
+
+                    headers: {
+                        Authorization:
+                            `Bearer ${token}`
+                    }
+                }
+            );
+
+        let result = {};
+
+        try {
+            result =
+                await response.json();
+        } catch {
+            result = {};
+        }
+
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+            const errorCode =
+                result.code || "";
+
+            const errorMessages = {
+                INVALID_EXAM_ID:
+                    "ID bài kiểm tra không hợp lệ.",
+
+                EXAM_NOT_FOUND:
+                    "Không tìm thấy bài kiểm tra hoặc bài đã được xóa.",
+
+                EXAM_NOT_IN_ACTIVE_SEASON:
+                    "Bài kiểm tra không thuộc mùa đang hoạt động.",
+
+                EXAM_NOT_DRAFT:
+                    "Chỉ có thể xóa bài đang ở trạng thái Nháp.",
+
+                EXAM_HAS_ATTEMPTS:
+                    "Không thể xóa vì bài kiểm tra đã có lượt làm bài.",
+
+                ACTIVE_SEASON_NOT_FOUND:
+                    "Không tìm thấy mùa đang hoạt động.",
+
+                UNAUTHORIZED:
+                    "Phiên đăng nhập đã hết hạn.",
+
+                FORBIDDEN:
+                    "Bạn không có quyền xóa bài kiểm tra."
+            };
+
+            throw new Error(
+                errorMessages[errorCode] ||
+                "Không thể xóa bài kiểm tra."
+            );
+        }
+
+        window.alert(
+            `Đã xóa bài kiểm tra “${displayName}” thành công.`
+        );
+
+        await loadAdminExamsFromApi();
+    } catch (error) {
+        console.error(
+            "Delete Admin exam error:",
+            error
+        );
+
+        if (
+            error instanceof TypeError
+        ) {
+            window.alert(
+                "Không thể kết nối Backend. Hãy kiểm tra server đang chạy ở cổng 5000."
+            );
+        } else {
+            window.alert(
+                error.message ||
+                "Không thể xóa bài kiểm tra."
+            );
+        }
+    } finally {
+        if (
+            button &&
+            button.isConnected
+        ) {
+            button.disabled = false;
+            button.innerText =
+                originalButtonText;
+        }
+    }
+}
+
+
+async function createAdminExamFromApi(event) {
+    event?.preventDefault();
+
+    const nameInput =
+        document.getElementById(
+            "adminExamCreateName"
+        );
+
+    const typeInput =
+        document.getElementById(
+            "adminExamCreateType"
+        );
+
+    const scheduledStartInput =
+        document.getElementById(
+            "adminExamCreateScheduledStartAt"
+        );
+
+    const timePerQuestionInput =
+        document.getElementById(
+            "adminExamCreateTimePerQuestion"
+        );
+
+    const createButton =
+        document.getElementById(
+            "adminExamCreateButton"
+        );
+
+    const message =
+        document.getElementById(
+            "adminExamCreateMessage"
+        );
+
+    if (
+        !nameInput ||
+        !typeInput ||
+        !scheduledStartInput ||
+        !timePerQuestionInput ||
+        !createButton ||
+        !message
+    ) {
+        return;
+    }
+
+    const name =
+        nameInput.value.trim();
+
+    const timePerQuestion =
+        Number(
+            timePerQuestionInput.value
+        );
+
+    if (!name) {
+        message.classList.remove(
+            "hidden"
+        );
+
+        message.style.color = "red";
+
+        message.innerText =
+            "Vui lòng nhập tên bài kiểm tra.";
+
+        nameInput.focus();
+        return;
+    }
+
+    if (
+        !Number.isInteger(
+            timePerQuestion
+        ) ||
+        timePerQuestion <= 0
+    ) {
+        message.classList.remove(
+            "hidden"
+        );
+
+        message.style.color = "red";
+
+        message.innerText =
+            "Thời gian mỗi câu phải là số nguyên lớn hơn 0.";
+
+        timePerQuestionInput.focus();
+        return;
+    }
+
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        ) ||
+        localStorage.getItem(
+            "authToken"
+        ) ||
+        localStorage.getItem(
+            "token"
+        );
+
+    if (!token) {
+        window.location.href =
+            "index.html";
+
+        return;
+    }
+
+    createButton.disabled = true;
+
+    message.classList.remove(
+        "hidden"
+    );
+
+    message.style.color = "#555";
+
+    message.innerText =
+        "Đang tạo bài kiểm tra...";
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/admin/test/exams`,
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json",
+
+                    Authorization:
+                        `Bearer ${token}`
+                },
+
+                body: JSON.stringify({
+                    name,
+
+                    type:
+                        typeInput.value,
+
+                    scheduledStartAt:
+                        scheduledStartInput
+                            .value || null,
+
+                    timePerQuestion
+                })
+            }
+        );
+
+        let result = {};
+
+        try {
+            result =
+                await response.json();
+        } catch (jsonError) {
+            result = {};
+        }
+
+        if (
+            response.status === 401 ||
+            response.status === 403
+        ) {
+            window.location.href =
+                "index.html";
+
+            return;
+        }
+
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+            const messagesByCode = {
+                INVALID_EXAM_NAME:
+                    "Tên bài kiểm tra không hợp lệ.",
+                INVALID_EXAM_TYPE:
+                    "Loại bài kiểm tra không hợp lệ.",
+                INVALID_SCHEDULED_START_AT:
+                    "Ngày giờ dự kiến không hợp lệ.",
+                INVALID_TIME_PER_QUESTION:
+                    "Thời gian mỗi câu phải là số nguyên lớn hơn 0.",
+                ACTIVE_SEASON_NOT_FOUND:
+                    "Không tìm thấy mùa TKH đang hoạt động.",
+                INTERNAL_SERVER_ERROR:
+                    "Máy chủ gặp lỗi khi tạo bài kiểm tra."
+            };
+
+            const errorCode =
+                result?.error?.code ||
+                result?.code;
+
+            throw new Error(
+                result?.error?.message ||
+                result?.message ||
+                messagesByCode[
+                    errorCode
+                ] ||
+                "Không thể tạo bài kiểm tra."
+            );
+        }
+
+        const createdExam =
+            result?.data?.exam ||
+            result?.exam;
+
+        if (
+            !createdExam ||
+            !createdExam.id
+        ) {
+            throw new Error(
+                "Backend đã tạo bài nhưng không trả về ID."
+            );
+        }
+
+        document
+            .getElementById(
+                "adminExamCreateForm"
+            )
+            ?.reset();
+
+        message.style.color =
+            "green";
+
+        message.innerText =
+            `Đã tạo bài kiểm tra ID ${createdExam.id} thành công.`;
+
+        await loadAdminExamsFromApi();
+
+        selectAdminExamForImport(
+            createdExam.id
+        );
+    } catch (error) {
+        console.error(
+            "Create Admin exam error:",
+            error
+        );
+
+        message.style.color = "red";
+
+        if (
+            error instanceof TypeError
+        ) {
+            message.innerText =
+                "Không thể kết nối Backend. Hãy kiểm tra server đang chạy ở cổng 5000.";
+        } else {
+            message.innerText =
+                error.message ||
+                "Không thể tạo bài kiểm tra.";
+        }
+    } finally {
+        createButton.disabled = false;
+    }
+}
+
+
+async function loadAdminExamsFromApi() {
+    const message =
+        document.getElementById(
+            "adminExamsMessage"
+        );
+
+    const tableWrapper =
+        document.getElementById(
+            "adminExamsTableWrapper"
+        );
+
+    if (!message || !tableWrapper) {
+        return;
+    }
+
+    let currentUser = null;
+
+    try {
+        currentUser =
+            JSON.parse(
+                localStorage.getItem(
+                    "currentUser"
+                )
+            );
+    } catch {
+        currentUser = null;
+    }
+
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
+
+    if (!currentUser || !token) {
+        window.location.href =
+            "index.html";
+        return;
+    }
+
+    if (
+        String(currentUser.role)
+            .toLowerCase() !== "admin"
+    ) {
+        message.style.color = "red";
+        message.innerText =
+            "Chỉ Admin được phép xem danh sách bài kiểm tra.";
+
+        tableWrapper.classList.add(
+            "hidden"
+        );
+
+        return;
+    }
+
+    message.classList.remove(
+        "hidden"
+    );
+
+    message.style.color = "#555";
+    message.innerText =
+        "Đang tải danh sách bài kiểm tra...";
+
+    tableWrapper.classList.add(
+        "hidden"
+    );
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/admin/test/exams`,
+            {
+                headers: {
+                    Authorization:
+                        `Bearer ${token}`
+                }
+            }
+        );
+
+        const responseText =
+            await response.text();
+
+        let result = {};
+
+        if (responseText) {
+            try {
+                result =
+                    JSON.parse(
+                        responseText
+                    );
+            } catch {
+                result = {
+                    success: false,
+                    message:
+                        responseText
+                };
+            }
+        }
+
+        if (
+            response.status === 401 ||
+            response.status === 403
+        ) {
+            localStorage.removeItem(
+                "accessToken"
+            );
+
+            localStorage.removeItem(
+                "currentUser"
+            );
+
+            localStorage.removeItem(
+                "currentUsername"
+            );
+
+            window.location.href =
+                "index.html";
+
+            return;
+        }
+
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+            const messagesByCode = {
+                ACTIVE_SEASON_NOT_FOUND:
+                    "Không tìm thấy mùa TKH đang hoạt động.",
+                INTERNAL_SERVER_ERROR:
+                    "Máy chủ gặp lỗi khi tải danh sách bài kiểm tra."
+            };
+
+            const errorCode =
+                result?.error?.code ||
+                result?.code;
+
+            throw new Error(
+                result?.error?.message ||
+                result?.message ||
+                messagesByCode[
+                    errorCode
+                ] ||
+                "Không thể tải danh sách bài kiểm tra."
+            );
+        }
+
+        const exams =
+            Array.isArray(result.exams)
+                ? result.exams
+                : Array.isArray(
+                    result.data?.exams
+                )
+                    ? result.data.exams
+                    : [];
+
+        renderAdminExams(exams);
+    } catch (error) {
+        console.error(
+            "Load Admin exams error:",
+            error
+        );
+
+        tableWrapper.classList.add(
+            "hidden"
+        );
+
+        message.classList.remove(
+            "hidden"
+        );
+
+        message.style.color = "red";
+
+        if (
+            error instanceof TypeError
+        ) {
+            message.innerText =
+                "Không thể kết nối Backend. Hãy kiểm tra server đang chạy ở cổng 5000.";
+        } else {
+            message.innerText =
+                error.message ||
+                "Không thể tải danh sách bài kiểm tra.";
+        }
+    }
+}
+
+
+document.addEventListener(
+    "DOMContentLoaded",
+    loadAdminExamsFromApi
+);
+
+
+/*
+=====================================================
 Import Exam questions from Excel
 Admin only
 =====================================================
@@ -9679,6 +10606,8 @@ async function importExamQuestionsFromExcel() {
         }
 
         fileInput.value = "";
+
+        await loadAdminExamsFromApi();
     } catch (error) {
         console.error(
             "Import Exam questions error:",
