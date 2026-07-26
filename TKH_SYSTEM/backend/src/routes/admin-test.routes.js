@@ -17,6 +17,8 @@ const {
   createExamController,
   deleteExamController,
   importExamQuestionsFromExcelController,
+  openExamWaitingRoomController,
+  closeExamWaitingRoomController,
 } = require(
   "../controllers/exam.controller"
 );
@@ -80,6 +82,32 @@ router.post(
   "/exams",
   createExamController
 );
+
+
+/*
+=====================================================
+PATCH /api/admin/test/exams/:examId/open-waiting-room
+=====================================================
+*/
+
+router.patch(
+  "/exams/:examId/open-waiting-room",
+  openExamWaitingRoomController
+);
+
+
+
+/*
+=====================================================
+PATCH /api/admin/test/exams/:examId/close-waiting-room
+=====================================================
+*/
+
+router.patch(
+  "/exams/:examId/close-waiting-room",
+  closeExamWaitingRoomController
+);
+
 
 /*
 =====================================================

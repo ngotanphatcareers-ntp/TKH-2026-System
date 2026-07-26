@@ -7,6 +7,9 @@ const {
   createWaitingRoomEntry,
   findMaximumQuestionIndexByExamId,
   createExamQuestion,
+  openDraftExamWaitingRoomById,
+  findActiveExamBySeasonId,
+  closeOpenExamWaitingRoomById,
 } = require(
   "../repositories/exam.repository"
 );
@@ -522,6 +525,231 @@ async function createExam({
   };
 }
 
+
+/*
+=====================================================
+Admin: Open Exam waiting room
+=====================================================
+*/
+
+async function openExamWaitingRoom({
+  examId,
+}) {
+  const normalizedExamId =
+    Number(examId);
+
+  if (
+    !Number.isInteger(normalizedExamId) ||
+    normalizedExamId <= 0
+  ) {
+    return {
+      success: false,
+      code: "INVALID_EXAM_ID",
+    };
+  }
+
+  const activeSeason =
+    await findActiveSeason();
+
+  if (!activeSeason) {
+    return {
+      success: false,
+      code: "ACTIVE_SEASON_NOT_FOUND",
+    };
+  }
+
+  const exam =
+    await findExamById(
+      normalizedExamId
+    );
+
+  if (!exam) {
+    return {
+      success: false,
+      code: "EXAM_NOT_FOUND",
+    };
+  }
+
+  if (
+    Number(exam.season_id) !==
+    Number(activeSeason.id)
+  ) {
+    return {
+      success: false,
+      code: "EXAM_NOT_IN_ACTIVE_SEASON",
+    };
+  }
+
+  if (
+    String(exam.status).toUpperCase() !==
+    "DRAFT"
+  ) {
+    return {
+      success: false,
+      code: "EXAM_NOT_DRAFT",
+    };
+  }
+
+  const totalQuestions =
+    Number(exam.total_questions) || 0;
+
+  if (totalQuestions <= 0) {
+    return {
+      success: false,
+      code: "EXAM_HAS_NO_QUESTIONS",
+    };
+  }
+
+  const activeExam =
+    await findActiveExamBySeasonId(
+      activeSeason.id
+    );
+
+  if (activeExam) {
+    return {
+      success: false,
+      code: "ANOTHER_EXAM_ACTIVE",
+
+      data: {
+        activeExam: {
+          id: activeExam.id,
+          name: activeExam.name,
+          status: activeExam.status,
+        },
+      },
+    };
+  }
+
+
+  const updatedExam =
+    await openDraftExamWaitingRoomById({
+      examId:
+        normalizedExamId,
+
+      seasonId:
+        activeSeason.id,
+    });
+
+  if (!updatedExam) {
+    return {
+      success: false,
+      code: "EXAM_NOT_DRAFT",
+    };
+  }
+
+  return {
+    success: true,
+
+    data: {
+      exam: mapExam({
+        ...updatedExam,
+
+        total_questions:
+          totalQuestions,
+      }),
+    },
+  };
+}
+
+
+
+/*
+=====================================================
+Admin: Close Exam waiting room
+=====================================================
+*/
+
+async function closeExamWaitingRoom({
+  examId,
+}) {
+  const normalizedExamId =
+    Number(examId);
+
+  if (
+    !Number.isInteger(normalizedExamId) ||
+    normalizedExamId <= 0
+  ) {
+    return {
+      success: false,
+      code: "INVALID_EXAM_ID",
+    };
+  }
+
+  const activeSeason =
+    await findActiveSeason();
+
+  if (!activeSeason) {
+    return {
+      success: false,
+      code: "ACTIVE_SEASON_NOT_FOUND",
+    };
+  }
+
+  const exam =
+    await findExamById(
+      normalizedExamId
+    );
+
+  if (!exam) {
+    return {
+      success: false,
+      code: "EXAM_NOT_FOUND",
+    };
+  }
+
+  if (
+    Number(exam.season_id) !==
+    Number(activeSeason.id)
+  ) {
+    return {
+      success: false,
+      code: "EXAM_NOT_IN_ACTIVE_SEASON",
+    };
+  }
+
+  if (
+    String(exam.status).toUpperCase() !==
+    "WAITING_ROOM_OPEN"
+  ) {
+    return {
+      success: false,
+      code: "EXAM_NOT_WAITING_ROOM_OPEN",
+    };
+  }
+
+  const updatedExam =
+    await closeOpenExamWaitingRoomById({
+      examId:
+        normalizedExamId,
+
+      seasonId:
+        activeSeason.id,
+    });
+
+  if (!updatedExam) {
+    return {
+      success: false,
+      code: "EXAM_NOT_WAITING_ROOM_OPEN",
+    };
+  }
+
+  return {
+    success: true,
+
+    data: {
+      exam: mapExam({
+        ...updatedExam,
+
+        total_questions:
+          Number(
+            exam.total_questions
+          ) || 0,
+      }),
+    },
+  };
+}
+
+
 /*
 =====================================================
 4. Import Exam questions from Excel
@@ -819,6 +1047,8 @@ async function deleteExam({
 
 
 module.exports = {
+  closeExamWaitingRoom,
+  openExamWaitingRoom,
   deleteExam,
   getExams,
   getAdminExams,

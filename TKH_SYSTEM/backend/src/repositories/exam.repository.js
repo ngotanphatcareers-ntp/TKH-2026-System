@@ -687,7 +687,184 @@ async function deleteDraftExamById(examId) {
 }
 
 
+
+
+/*
+=====================================================
+Find the currently active Exam in one season
+=====================================================
+*/
+
+async function findActiveExamBySeasonId(
+  seasonId
+) {
+  const pool = await getPool();
+
+  const result =
+    await pool.request()
+      .input(
+        "seasonId",
+        sql.Int,
+        seasonId
+      )
+      .query(`
+        SELECT TOP (1)
+          id,
+          season_id,
+          name,
+          type,
+          status,
+          scheduled_start_at,
+          time_per_question,
+          result_visibility,
+          created_at,
+          updated_at
+        FROM dbo.exams
+        WHERE season_id = @seasonId
+          AND status IN
+          (
+            'WAITING_ROOM_OPEN',
+            'IN_PROGRESS',
+            'SUBMITTING'
+          )
+        ORDER BY
+          updated_at DESC,
+          id DESC;
+      `);
+
+  return result.recordset[0] || null;
+}
+
+
+/*
+=====================================================
+Close one open waiting room
+=====================================================
+*/
+
+async function closeOpenExamWaitingRoomById({
+  examId,
+  seasonId,
+}) {
+  const pool = await getPool();
+
+  const result =
+    await pool.request()
+      .input(
+        "examId",
+        sql.Int,
+        examId
+      )
+      .input(
+        "seasonId",
+        sql.Int,
+        seasonId
+      )
+      .query(`
+        UPDATE dbo.exams
+        SET
+          status = 'DRAFT',
+          updated_at = SYSDATETIME()
+
+        OUTPUT
+          inserted.id,
+          inserted.season_id,
+          inserted.name,
+          inserted.type,
+          inserted.status,
+          inserted.scheduled_start_at,
+          inserted.time_per_question,
+          inserted.result_visibility,
+          inserted.created_at,
+          inserted.updated_at
+
+        WHERE id = @examId
+          AND season_id = @seasonId
+          AND status = 'WAITING_ROOM_OPEN';
+      `);
+
+  return result.recordset[0] || null;
+}
+
+
+/*
+=====================================================
+Open waiting room for one DRAFT exam
+
+The UPDATE is conditional so only a DRAFT exam
+belonging to the active season and containing at
+least one question can be opened.
+=====================================================
+*/
+
+async function openDraftExamWaitingRoomById({
+  examId,
+  seasonId,
+}) {
+  const pool = await getPool();
+
+  const result =
+    await pool.request()
+      .input(
+        "examId",
+        sql.Int,
+        examId
+      )
+      .input(
+        "seasonId",
+        sql.Int,
+        seasonId
+      )
+      .query(`
+        UPDATE dbo.exams
+        SET
+          status = 'WAITING_ROOM_OPEN',
+          updated_at = SYSDATETIME()
+
+        OUTPUT
+          inserted.id,
+          inserted.season_id,
+          inserted.name,
+          inserted.type,
+          inserted.status,
+          inserted.scheduled_start_at,
+          inserted.time_per_question,
+          inserted.result_visibility,
+          inserted.created_at,
+          inserted.updated_at
+
+        WHERE id = @examId
+          AND season_id = @seasonId
+          AND status = 'DRAFT'
+          AND EXISTS
+          (
+            SELECT 1
+            FROM dbo.exam_questions AS eq
+            WHERE eq.exam_id = dbo.exams.id
+          )
+          AND NOT EXISTS
+          (
+            SELECT 1
+            FROM dbo.exams AS active_exam
+            WHERE active_exam.season_id = @seasonId
+              AND active_exam.id <> @examId
+              AND active_exam.status IN
+              (
+                'WAITING_ROOM_OPEN',
+                'IN_PROGRESS',
+                'SUBMITTING'
+              )
+          );
+      `);
+
+  return result.recordset[0] || null;
+}
+
+
 module.exports = {
+  closeOpenExamWaitingRoomById,
+  findActiveExamBySeasonId,
+  openDraftExamWaitingRoomById,
   deleteDraftExamById,
   createExamRecord,
   findExamsBySeasonId,

@@ -5,6 +5,8 @@ const {
   deleteExam,
   joinWaitingRoom,
   importExamQuestionsFromExcel,
+  openExamWaitingRoom,
+  closeExamWaitingRoom,
 } = require(
   "../services/exam.service"
 );
@@ -41,6 +43,9 @@ const STATUS_BY_CODE = {
   EXAM_NOT_EDITABLE: 409,
   EXAM_NOT_DRAFT: 409,
   EXAM_HAS_ATTEMPTS: 409,
+  EXAM_HAS_NO_QUESTIONS: 409,
+  ANOTHER_EXAM_ACTIVE: 409,
+  EXAM_NOT_WAITING_ROOM_OPEN: 409,
 };
 
 
@@ -230,6 +235,90 @@ async function createExamController(
   }
 }
 
+
+/*
+=====================================================
+Admin: Open Exam waiting room
+=====================================================
+*/
+
+async function openExamWaitingRoomController(
+  req,
+  res
+) {
+  try {
+    const result =
+      await openExamWaitingRoom({
+        examId:
+          req.params.examId,
+      });
+
+    if (!result.success) {
+      return sendErrorResponse(
+        res,
+        result
+      );
+    }
+
+    return res
+      .status(200)
+      .json(result);
+  } catch (error) {
+    console.error(
+      "Open Exam waiting room error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      code: "INTERNAL_SERVER_ERROR",
+    });
+  }
+}
+
+
+
+/*
+=====================================================
+Admin: Close Exam waiting room
+=====================================================
+*/
+
+async function closeExamWaitingRoomController(
+  req,
+  res
+) {
+  try {
+    const result =
+      await closeExamWaitingRoom({
+        examId:
+          req.params.examId,
+      });
+
+    if (!result.success) {
+      return sendErrorResponse(
+        res,
+        result
+      );
+    }
+
+    return res
+      .status(200)
+      .json(result);
+  } catch (error) {
+    console.error(
+      "Close Exam waiting room error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      code: "INTERNAL_SERVER_ERROR",
+    });
+  }
+}
+
+
 /*
 =====================================================
 4. Import Exam questions from Excel
@@ -316,6 +405,8 @@ async function deleteExamController(
 
 
 module.exports = {
+  closeExamWaitingRoomController,
+  openExamWaitingRoomController,
   deleteExamController,
   getExamsController,
   getAdminExamsController,

@@ -9734,6 +9734,20 @@ function renderAdminExams(exams) {
         return;
     }
 
+    const activeExam =
+        validExams.find(exam =>
+            [
+                "WAITING_ROOM_OPEN",
+                "IN_PROGRESS",
+                "SUBMITTING"
+            ].includes(
+                String(
+                    exam.status || ""
+                ).toUpperCase()
+            )
+        ) || null;
+
+
     tableBody.innerHTML =
         validExams.map(exam => {
             const examId =
@@ -9800,6 +9814,44 @@ function renderAdminExams(exams) {
 
                             <button
                                 type="button"
+                                class="admin-exam-open-btn ${status === "WAITING_ROOM_OPEN" ? "hidden" : ""}"
+                                data-exam-id="${examId}"
+                                ${status === "DRAFT" &&
+                                !activeExam &&
+                                (Number(
+                                    exam.totalQuestions
+                                ) || 0) > 0
+                                    ? ""
+                                    : "disabled"}
+                                title="${
+                                    activeExam && status === "DRAFT"
+                                        ? `Đang có bài ID ${Number(activeExam.id)} mở phòng chờ`
+                                        : status !== "DRAFT"
+                                            ? "Chỉ được mở bài đang ở trạng thái Nháp"
+                                            : (Number(
+                                                exam.totalQuestions
+                                            ) || 0) <= 0
+                                                ? "Hãy import câu hỏi trước khi mở phòng chờ"
+                                                : "Mở phòng chờ cho học viên"
+                                }"
+                            >
+                                Mở phòng chờ
+                            </button>
+
+                            <button
+                                type="button"
+                                class="admin-exam-close-btn ${status === "WAITING_ROOM_OPEN" ? "" : "hidden"}"
+                                data-exam-id="${examId}"
+                                ${status === "WAITING_ROOM_OPEN"
+                                    ? ""
+                                    : "disabled"}
+                                title="Đóng phòng chờ và đưa bài về trạng thái Nháp"
+                            >
+                                Đóng phòng chờ
+                            </button>
+
+                            <button
+                                type="button"
                                 class="admin-exam-delete-btn"
                                 data-exam-id="${examId}"
                                 ${String(
@@ -9834,6 +9886,71 @@ function renderAdminExams(exams) {
                     selectAdminExamForImport(
                         button.dataset.examId
                     );
+                }
+            );
+        });
+
+    tableBody
+        .querySelectorAll(
+            ".admin-exam-open-btn"
+        )
+        .forEach(button => {
+            button.addEventListener(
+                "click",
+                () => {
+                    const examId =
+                        Number(
+                            button.dataset
+                                .examId
+                        );
+
+                    const exam =
+                        validExams.find(
+                            item =>
+                                Number(
+                                    item.id
+                                ) === examId
+                        );
+
+                    openAdminExamWaitingRoomFromApi({
+                        examId,
+                        examName:
+                            exam?.name || "",
+                        button
+                    });
+                }
+            );
+        });
+
+
+    tableBody
+        .querySelectorAll(
+            ".admin-exam-close-btn"
+        )
+        .forEach(button => {
+            button.addEventListener(
+                "click",
+                () => {
+                    const examId =
+                        Number(
+                            button.dataset
+                                .examId
+                        );
+
+                    const exam =
+                        validExams.find(
+                            item =>
+                                Number(
+                                    item.id
+                                ) === examId
+                        );
+
+                    closeAdminExamWaitingRoomFromApi({
+                        examId,
+                        examName:
+                            exam?.name || "",
+                        button
+                    });
                 }
             );
         });
@@ -9880,6 +9997,289 @@ function renderAdminExams(exams) {
 }
 
 
+
+async function openAdminExamWaitingRoomFromApi({
+    examId,
+    examName,
+    button
+}) {
+    const normalizedExamId =
+        Number(examId);
+
+    if (
+        !Number.isInteger(normalizedExamId) ||
+        normalizedExamId <= 0
+    ) {
+        window.alert(
+            "ID bài kiểm tra không hợp lệ."
+        );
+        return;
+    }
+
+    const displayName =
+        String(examName || "").trim() ||
+        `ID ${normalizedExamId}`;
+
+    const confirmed =
+        window.confirm(
+            `Mở phòng chờ cho bài kiểm tra “${displayName}”?\n\nSau khi mở, học viên sẽ nhìn thấy và có thể vào phòng chờ.`
+        );
+
+    if (!confirmed) {
+        return;
+    }
+
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
+
+    if (!token) {
+        window.location.href =
+            "index.html";
+        return;
+    }
+
+    const originalButtonText =
+        button?.innerText || "Mở phòng chờ";
+
+    if (button) {
+        button.disabled = true;
+        button.innerText =
+            "Đang mở...";
+    }
+
+    try {
+        const response =
+            await fetch(
+                `${API_BASE_URL}/api/admin/test/exams/${normalizedExamId}/open-waiting-room`,
+                {
+                    method: "PATCH",
+
+                    headers: {
+                        Authorization:
+                            `Bearer ${token}`
+                    }
+                }
+            );
+
+        let result = {};
+
+        try {
+            result =
+                await response.json();
+        } catch {
+            result = {};
+        }
+
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+            const errorMessages = {
+                INVALID_EXAM_ID:
+                    "ID bài kiểm tra không hợp lệ.",
+
+                EXAM_NOT_FOUND:
+                    "Không tìm thấy bài kiểm tra.",
+
+                EXAM_NOT_IN_ACTIVE_SEASON:
+                    "Bài kiểm tra không thuộc mùa đang hoạt động.",
+
+                EXAM_NOT_DRAFT:
+                    "Bài kiểm tra không còn ở trạng thái Nháp.",
+
+                EXAM_HAS_NO_QUESTIONS:
+                    "Bài kiểm tra chưa có câu hỏi. Hãy import câu hỏi trước.",
+
+                ACTIVE_SEASON_NOT_FOUND:
+                    "Không tìm thấy mùa đang hoạt động.",
+
+                UNAUTHORIZED:
+                    "Phiên đăng nhập đã hết hạn.",
+
+                FORBIDDEN:
+                    "Bạn không có quyền mở phòng chờ."
+            };
+
+            throw new Error(
+                errorMessages[
+                    result.code || ""
+                ] ||
+                "Không thể mở phòng chờ."
+            );
+        }
+
+        window.alert(
+            `Đã mở phòng chờ cho “${displayName}”. Học viên đã có thể nhìn thấy bài kiểm tra.`
+        );
+
+        await loadAdminExamsFromApi();
+    } catch (error) {
+        console.error(
+            "Open Admin Exam waiting room error:",
+            error
+        );
+
+        if (
+            error instanceof TypeError
+        ) {
+            window.alert(
+                "Không thể kết nối Backend. Hãy kiểm tra server đang chạy ở cổng 5000."
+            );
+        } else {
+            window.alert(
+                error.message ||
+                "Không thể mở phòng chờ."
+            );
+        }
+    } finally {
+        if (
+            button &&
+            button.isConnected
+        ) {
+            button.disabled = false;
+            button.innerText =
+                originalButtonText;
+        }
+    }
+}
+
+async function closeAdminExamWaitingRoomFromApi({
+    examId,
+    examName,
+    button
+}) {
+    const normalizedExamId =
+        Number(examId);
+
+    if (
+        !Number.isInteger(normalizedExamId) ||
+        normalizedExamId <= 0
+    ) {
+        window.alert("ID bài kiểm tra không hợp lệ.");
+        return;
+    }
+
+    const displayName =
+        String(examName || "").trim() ||
+        `ID ${normalizedExamId}`;
+
+    const confirmed =
+        window.confirm(
+            `Đóng phòng chờ của bài kiểm tra “${displayName}”?\n\nBài sẽ quay về trạng thái Nháp và học viên tạm thời không thể vào.`
+        );
+
+    if (!confirmed) {
+        return;
+    }
+
+    const token =
+        localStorage.getItem("accessToken");
+
+    if (!token) {
+        window.location.href = "index.html";
+        return;
+    }
+
+    const originalButtonText =
+        button?.innerText || "Đóng phòng chờ";
+
+    if (button) {
+        button.disabled = true;
+        button.innerText = "Đang đóng...";
+    }
+
+    try {
+        const response =
+            await fetch(
+                `${API_BASE_URL}/api/admin/test/exams/${normalizedExamId}/close-waiting-room`,
+                {
+                    method: "PATCH",
+
+                    headers: {
+                        Authorization:
+                            `Bearer ${token}`
+                    }
+                }
+            );
+
+        let result = {};
+
+        try {
+            result =
+                await response.json();
+        } catch {
+            result = {};
+        }
+
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+            const errorMessages = {
+                INVALID_EXAM_ID:
+                    "ID bài kiểm tra không hợp lệ.",
+
+                EXAM_NOT_FOUND:
+                    "Không tìm thấy bài kiểm tra.",
+
+                EXAM_NOT_IN_ACTIVE_SEASON:
+                    "Bài kiểm tra không thuộc mùa đang hoạt động.",
+
+                EXAM_NOT_WAITING_ROOM_OPEN:
+                    "Bài kiểm tra không còn mở phòng chờ.",
+
+                ACTIVE_SEASON_NOT_FOUND:
+                    "Không tìm thấy mùa đang hoạt động.",
+
+                UNAUTHORIZED:
+                    "Phiên đăng nhập đã hết hạn.",
+
+                FORBIDDEN:
+                    "Bạn không có quyền đóng phòng chờ."
+            };
+
+            throw new Error(
+                errorMessages[
+                    result.code || ""
+                ] ||
+                "Không thể đóng phòng chờ."
+            );
+        }
+
+        window.alert(
+            `Đã đóng phòng chờ của “${displayName}”.`
+        );
+
+        await loadAdminExamsFromApi();
+    } catch (error) {
+        console.error(
+            "Close Admin Exam waiting room error:",
+            error
+        );
+
+        if (error instanceof TypeError) {
+            window.alert(
+                "Không thể kết nối Backend. Hãy kiểm tra server đang chạy ở cổng 5000."
+            );
+        } else {
+            window.alert(
+                error.message ||
+                "Không thể đóng phòng chờ."
+            );
+        }
+    } finally {
+        if (
+            button &&
+            button.isConnected
+        ) {
+            button.disabled = false;
+            button.innerText =
+                originalButtonText;
+        }
+    }
+}
 
 async function deleteAdminExamFromApi({
     examId,
@@ -10741,3 +11141,488 @@ async function importExamQuestionsFromExcel() {
             originalButtonText;
     }
 }
+
+/*
+=====================================================
+Student Exam list and waiting room
+=====================================================
+*/
+
+function escapeStudentExamHtml(value) {
+    return String(value ?? "")
+        .replace(
+            /[&<>"']/g,
+            character => ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#039;"
+            })[character]
+        );
+}
+
+
+function getStudentExamTypeLabel(type) {
+    const labels = {
+        PRE_TEST: "Pre-test",
+        FINAL_TEST: "Final Test"
+    };
+
+    return labels[type] || "Bài kiểm tra";
+}
+
+
+function getStudentExamStatusLabel(status) {
+    const labels = {
+        SCHEDULED: "Chưa mở",
+        WAITING_ROOM_OPEN: "Đang mở phòng chờ",
+        IN_PROGRESS: "Đang diễn ra",
+        PAUSED: "Đang tạm dừng",
+        COMPLETED: "Đã hoàn tất"
+    };
+
+    return labels[status] || "Chưa xác định";
+}
+
+
+function getStudentExamActionLabel(status) {
+    const labels = {
+        SCHEDULED: "Chưa đến giờ",
+        WAITING_ROOM_OPEN: "Vào phòng chờ",
+        IN_PROGRESS: "Bài đã bắt đầu",
+        PAUSED: "Bài đang tạm dừng",
+        COMPLETED: "Bài đã kết thúc"
+    };
+
+    return labels[status] || "Chưa thể tham gia";
+}
+
+
+function formatStudentExamDate(value) {
+    if (!value) {
+        return "Chưa lên lịch";
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return "Chưa xác định";
+    }
+
+    return date.toLocaleString(
+        "vi-VN",
+        {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+        }
+    );
+}
+
+
+function renderStudentExams(exams) {
+    const list =
+        document.getElementById(
+            "studentExamList"
+        );
+
+    if (!list) {
+        return;
+    }
+
+    const validExams = exams
+        .filter(exam => {
+            const examId =
+                Number(exam?.id);
+
+            return (
+                Number.isInteger(examId) &&
+                examId > 0
+            );
+        })
+        .sort((firstExam, secondExam) => {
+            const typeOrder = {
+                PRE_TEST: 1,
+                FINAL_TEST: 2
+            };
+
+            const firstTypeOrder =
+                typeOrder[firstExam.type] || 99;
+
+            const secondTypeOrder =
+                typeOrder[secondExam.type] || 99;
+
+            if (
+                firstTypeOrder !==
+                secondTypeOrder
+            ) {
+                return (
+                    firstTypeOrder -
+                    secondTypeOrder
+                );
+            }
+
+            return (
+                Number(firstExam.id) -
+                Number(secondExam.id)
+            );
+        });
+
+    if (validExams.length === 0) {
+        list.innerHTML = `
+            <p class="empty-note">
+                Hiện chưa có bài kiểm tra nào được mở cho học viên.
+            </p>
+        `;
+
+        return;
+    }
+
+    list.innerHTML = `
+        <div class="student-exam-grid">
+            ${validExams.map(exam => {
+                const examId =
+                    Number(exam.id);
+
+                const status =
+                    String(
+                        exam.status || ""
+                    ).toUpperCase();
+
+                const canJoin =
+                    status ===
+                    "WAITING_ROOM_OPEN";
+
+                return `
+                    <article
+                        class="student-exam-card ${
+                            canJoin
+                                ? "student-exam-card-open"
+                                : "student-exam-card-disabled"
+                        }"
+                    >
+                        <div class="student-exam-card-header">
+                            <span class="student-exam-type">
+                                ${escapeStudentExamHtml(
+                                    getStudentExamTypeLabel(
+                                        exam.type
+                                    )
+                                )}
+                            </span>
+
+                            <span class="student-exam-status">
+                                ${escapeStudentExamHtml(
+                                    getStudentExamStatusLabel(
+                                        status
+                                    )
+                                )}
+                            </span>
+                        </div>
+
+                        <h3>
+                            ${escapeStudentExamHtml(
+                                exam.name
+                            )}
+                        </h3>
+
+                        <div class="student-exam-information">
+                            <p>
+                                <strong>Thời gian:</strong>
+                                ${escapeStudentExamHtml(
+                                    formatStudentExamDate(
+                                        exam.scheduledStartAt
+                                    )
+                                )}
+                            </p>
+
+                            <p>
+                                <strong>Số câu:</strong>
+                                ${Number(
+                                    exam.totalQuestions
+                                ) || 0}
+                            </p>
+
+                            <p>
+                                <strong>Thời gian mỗi câu:</strong>
+                                ${Number(
+                                    exam.timePerQuestionSeconds ??
+                                    exam.timePerQuestion
+                                ) || 0}
+                                giây
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="student-exam-join-button"
+                            data-exam-id="${examId}"
+                            ${canJoin ? "" : "disabled"}
+                        >
+                            ${escapeStudentExamHtml(
+                                getStudentExamActionLabel(
+                                    status
+                                )
+                            )}
+                        </button>
+                    </article>
+                `;
+            }).join("")}
+        </div>
+    `;
+
+    list
+        .querySelectorAll(
+            ".student-exam-join-button:not([disabled])"
+        )
+        .forEach(button => {
+            button.addEventListener(
+                "click",
+                () => {
+                    joinStudentExamWaitingRoom(
+                        button.dataset.examId,
+                        button
+                    );
+                }
+            );
+        });
+}
+
+
+async function joinStudentExamWaitingRoom(
+    examId,
+    button
+) {
+    const normalizedExamId =
+        Number(examId);
+
+    if (
+        !Number.isInteger(
+            normalizedExamId
+        ) ||
+        normalizedExamId <= 0
+    ) {
+        window.alert(
+            "ID bài kiểm tra không hợp lệ."
+        );
+
+        return;
+    }
+
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
+
+    if (!token) {
+        logoutDemo();
+        return;
+    }
+
+    const originalButtonText =
+        button.innerText;
+
+    button.disabled = true;
+    button.innerText =
+        "Đang vào phòng chờ...";
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/exams/${encodeURIComponent(normalizedExamId)}/waiting-room`,
+            {
+                method: "POST",
+
+                headers: {
+                    Authorization:
+                        `Bearer ${token}`
+                }
+            }
+        );
+
+        const result =
+            await response.json();
+
+        if (
+            response.status === 401
+        ) {
+            logoutDemo();
+            return;
+        }
+
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+            const messagesByCode = {
+                INVALID_EXAM_ID:
+                    "ID bài kiểm tra không hợp lệ.",
+
+                EXAM_NOT_FOUND:
+                    "Không tìm thấy bài kiểm tra.",
+
+                EXAM_NOT_IN_ACTIVE_SEASON:
+                    "Bài kiểm tra không thuộc mùa TKH đang hoạt động.",
+
+                EXAM_ALREADY_COMPLETED:
+                    "Bạn đã hoàn thành bài kiểm tra này.",
+
+                EXAM_WAITING_ROOM_NOT_OPEN:
+                    "Phòng chờ hiện chưa được mở.",
+
+                MEMBER_NOT_FOUND:
+                    "Không tìm thấy hồ sơ học viên.",
+
+                ACTIVE_MEMBERSHIP_NOT_FOUND:
+                    "Không tìm thấy thông tin tham gia mùa TKH hiện tại.",
+
+                INTERNAL_SERVER_ERROR:
+                    "Máy chủ gặp lỗi khi vào phòng chờ."
+            };
+
+            throw new Error(
+                messagesByCode[result.code] ||
+                "Không thể vào phòng chờ."
+            );
+        }
+
+        button.innerText =
+            "Đã vào phòng chờ";
+
+        button.classList.add(
+            "student-exam-joined-button"
+        );
+
+        window.alert(
+            result.alreadyJoined
+                ? "Bạn đã ở trong phòng chờ của bài kiểm tra này."
+                : "Bạn đã vào phòng chờ thành công."
+        );
+    } catch (error) {
+        console.error(
+            "Join Student exam waiting room error:",
+            error
+        );
+
+        button.disabled = false;
+        button.innerText =
+            originalButtonText;
+
+        window.alert(
+            error.message ||
+            "Không thể kết nối đến phòng chờ."
+        );
+    }
+}
+
+
+async function loadStudentExamsFromApi() {
+    const list =
+        document.getElementById(
+            "studentExamList"
+        );
+
+    if (!list) {
+        return;
+    }
+
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
+
+    if (!token) {
+        logoutDemo();
+        return;
+    }
+
+    list.innerHTML = `
+        <p class="empty-note">
+            Đang tải thông tin bài kiểm tra...
+        </p>
+    `;
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/exams`,
+            {
+                headers: {
+                    Authorization:
+                        `Bearer ${token}`
+                }
+            }
+        );
+
+        const result =
+            await response.json();
+
+        if (
+            response.status === 401
+        ) {
+            logoutDemo();
+            return;
+        }
+
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+            const messagesByCode = {
+                MEMBER_NOT_FOUND:
+                    "Không tìm thấy hồ sơ học viên.",
+
+                ACTIVE_SEASON_NOT_FOUND:
+                    "Không tìm thấy mùa TKH đang hoạt động.",
+
+                ACTIVE_MEMBERSHIP_NOT_FOUND:
+                    "Bạn chưa tham gia mùa TKH hiện tại.",
+
+                MEMBERSHIP_NOT_IN_ACTIVE_SEASON:
+                    "Thông tin học viên không thuộc mùa TKH hiện tại.",
+
+                INTERNAL_SERVER_ERROR:
+                    "Máy chủ gặp lỗi khi tải bài kiểm tra."
+            };
+
+            throw new Error(
+                messagesByCode[result.code] ||
+                "Không thể tải danh sách bài kiểm tra."
+            );
+        }
+
+        const exams =
+            Array.isArray(result.exams)
+                ? result.exams
+                : Array.isArray(
+                    result.data?.exams
+                )
+                    ? result.data.exams
+                    : [];
+
+        renderStudentExams(exams);
+    } catch (error) {
+        console.error(
+            "Load Student exams error:",
+            error
+        );
+
+        list.innerHTML = `
+            <p
+                class="empty-note"
+                style="color: red;"
+            >
+                ${escapeStudentExamHtml(
+                    error.message ||
+                    "Không thể tải danh sách bài kiểm tra."
+                )}
+            </p>
+        `;
+    }
+}
+
+
+document.addEventListener(
+    "DOMContentLoaded",
+    loadStudentExamsFromApi
+);
