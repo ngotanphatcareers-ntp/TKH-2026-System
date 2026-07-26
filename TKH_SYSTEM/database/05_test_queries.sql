@@ -88,7 +88,7 @@ GO
 
 /* Expected:
 ranking_visible = 1
-attendance_radius_m = 200
+attendance_radius_m = 50
 */
 
 /* 5. Verify admin seed account */

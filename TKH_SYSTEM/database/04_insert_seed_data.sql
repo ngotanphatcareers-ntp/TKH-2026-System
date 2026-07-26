@@ -33,7 +33,7 @@ BEGIN
 INSERT INTO dbo.season_settings
 (season_id,ranking_visible,attendance_radius_m)
 VALUES
-(@SeasonId,1,200);
+(@SeasonId,1,50);
 END
 GO
 

@@ -270,7 +270,7 @@ BEGIN
         ranking_visible     BIT NOT NULL
                             CONSTRAINT DF_season_settings_ranking_visible DEFAULT (1),
         attendance_radius_m INT NOT NULL
-                            CONSTRAINT DF_season_settings_attendance_radius DEFAULT (200),
+                            CONSTRAINT DF_season_settings_attendance_radius DEFAULT (50),
         created_at          DATETIME2(0) NOT NULL
                             CONSTRAINT DF_season_settings_created_at DEFAULT (SYSDATETIME()),
         updated_at          DATETIME2(0) NOT NULL

@@ -193,7 +193,7 @@ async function checkIn({
   );
 
   const attendanceRadiusM =
-    Number(session.attendance_radius_m) || 200;
+    Number(session.attendance_radius_m) || 50;
 
   if (distanceM > attendanceRadiusM) {
     return {
