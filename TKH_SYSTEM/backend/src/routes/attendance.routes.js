@@ -1,16 +1,20 @@
 const express = require("express");
 
-const authenticateToken = require("../middleware/authenticate-token");
-const requireRole = require("../middleware/require-role");
-const attendanceController = require("../controllers/attendance.controller");
+const attendanceController = require(
+  "../controllers/attendance.controller"
+);
+
+const authenticateToken = require(
+  "../middleware/authenticate-token"
+);
+
+const requireRole = require(
+  "../middleware/require-role"
+);
+
 
 const router = express.Router();
 
-router.post(
-  "/check-in",
-  authenticateToken,
-  attendanceController.checkIn
-);
 
 router.get(
   "/current-session",
@@ -18,17 +22,35 @@ router.get(
   attendanceController.getCurrentSession
 );
 
+
+router.post(
+  "/check-in",
+  authenticateToken,
+  attendanceController.checkIn
+);
+
+
 router.get(
   "/history",
   authenticateToken,
   attendanceController.getHistory
 );
 
+
 router.get(
-  "/admin/current-session",
+  "/admin/current-session/roster",
   authenticateToken,
   requireRole("ADMIN"),
   attendanceController.getCurrentSessionRoster
+);
+
+
+router.patch(
+  "/admin/current-session/window",
+  authenticateToken,
+  requireRole("ADMIN"),
+  attendanceController
+    .updateCurrentSessionAttendanceWindow
 );
 
 

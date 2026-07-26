@@ -2,15 +2,53 @@ const {
   findCurrentOpenSession,
   findActiveMembershipByMemberId,
   findAttendanceRecord,
+  findMorningOrBreakAttendanceRecord,
   createAttendanceRecord,
   findAttendanceHistoryByMemberId,
-  findCurrentSessionAttendanceRoster,
+
+  findCurrentSessionAttendanceRoster:
+    findCurrentSessionAttendanceRosterRepository,
+
+  setCurrentSessionAttendanceWindow:
+    setCurrentSessionAttendanceWindowRepository,
 } = require("../repositories/attendance.repository");
 
 
 const {
   createScoreTransaction,
 } = require("../repositories/score.repository");
+
+
+const ATTENDANCE_WINDOWS = [
+  "MORNING",
+  "BREAK",
+  "END",
+  "DEVOTION",
+];
+
+const ATTENDANCE_POINTS = {
+  MORNING: 5,
+  BREAK: 3,
+  END: 5,
+  DEVOTION: 0,
+};
+
+
+function normalizeAttendanceWindow(windowType) {
+  if (typeof windowType !== "string") {
+    return null;
+  }
+
+  const normalizedWindowType =
+    windowType.trim().toUpperCase();
+
+  return ATTENDANCE_WINDOWS.includes(
+    normalizedWindowType
+  )
+    ? normalizedWindowType
+    : null;
+}
+
 
 function mapCurrentSession(session) {
   if (!session) {
@@ -27,24 +65,37 @@ function mapCurrentSession(session) {
     checkinOpenAt: session.checkin_open_at,
     checkinCloseAt: session.checkin_close_at,
     status: session.status,
+
+    activeAttendanceWindow:
+      session.active_attendance_window || null,
+
     location: {
       name: session.location_name,
       latitude:
-        session.latitude !== null
+        session.latitude !== null &&
+        session.latitude !== undefined
           ? Number(session.latitude)
           : null,
       longitude:
-        session.longitude !== null
+        session.longitude !== null &&
+        session.longitude !== undefined
           ? Number(session.longitude)
           : null,
     },
-    attendanceRadiusM: session.attendance_radius_m,
+
+    attendanceRadiusM:
+      session.attendance_radius_m !== null &&
+      session.attendance_radius_m !== undefined
+        ? Number(session.attendance_radius_m)
+        : null,
+
     season: {
-      code: session.season_code,
-      name: session.season_name,
+      code: session.season_code || null,
+      name: session.season_name || null,
     },
   };
 }
+
 
 async function getCurrentOpenSession() {
   const session = await findCurrentOpenSession();
@@ -56,6 +107,7 @@ async function getCurrentOpenSession() {
 function toRadians(degrees) {
   return (degrees * Math.PI) / 180;
 }
+
 
 function calculateDistanceMeters(
   latitude1,
@@ -90,18 +142,37 @@ function calculateDistanceMeters(
 }
 
 
-
 async function checkIn({
   memberId,
   latitude,
   longitude,
   accuracyM,
+  deviceId,
   deviceInfo,
 }) {
   if (!memberId) {
     return {
       success: false,
       code: "MEMBER_ACCOUNT_REQUIRED",
+    };
+  }
+
+  const normalizedDeviceId =
+    typeof deviceId === "string"
+      ? deviceId.trim()
+      : "";
+
+  if (!normalizedDeviceId) {
+    return {
+      success: false,
+      code: "DEVICE_ID_REQUIRED",
+    };
+  }
+
+  if (normalizedDeviceId.length > 100) {
+    return {
+      success: false,
+      code: "INVALID_DEVICE_ID",
     };
   }
 
@@ -152,6 +223,24 @@ async function checkIn({
     return {
       success: false,
       code: "OPEN_ATTENDANCE_SESSION_NOT_FOUND",
+    };
+  }
+
+  if (!session.active_attendance_window) {
+    return {
+      success: false,
+      code: "ATTENDANCE_WINDOW_CLOSED",
+    };
+  }
+
+  const windowType = normalizeAttendanceWindow(
+    session.active_attendance_window
+  );
+
+  if (!windowType) {
+    return {
+      success: false,
+      code: "INVALID_ACTIVE_ATTENDANCE_WINDOW",
     };
   }
 
@@ -206,54 +295,92 @@ async function checkIn({
 
   const existingRecord = await findAttendanceRecord(
     session.id,
-    membership.id
+    membership.id,
+    windowType
   );
 
   if (existingRecord) {
     return {
       success: false,
-      code: "ATTENDANCE_ALREADY_RECORDED",
+      code: "ATTENDANCE_WINDOW_ALREADY_RECORDED",
+      windowType,
       record: existingRecord,
     };
+  }
+
+  if (
+    windowType === "MORNING" ||
+    windowType === "BREAK"
+  ) {
+    const morningOrBreakRecord =
+      await findMorningOrBreakAttendanceRecord(
+        session.id,
+        membership.id
+      );
+
+    if (morningOrBreakRecord) {
+      return {
+        success: false,
+        code:
+          "MORNING_OR_BREAK_ATTENDANCE_ALREADY_RECORDED",
+        windowType,
+        existingWindowType:
+          morningOrBreakRecord.window_type,
+        record: morningOrBreakRecord,
+      };
+    }
   }
 
   try {
     const record = await createAttendanceRecord({
       sessionId: session.id,
       seasonMembershipId: membership.id,
+      windowType,
       latitude,
       longitude,
       accuracyM,
       distanceM,
+      deviceId: normalizedDeviceId,
       deviceInfo,
     });
 
-    await createScoreTransaction({
-      seasonMembershipId: membership.id,
+    const pointsAwarded =
+      ATTENDANCE_POINTS[windowType];
 
-      scoreCategory: "ATTENDANCE",
+    if (pointsAwarded > 0) {
+      await createScoreTransaction({
+        seasonMembershipId: membership.id,
 
-      scoreType: "ATTENDANCE",
+        scoreCategory: "ATTENDANCE",
 
-      requestedPoints: 10,
+        scoreType: "ATTENDANCE",
 
-      appliedPoints: 10,
+        requestedPoints: pointsAwarded,
 
-      sourceType: "ATTENDANCE",
+        appliedPoints: pointsAwarded,
 
-      sourceId: record.id,
+        sourceType: "ATTENDANCE",
 
-      sourceKey: `ATTENDANCE_SESSION_${session.id}_MEMBER_${membership.id}`,
+        sourceId: record.id,
 
-      description: `Attendance - ${session.name}`,
+        sourceKey:
+          `ATTENDANCE_SESSION_${session.id}` +
+          `_MEMBER_${membership.id}` +
+          `_WINDOW_${windowType}`,
 
-      createdByUserId: null,
-    });
+        description:
+          `Attendance ${windowType} - ${session.name}`,
+
+        createdByUserId: null,
+      });
+    }
 
     return {
       success: true,
       record,
       session: mapCurrentSession(session),
+      windowType,
+      pointsAwarded,
       distanceM,
       attendanceRadiusM,
     };
@@ -264,7 +391,8 @@ async function checkIn({
     ) {
       return {
         success: false,
-        code: "ATTENDANCE_ALREADY_RECORDED",
+        code: "ATTENDANCE_WINDOW_ALREADY_RECORDED",
+        windowType,
       };
     }
 
@@ -277,35 +405,53 @@ function mapAttendanceHistoryRecord(record) {
   return {
     id: record.id,
     sessionId: record.session_id,
-    seasonMembershipId: record.season_membership_id,
+    seasonMembershipId:
+      record.season_membership_id,
+
+    windowType: record.window_type,
+
     checkedInAt: record.checked_in_at,
     method: record.method,
     status: record.status,
+
     latitude:
       record.latitude !== null
         ? Number(record.latitude)
         : null,
+
     longitude:
       record.longitude !== null
         ? Number(record.longitude)
         : null,
+
     accuracyM:
       record.accuracy_m !== null
         ? Number(record.accuracy_m)
         : null,
+
     distanceM:
       record.distance_m !== null
         ? Number(record.distance_m)
         : null,
+
+    deviceId: record.device_id,
     deviceInfo: record.device_info,
     note: record.note,
+
+    points:
+      record.attendance_points !== null &&
+      record.attendance_points !== undefined
+        ? Number(record.attendance_points)
+        : 0,
 
     session: {
       id: record.session_id,
       name: record.session_name,
       sessionNo: record.session_no,
-      scheduledStartAt: record.scheduled_start_at,
-      scheduledEndAt: record.scheduled_end_at,
+      scheduledStartAt:
+        record.scheduled_start_at,
+      scheduledEndAt:
+        record.scheduled_end_at,
     },
 
     season: {
@@ -339,88 +485,257 @@ async function getAttendanceHistory(memberId) {
 
   return {
     success: true,
-    records: records.map(mapAttendanceHistoryRecord),
+    records: records.map(
+      mapAttendanceHistoryRecord
+    ),
   };
 }
 
 
-function mapAttendanceRosterItem(item) {
-  const hasAttendance =
-    item.attendance_record_id !== null &&
-    item.attendance_record_id !== undefined;
+function mapRosterAttendanceRecord(record) {
+  return {
+    id: record.attendance_record_id,
+    sessionId: record.session_id,
+    seasonMembershipId:
+      record.season_membership_id,
+
+    windowType: record.window_type,
+
+    checkedInAt: record.checked_in_at,
+    method: record.method,
+    status: record.attendance_status,
+
+    latitude:
+      record.latitude !== null
+        ? Number(record.latitude)
+        : null,
+
+    longitude:
+      record.longitude !== null
+        ? Number(record.longitude)
+        : null,
+
+    accuracyM:
+      record.accuracy_m !== null
+        ? Number(record.accuracy_m)
+        : null,
+
+    distanceM:
+      record.distance_m !== null
+        ? Number(record.distance_m)
+        : null,
+
+    deviceId: record.device_id,
+    deviceInfo: record.device_info,
+    note: record.note,
+
+    points:
+      record.attendance_points !== null &&
+      record.attendance_points !== undefined
+        ? Number(record.attendance_points)
+        : 0,
+  };
+}
+
+
+function mapRosterSession(session) {
+  if (!session) {
+    return null;
+  }
 
   return {
-    seasonMembershipId: item.season_membership_id,
-    memberId: item.member_id,
-    tkhCode: item.tkh_code,
-    fullName: item.full_name,
-    phone: item.phone,
+    id: session.id,
+    seasonId: session.season_id,
+    name: session.name,
+    sessionNo: session.session_no,
+    scheduledStartAt: session.scheduled_start_at,
+    scheduledEndAt: session.scheduled_end_at,
+    checkinOpenAt: session.checkin_open_at,
+    checkinCloseAt: session.checkin_close_at,
+    status: session.status,
 
-    group: item.group_id
-      ? {
-          id: item.group_id,
-          code: item.group_code,
-          name: item.group_name,
-        }
-      : null,
+    activeAttendanceWindow:
+      session.active_attendance_window || null,
 
-    session: item.session_id
-      ? {
-          id: item.session_id,
-          name: item.session_name,
-          sessionNo: item.session_no,
-          scheduledStartAt: item.scheduled_start_at,
-          scheduledEndAt: item.scheduled_end_at,
-          status: item.session_status,
-        }
-      : null,
+    location: {
+      name: session.location_name,
 
-    attendance: hasAttendance
-      ? {
-          id: item.attendance_record_id,
-          checkedInAt: item.checked_in_at,
-          method: item.method,
-          status: item.attendance_status,
-          latitude:
-            item.latitude !== null
-              ? Number(item.latitude)
-              : null,
-          longitude:
-            item.longitude !== null
-              ? Number(item.longitude)
-              : null,
-          accuracyM:
-            item.accuracy_m !== null
-              ? Number(item.accuracy_m)
-              : null,
-          distanceM:
-            item.distance_m !== null
-              ? Number(item.distance_m)
-              : null,
-          deviceInfo: item.device_info,
-          note: item.note,
-        }
-      : null,
+      latitude:
+        session.latitude !== null
+          ? Number(session.latitude)
+          : null,
 
-    isCheckedIn: hasAttendance,
+      longitude:
+        session.longitude !== null
+          ? Number(session.longitude)
+          : null,
+    },
+
+    attendanceRadiusM:
+      session.attendance_radius_m !== null
+        ? Number(session.attendance_radius_m)
+        : null,
   };
 }
 
 
-async function getCurrentSessionAttendanceRoster() {
-  const rows =
-    await findCurrentSessionAttendanceRoster();
+function mapAttendanceRosterItem(
+  member,
+  attendanceRecords,
+  currentSession
+) {
+  const mappedAttendanceRecords =
+    attendanceRecords.map(
+      mapRosterAttendanceRecord
+    );
 
-  const roster = rows.map(mapAttendanceRosterItem);
+  const latestAttendance =
+    mappedAttendanceRecords.length > 0
+      ? mappedAttendanceRecords[
+          mappedAttendanceRecords.length - 1
+        ]
+      : null;
 
-  const checkedInCount = roster.filter(
-    item => item.isCheckedIn
-  ).length;
+  const activeAttendanceWindow =
+    currentSession?.active_attendance_window || null;
 
+  const currentWindowAttendance =
+    activeAttendanceWindow
+      ? mappedAttendanceRecords.find(
+          record =>
+            record.windowType ===
+            activeAttendanceWindow
+        ) || null
+      : null;
+
+  const totalAttendancePoints =
+    mappedAttendanceRecords.reduce(
+      (total, record) =>
+        total + Number(record.points || 0),
+      0
+    );
+
+  return {
+    seasonMembershipId:
+      member.season_membership_id,
+
+    memberId: member.member_id,
+    tkhCode: member.tkh_code,
+    fullName: member.full_name,
+    phone: member.phone,
+
+    group: member.group_id
+      ? {
+          id: member.group_id,
+          code: member.group_code,
+          name: member.group_name,
+        }
+      : null,
+
+    session: mapRosterSession(currentSession),
+
+    attendance: latestAttendance,
+
+    attendanceRecords:
+      mappedAttendanceRecords,
+
+    currentWindowAttendance,
+
+    checkedInWindows:
+      mappedAttendanceRecords.map(
+        record => record.windowType
+      ),
+
+    totalAttendancePoints,
+
+    isCheckedIn:
+      mappedAttendanceRecords.length > 0,
+
+    isCheckedInCurrentWindow:
+      currentWindowAttendance !== null,
+  };
+}
+
+
+function buildDeviceWarnings(roster) {
+  const devices = new Map();
+
+  roster.forEach(item => {
+    item.attendanceRecords.forEach(record => {
+      const deviceId = record.deviceId;
+
+      if (!deviceId) {
+        return;
+      }
+
+      if (!devices.has(deviceId)) {
+        devices.set(deviceId, new Map());
+      }
+
+      const deviceMembers = devices.get(deviceId);
+
+      if (
+        !deviceMembers.has(
+          item.seasonMembershipId
+        )
+      ) {
+        deviceMembers.set(
+          item.seasonMembershipId,
+          {
+            seasonMembershipId:
+              item.seasonMembershipId,
+
+            memberId: item.memberId,
+            fullName: item.fullName,
+            groupName:
+              item.group?.name || null,
+
+            checkIns: [],
+          }
+        );
+      }
+
+      deviceMembers
+        .get(item.seasonMembershipId)
+        .checkIns.push({
+          windowType: record.windowType,
+          checkedInAt: record.checkedInAt,
+        });
+    });
+  });
+
+  return Array.from(devices.entries())
+    .map(([deviceId, deviceMembers]) => ({
+      deviceId,
+      accountCount: deviceMembers.size,
+      members: Array.from(
+        deviceMembers.values()
+      ),
+    }))
+    .filter(
+      warning => warning.accountCount >= 2
+    );
+}
+
+
+function buildWindowSummary(
+  roster,
+  windowType
+) {
   const totalStudents = roster.length;
 
-  const absentCount =
-    Math.max(totalStudents - checkedInCount, 0);
+  const checkedInCount = roster.filter(
+    item =>
+      item.attendanceRecords.some(
+        record =>
+          record.windowType === windowType
+      )
+  ).length;
+
+  const absentCount = Math.max(
+    totalStudents - checkedInCount,
+    0
+  );
 
   const checkedInPercent =
     totalStudents > 0
@@ -432,18 +747,205 @@ async function getCurrentSessionAttendanceRoster() {
         )
       : 0;
 
-  const currentSession =
-    roster.find(item => item.session)?.session || null;
+  return {
+    checkedInCount,
+    absentCount,
+    checkedInPercent,
+  };
+}
+
+
+async function getCurrentSessionAttendanceRoster() {
+  const {
+    session,
+    members,
+    attendanceRecords,
+  } =
+    await findCurrentSessionAttendanceRosterRepository();
+
+  const recordsByMembership = new Map();
+
+  attendanceRecords.forEach(record => {
+    const membershipId = Number(
+      record.season_membership_id
+    );
+
+    if (!recordsByMembership.has(membershipId)) {
+      recordsByMembership.set(
+        membershipId,
+        []
+      );
+    }
+
+    recordsByMembership
+      .get(membershipId)
+      .push(record);
+  });
+
+  const roster = members.map(member => {
+    const membershipId = Number(
+      member.season_membership_id
+    );
+
+    return mapAttendanceRosterItem(
+      member,
+      recordsByMembership.get(membershipId) ||
+        [],
+      session
+    );
+  });
+
+  const totalStudents = roster.length;
+
+  const checkedInCount = roster.filter(
+    item => item.isCheckedIn
+  ).length;
+
+  const absentCount = Math.max(
+    totalStudents - checkedInCount,
+    0
+  );
+
+  const checkedInPercent =
+    totalStudents > 0
+      ? Number(
+          (
+            (checkedInCount / totalStudents) *
+            100
+          ).toFixed(1)
+        )
+      : 0;
+
+  const byWindow = {
+    MORNING: buildWindowSummary(
+      roster,
+      "MORNING"
+    ),
+
+    BREAK: buildWindowSummary(
+      roster,
+      "BREAK"
+    ),
+
+    END: buildWindowSummary(
+      roster,
+      "END"
+    ),
+
+    DEVOTION: buildWindowSummary(
+      roster,
+      "DEVOTION"
+    ),
+  };
+
+  const activeAttendanceWindow =
+    session?.active_attendance_window || null;
+
+  const currentWindowSummary =
+    activeAttendanceWindow
+      ? byWindow[activeAttendanceWindow]
+      : null;
+
+  const deviceWarnings =
+    buildDeviceWarnings(roster);
 
   return {
     roster,
+    deviceWarnings,
+
     summary: {
       totalStudents,
       checkedInCount,
       absentCount,
       checkedInPercent,
+
+      activeAttendanceWindow,
+
+      currentWindowCheckedInCount:
+        currentWindowSummary?.checkedInCount ||
+        0,
+
+      currentWindowAbsentCount:
+        currentWindowSummary?.absentCount ||
+        totalStudents,
+
+      currentWindowCheckedInPercent:
+        currentWindowSummary
+          ?.checkedInPercent || 0,
+
+      byWindow,
     },
-    currentSession,
+
+    currentSession:
+      mapRosterSession(session),
+  };
+}
+
+
+async function updateCurrentSessionAttendanceWindow(
+  windowType
+) {
+  if (windowType === undefined) {
+    return {
+      success: false,
+      code: "ATTENDANCE_WINDOW_REQUIRED",
+    };
+  }
+
+  let normalizedWindowType = null;
+
+  if (windowType !== null) {
+    normalizedWindowType =
+      normalizeAttendanceWindow(windowType);
+
+    if (!normalizedWindowType) {
+      return {
+        success: false,
+        code: "INVALID_ATTENDANCE_WINDOW",
+        allowedWindows: ATTENDANCE_WINDOWS,
+      };
+    }
+  }
+
+  const currentSession =
+    await findCurrentOpenSession();
+
+  if (!currentSession) {
+    return {
+      success: false,
+      code: "OPEN_ATTENDANCE_SESSION_NOT_FOUND",
+    };
+  }
+
+  const updatedSession =
+    await setCurrentSessionAttendanceWindowRepository(
+      currentSession.id,
+      normalizedWindowType
+    );
+
+  if (!updatedSession) {
+    return {
+      success: false,
+      code: "ATTENDANCE_SESSION_UPDATE_FAILED",
+    };
+  }
+
+  const refreshedSession =
+    await findCurrentOpenSession();
+
+  return {
+    success: true,
+
+    activeAttendanceWindow:
+      normalizedWindowType,
+
+    session: mapCurrentSession(
+      refreshedSession || {
+        ...currentSession,
+        active_attendance_window:
+          normalizedWindowType,
+      }
+    ),
   };
 }
 
@@ -453,4 +955,5 @@ module.exports = {
   checkIn,
   getAttendanceHistory,
   getCurrentSessionAttendanceRoster,
+  updateCurrentSessionAttendanceWindow,
 };

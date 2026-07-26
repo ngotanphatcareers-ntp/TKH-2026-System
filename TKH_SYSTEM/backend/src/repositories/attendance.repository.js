@@ -4,6 +4,7 @@ const {
   findActiveMembershipByMemberId,
 } = require("./membership.repository");
 
+
 async function findCurrentOpenSession() {
   const pool = await getPool();
 
@@ -21,6 +22,7 @@ async function findCurrentOpenSession() {
       se.location_name,
       se.latitude,
       se.longitude,
+      se.active_attendance_window,
 
       COALESCE(
         se.attendance_radius_m,
@@ -60,6 +62,53 @@ async function findCurrentOpenSession() {
 
 async function findAttendanceRecord(
   sessionId,
+  seasonMembershipId,
+  windowType
+) {
+  const pool = await getPool();
+
+  const result = await pool
+    .request()
+    .input("sessionId", sql.Int, sessionId)
+    .input(
+      "seasonMembershipId",
+      sql.Int,
+      seasonMembershipId
+    )
+    .input(
+      "windowType",
+      sql.VarChar(20),
+      windowType
+    )
+    .query(`
+      SELECT TOP 1
+        ar.id,
+        ar.session_id,
+        ar.season_membership_id,
+        ar.window_type,
+        ar.checked_in_at,
+        ar.method,
+        ar.status,
+        ar.latitude,
+        ar.longitude,
+        ar.accuracy_m,
+        ar.distance_m,
+        ar.device_id,
+        ar.device_info,
+        ar.note
+      FROM dbo.attendance_records AS ar
+      WHERE ar.session_id = @sessionId
+        AND ar.season_membership_id =
+            @seasonMembershipId
+        AND ar.window_type = @windowType;
+    `);
+
+  return result.recordset[0] || null;
+}
+
+
+async function findMorningOrBreakAttendanceRecord(
+  sessionId,
   seasonMembershipId
 ) {
   const pool = await getPool();
@@ -77,6 +126,7 @@ async function findAttendanceRecord(
         ar.id,
         ar.session_id,
         ar.season_membership_id,
+        ar.window_type,
         ar.checked_in_at,
         ar.method,
         ar.status,
@@ -84,12 +134,20 @@ async function findAttendanceRecord(
         ar.longitude,
         ar.accuracy_m,
         ar.distance_m,
+        ar.device_id,
         ar.device_info,
         ar.note
       FROM dbo.attendance_records AS ar
       WHERE ar.session_id = @sessionId
         AND ar.season_membership_id =
-            @seasonMembershipId;
+            @seasonMembershipId
+        AND ar.window_type IN (
+          'MORNING',
+          'BREAK'
+        )
+      ORDER BY
+        ar.checked_in_at ASC,
+        ar.id ASC;
     `);
 
   return result.recordset[0] || null;
@@ -99,10 +157,12 @@ async function findAttendanceRecord(
 async function createAttendanceRecord({
   sessionId,
   seasonMembershipId,
+  windowType,
   latitude,
   longitude,
   accuracyM,
   distanceM,
+  deviceId,
   deviceInfo,
 }) {
   const pool = await getPool();
@@ -114,6 +174,11 @@ async function createAttendanceRecord({
       "seasonMembershipId",
       sql.Int,
       seasonMembershipId
+    )
+    .input(
+      "windowType",
+      sql.VarChar(20),
+      windowType
     )
     .input(
       "latitude",
@@ -136,6 +201,11 @@ async function createAttendanceRecord({
       distanceM
     )
     .input(
+      "deviceId",
+      sql.NVarChar(100),
+      deviceId || null
+    )
+    .input(
       "deviceInfo",
       sql.NVarChar(1000),
       deviceInfo || null
@@ -145,18 +215,21 @@ async function createAttendanceRecord({
       (
         session_id,
         season_membership_id,
+        window_type,
         method,
         status,
         latitude,
         longitude,
         accuracy_m,
         distance_m,
+        device_id,
         device_info
       )
       OUTPUT
         INSERTED.id,
         INSERTED.session_id,
         INSERTED.season_membership_id,
+        INSERTED.window_type,
         INSERTED.checked_in_at,
         INSERTED.method,
         INSERTED.status,
@@ -164,18 +237,21 @@ async function createAttendanceRecord({
         INSERTED.longitude,
         INSERTED.accuracy_m,
         INSERTED.distance_m,
+        INSERTED.device_id,
         INSERTED.device_info,
         INSERTED.note
       VALUES
       (
         @sessionId,
         @seasonMembershipId,
+        @windowType,
         'GPS',
         'PRESENT',
         @latitude,
         @longitude,
         @accuracyM,
         @distanceM,
+        @deviceId,
         @deviceInfo
       );
     `);
@@ -195,6 +271,7 @@ async function findAttendanceHistoryByMemberId(memberId) {
         ar.id,
         ar.session_id,
         ar.season_membership_id,
+        ar.window_type,
         ar.checked_in_at,
         ar.method,
         ar.status,
@@ -202,6 +279,7 @@ async function findAttendanceHistoryByMemberId(memberId) {
         ar.longitude,
         ar.accuracy_m,
         ar.distance_m,
+        ar.device_id,
         ar.device_info,
         ar.note,
 
@@ -216,7 +294,9 @@ async function findAttendanceHistoryByMemberId(memberId) {
 
         g.id AS group_id,
         g.code AS group_code,
-        g.name AS group_name
+        g.name AS group_name,
+
+        attendance_score.attendance_points
 
       FROM dbo.attendance_records AS ar
 
@@ -231,6 +311,17 @@ async function findAttendanceHistoryByMemberId(memberId) {
 
       LEFT JOIN dbo.groups AS g
         ON g.id = sm.group_id
+
+      OUTER APPLY
+      (
+        SELECT
+          SUM(st.applied_points) AS attendance_points
+        FROM dbo.score_transactions AS st
+        WHERE st.season_membership_id = sm.id
+          AND st.source_type = 'ATTENDANCE'
+          AND st.source_id = ar.id
+          AND st.status = 'ACTIVE'
+      ) AS attendance_score
 
       WHERE sm.member_id = @memberId
 
@@ -252,8 +343,10 @@ async function findCurrentSessionAttendanceRoster() {
     SELECT TOP 1
       @CurrentSessionId = se.id
     FROM dbo.sessions AS se
+
     INNER JOIN dbo.seasons AS s
       ON s.id = se.season_id
+
     WHERE s.status = 'ACTIVE'
       AND se.status = 'OPEN'
       AND (
@@ -264,9 +357,31 @@ async function findCurrentSessionAttendanceRoster() {
         se.checkin_close_at IS NULL
         OR SYSDATETIME() <= se.checkin_close_at
       )
+
     ORDER BY
       se.scheduled_start_at DESC,
       se.id DESC;
+
+
+    SELECT
+      se.id,
+      se.season_id,
+      se.name,
+      se.session_no,
+      se.scheduled_start_at,
+      se.scheduled_end_at,
+      se.checkin_open_at,
+      se.checkin_close_at,
+      se.status,
+      se.location_name,
+      se.latitude,
+      se.longitude,
+      se.attendance_radius_m,
+      se.active_attendance_window
+
+    FROM dbo.sessions AS se
+    WHERE se.id = @CurrentSessionId;
+
 
     SELECT
       sm.id AS season_membership_id,
@@ -281,25 +396,7 @@ async function findCurrentSessionAttendanceRoster() {
       m.status AS member_status,
 
       g.code AS group_code,
-      g.name AS group_name,
-
-      se.id AS session_id,
-      se.name AS session_name,
-      se.session_no,
-      se.scheduled_start_at,
-      se.scheduled_end_at,
-      se.status AS session_status,
-
-      ar.id AS attendance_record_id,
-      ar.checked_in_at,
-      ar.method,
-      ar.status AS attendance_status,
-      ar.latitude,
-      ar.longitude,
-      ar.accuracy_m,
-      ar.distance_m,
-      ar.device_info,
-      ar.note
+      g.name AS group_name
 
     FROM dbo.season_memberships AS sm
 
@@ -312,13 +409,6 @@ async function findCurrentSessionAttendanceRoster() {
     LEFT JOIN dbo.groups AS g
       ON g.id = sm.group_id
 
-    LEFT JOIN dbo.sessions AS se
-      ON se.id = @CurrentSessionId
-
-    LEFT JOIN dbo.attendance_records AS ar
-      ON ar.session_id = @CurrentSessionId
-     AND ar.season_membership_id = sm.id
-
     WHERE s.status = 'ACTIVE'
       AND sm.status = 'ACTIVE'
       AND m.status = 'ACTIVE'
@@ -327,18 +417,103 @@ async function findCurrentSessionAttendanceRoster() {
       g.name ASC,
       m.full_name ASC,
       m.id ASC;
+
+
+    SELECT
+      ar.id AS attendance_record_id,
+      ar.session_id,
+      ar.season_membership_id,
+      ar.window_type,
+      ar.checked_in_at,
+      ar.method,
+      ar.status AS attendance_status,
+      ar.latitude,
+      ar.longitude,
+      ar.accuracy_m,
+      ar.distance_m,
+      ar.device_id,
+      ar.device_info,
+      ar.note,
+
+      attendance_score.attendance_points
+
+    FROM dbo.attendance_records AS ar
+
+    OUTER APPLY
+    (
+      SELECT
+        SUM(st.applied_points) AS attendance_points
+      FROM dbo.score_transactions AS st
+      WHERE st.season_membership_id =
+            ar.season_membership_id
+        AND st.source_type = 'ATTENDANCE'
+        AND st.source_id = ar.id
+        AND st.status = 'ACTIVE'
+    ) AS attendance_score
+
+    WHERE ar.session_id = @CurrentSessionId
+
+    ORDER BY
+      ar.season_membership_id ASC,
+      ar.checked_in_at ASC,
+      ar.id ASC;
   `);
 
-  return result.recordset;
+  return {
+    session:
+      result.recordsets[0]?.[0] || null,
+
+    members:
+      result.recordsets[1] || [],
+
+    attendanceRecords:
+      result.recordsets[2] || [],
+  };
 }
 
+
+async function setCurrentSessionAttendanceWindow(
+  sessionId,
+  windowType
+) {
+  const pool = await getPool();
+
+  const result = await pool
+    .request()
+    .input("sessionId", sql.Int, sessionId)
+    .input(
+      "windowType",
+      sql.VarChar(20),
+      windowType
+    )
+    .query(`
+      UPDATE dbo.sessions
+      SET
+        active_attendance_window = @windowType,
+        updated_at = SYSDATETIME()
+      OUTPUT
+        INSERTED.id,
+        INSERTED.season_id,
+        INSERTED.name,
+        INSERTED.session_no,
+        INSERTED.status,
+        INSERTED.active_attendance_window,
+        INSERTED.updated_at
+      WHERE id = @sessionId
+        AND status = 'OPEN';
+    `);
+
+  return result.recordset[0] || null;
+}
 
 
 module.exports = {
   findCurrentOpenSession,
   findActiveMembershipByMemberId,
   findAttendanceRecord,
+  findMorningOrBreakAttendanceRecord,
   createAttendanceRecord,
   findAttendanceHistoryByMemberId,
   findCurrentSessionAttendanceRoster,
+  setCurrentSessionAttendanceWindow,
 };

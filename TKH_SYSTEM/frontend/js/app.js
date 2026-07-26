@@ -213,6 +213,15 @@ async function loadAttendancePageData() {
     const activeWindow =
         document.getElementById("activeCheckinWindow");
 
+    const checkinButton =
+        document.getElementById(
+            "attendanceCheckinButton"
+        );
+
+    if (checkinButton) {
+        checkinButton.disabled = true;
+    }
+
     if (!sessionText && !radiusText && !activeWindow) {
         return;
     }
@@ -357,9 +366,36 @@ async function loadAttendancePageData() {
                 ".";
         }
 
-        if (activeWindow) {
-            activeWindow.innerText =
-                "Buổi học đang mở · Có thể điểm danh";
+        const activeAttendanceWindow =
+            session.activeAttendanceWindow || null;
+
+        if (activeAttendanceWindow) {
+            const activeWindowLabel =
+                getAttendanceWindowLabel(
+                    activeAttendanceWindow
+                );
+
+            if (activeWindow) {
+                activeWindow.innerText =
+                    `Khung đang mở: ${activeWindowLabel}` +
+                    " · Có thể điểm danh";
+            }
+
+            if (checkinButton) {
+                checkinButton.disabled = false;
+                checkinButton.title = "";
+            }
+        } else {
+            if (activeWindow) {
+                activeWindow.innerText =
+                    "Hiện chưa mở khung điểm danh";
+            }
+
+            if (checkinButton) {
+                checkinButton.disabled = true;
+                checkinButton.title =
+                    "Hiện chưa mở khung điểm danh";
+            }
         }
     } catch (error) {
         console.error(
@@ -433,6 +469,7 @@ async function saveAttendanceDemo({
                     latitude,
                     longitude,
                     accuracyM,
+                    deviceId: getDeviceIdDemo(),
                     deviceInfo: navigator.userAgent
                 })
             }
@@ -661,6 +698,28 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 
 function toRadians(degrees) {
     return degrees * Math.PI / 180;
+}
+
+
+function getAttendanceWindowLabel(windowType) {
+    const windowLabels = {
+        MORNING: "Đầu giờ",
+        BREAK: "Giờ ra chơi",
+        END: "Cuối giờ",
+        DEVOTION: "Tĩnh nguyện"
+    };
+
+    if (!windowType) {
+        return "—";
+    }
+
+    const normalizedWindowType =
+        String(windowType).trim().toUpperCase();
+
+    return (
+        windowLabels[normalizedWindowType] ||
+        normalizedWindowType
+    );
 }
 
 // //hàm format khoảng cách
@@ -1437,6 +1496,11 @@ async function loadAttendanceHistoryDemo() {
                 statusLabels[record.status] ||
                 record.status ||
                 "—";
+            const windowLabel =
+                getAttendanceWindowLabel(
+                    record.windowType
+                );
+
 
             const methodLabels = {
                 GPS: "GPS",
@@ -1477,6 +1541,11 @@ async function loadAttendanceHistoryDemo() {
                     <p>
                         <strong>Trạng thái:</strong>
                         ${statusLabel}
+                    </p>
+
+                    <p>
+                        <strong>Khung điểm danh:</strong>
+                        ${windowLabel}
                     </p>
 
                     <p>
@@ -5427,24 +5496,89 @@ function saveManualCheckinWindowDemo(windowKey) {
     localStorage.setItem("manualCheckinWindowDemo", windowKey);
 }
 
-function setManualCheckinWindowDemo(windowKey) {
-    const validWindows = ["morning", "break", "end"];
+async function setManualCheckinWindowDemo(windowKey) {
+    const windowTypeMap = {
+        morning: "MORNING",
+        break: "BREAK",
+        end: "END"
+    };
 
-    if (!validWindows.includes(windowKey)) {
+    const windowType = windowTypeMap[windowKey];
+
+    if (!windowType) {
         return;
     }
 
-    saveManualCheckinWindowDemo(windowKey);
+    const message = document.getElementById(
+        "adminCheckinWindowMessage"
+    );
 
-    const message = document.getElementById("adminCheckinWindowMessage");
+    const token = localStorage.getItem("accessToken");
 
-    if (message) {
-        message.style.color = "green";
-        message.innerText = "Đã mở khung điểm danh: " + getCheckinWindowLabelDemo(windowKey);
+    if (!token) {
+        logoutDemo();
+        return;
     }
 
-    loadAdminCheckinWindowStatusDemo();
-    loadActiveCheckinWindowDemo();
+    if (message) {
+        message.style.color = "#6b7280";
+        message.innerText =
+            "Đang mở khung điểm danh...";
+    }
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/attendance/admin/current-session/window`,
+            {
+                method: "PATCH",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    windowType
+                })
+            }
+        );
+
+        const result = await response.json();
+
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
+
+        if (response.status === 403) {
+            window.location.href = "dashboard.html";
+            return;
+        }
+
+        if (!response.ok || !result.success) {
+            throw new Error(
+                result?.error?.message ||
+                "Không thể mở khung điểm danh."
+            );
+        }
+
+        saveManualCheckinWindowDemo(windowKey);
+
+        if (message) {
+            message.style.color = "green";
+            message.innerText =
+                "Đã mở khung điểm danh: " +
+                getCheckinWindowLabelDemo(windowKey);
+        }
+
+        loadAdminCheckinWindowStatusDemo();
+        loadActiveCheckinWindowDemo();
+    } catch (error) {
+        if (message) {
+            message.style.color = "#dc2626";
+            message.innerText =
+                error.message ||
+                "Không thể kết nối Backend.";
+        }
+    }
 }
 
 function closeManualCheckinWindowsDemo() {
@@ -5670,7 +5804,7 @@ async function loadAdminAttendanceTableDemo() {
 
     try {
         const response = await fetch(
-            `${API_BASE_URL}/api/attendance/admin/current-session`,
+            `${API_BASE_URL}/api/attendance/admin/current-session/roster`,
             {
                 method: "GET",
                 headers: {
@@ -5761,6 +5895,13 @@ async function loadAdminAttendanceTableDemo() {
                     item.group?.name ||
                     "Chưa phân nhóm";
 
+                const attendanceWindowText =
+                    item.attendance
+                        ? getAttendanceWindowLabel(
+                            item.attendance.windowType
+                        )
+                        : "-";
+
                 const statusKey =
                     item.isCheckedIn
                         ? "checkedin"
@@ -5797,17 +5938,24 @@ async function loadAdminAttendanceTableDemo() {
 
                         <td>${groupName}</td>
 
-                        <td>
-                            ${item.isCheckedIn
-                                ? "Điểm danh"
-                                : "-"}
-                        </td>
+                        <td>${attendanceWindowText}</td>
 
                         <td>${checkInTimeText}</td>
 
                         <td>${distanceText}</td>
 
-                        <td>-</td>
+                        <td>
+                            ${
+                                item.attendance?.points !== null &&
+                                item.attendance?.points !== undefined
+                                    ? `+${
+                                        Number(
+                                            item.attendance.points
+                                        )
+                                    }`
+                                    : "-"
+                            }
+                        </td>
 
                         <td class="${
                             statusKey === "checkedin"
@@ -6256,7 +6404,7 @@ async function loadAdminDashboardSummaryDemo() {
 
     try {
         const response = await fetch(
-            `${API_BASE_URL}/api/attendance/admin/current-session`,
+            `${API_BASE_URL}/api/attendance/admin/current-session/roster`,
             {
                 method: "GET",
                 headers: {
