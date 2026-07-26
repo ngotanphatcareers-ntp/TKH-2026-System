@@ -336,6 +336,110 @@ async function closeSession(req, res, next) {
 }
 
 
+async function deleteSession(req, res, next) {
+  try {
+    const sessionId = Number(req.params.sessionId);
+
+    if (!Number.isInteger(sessionId) || sessionId <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "INVALID_SESSION_ID",
+          message: "Mã buổi học không hợp lệ.",
+        },
+      });
+    }
+
+    const result =
+      await sessionService.deleteCurrentSeasonSession(
+        sessionId
+      );
+
+    if (!result.success) {
+      const errorMap = {
+        ACTIVE_SEASON_NOT_FOUND: {
+          status: 404,
+          message: "Không tìm thấy mùa đang hoạt động.",
+        },
+        SESSION_NOT_FOUND: {
+          status: 404,
+          message: "Không tìm thấy buổi học.",
+        },
+        SESSION_NOT_IN_ACTIVE_SEASON: {
+          status: 409,
+          message:
+            "Buổi học không thuộc mùa đang hoạt động.",
+        },
+        OPEN_SESSION_CANNOT_DELETE: {
+          status: 409,
+          message:
+            "Không thể xóa buổi học đang mở. Hãy đóng buổi học trước.",
+        },
+        SESSION_STATUS_NOT_DELETABLE: {
+          status: 409,
+          message:
+            "Trạng thái hiện tại của buổi học không cho phép xóa.",
+        },
+        SESSION_HAS_DEPENDENCIES: {
+          status: 409,
+          message:
+            "Không thể xóa vì buổi học đã có dữ liệu liên quan.",
+        },
+        SESSION_DELETE_CONFLICT: {
+          status: 409,
+          message:
+            "Không thể xóa vì trạng thái hoặc dữ liệu của buổi học vừa thay đổi.",
+        },
+      };
+
+      const mappedError =
+        errorMap[result.code] || {
+          status: 400,
+          message: "Không thể xóa buổi học.",
+        };
+
+      const errorResponse = {
+        success: false,
+        error: {
+          code: result.code,
+          message: mappedError.message,
+        },
+      };
+
+      if (result.dependencies) {
+        errorResponse.error.dependencies =
+          result.dependencies;
+      }
+
+      return res
+        .status(mappedError.status)
+        .json(errorResponse);
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        deletedSessionId: result.deletedSessionId,
+        message: "Đã xóa buổi học thành công.",
+      },
+    });
+  } catch (error) {
+    if (error.number === 547) {
+      return res.status(409).json({
+        success: false,
+        error: {
+          code: "SESSION_HAS_DEPENDENCIES",
+          message:
+            "Không thể xóa vì buổi học đã có dữ liệu liên quan.",
+        },
+      });
+    }
+
+    return next(error);
+  }
+}
+
+
 module.exports = {
   getSessions,
   getSessionOptions,
@@ -343,4 +447,5 @@ module.exports = {
   createSession,
   openSession,
   closeSession,
+  deleteSession,
 };

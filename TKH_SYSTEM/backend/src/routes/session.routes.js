@@ -28,6 +28,13 @@ router.put(
   sessionController.closeSession
 );
 
+router.delete(
+  "/:sessionId",
+  authenticateToken,
+  requireRole("ADMIN"),
+  sessionController.deleteSession
+);
+
 router.get(
   "/",
   authenticateToken,

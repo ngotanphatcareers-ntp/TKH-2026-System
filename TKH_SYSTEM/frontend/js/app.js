@@ -7166,6 +7166,8 @@ async function loadAdminSessions() {
 
             const closeDisabled =
                 session.status !== "OPEN";
+            const deleteDisabled =
+                session.status === "OPEN";
 
             return `
                 <tr class="${rowClass}">
@@ -7204,8 +7206,13 @@ async function loadAdminSessions() {
 
                         <button
                             class="delete-material-btn"
-                            disabled
-                            title="API xóa buổi học sẽ được bổ sung sau"
+                            onclick="deleteSession(${session.id})"
+                            ${deleteDisabled ? "disabled" : ""}
+                            title="${
+                                deleteDisabled
+                                    ? "Hãy kết thúc buổi học trước khi xóa"
+                                    : "Xóa buổi học"
+                            }"
                         >
                             Xóa
                         </button>
@@ -7417,29 +7424,83 @@ async function closeSession(sessionId) {
     }
 }
 
-function deleteSessionDemo(sessionId) {
-    const confirmDelete = confirm(
-        "Bạn có chắc muốn xóa buổi học này không? Lịch học liên quan cũng sẽ bị xóa."
-    );
+async function deleteSession(sessionId) {
+    const token =
+        localStorage.getItem("accessToken");
 
-    if (!confirmDelete) {
+    if (!token) {
+        logoutDemo();
         return;
     }
 
-    const sessions = getStoredSessionsDemo()
-        .filter(session => Number(session.id) !== Number(sessionId));
+    const confirmed = confirm(
+        "Bạn có chắc muốn xóa buổi học này không?\n\n" +
+        "Dữ liệu liên quan đến buổi học cũng sẽ bị xóa."
+    );
 
-    saveStoredSessionsDemo(sessions);
+    if (!confirmed) {
+        return;
+    }
 
-    const schedules = getStoredSchedulesDemo()
-        .filter(schedule => Number(schedule.sessionId) !== Number(sessionId));
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/admin/sessions/${sessionId}`,
+            {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        );
 
-    saveStoredSchedulesDemo(schedules);
+        const responseText =
+            await response.text();
 
-    loadAdminSessions();
-    loadAdminSchedulesDemo();
-    loadStudentSchedulesDemo();
-    loadScheduleSessionOptionsDemo();
+        let result = null;
+
+        if (responseText) {
+            try {
+                result = JSON.parse(responseText);
+            } catch {
+                result = null;
+            }
+        }
+
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
+
+        if (response.status === 403) {
+            window.location.href =
+                "dashboard.html";
+            return;
+        }
+
+        if (
+            !response.ok ||
+            result?.success === false
+        ) {
+            alert(
+                result?.error?.message ||
+                "Không thể xóa buổi học."
+            );
+            return;
+        }
+
+        alert("Đã xóa buổi học thành công.");
+
+        await loadAdminSessions();
+    } catch (error) {
+        console.error(
+            "Delete session error:",
+            error
+        );
+
+        alert(
+            "Không thể kết nối đến Backend."
+        );
+    }
 }
 
 function getCurrentSessionDemo() {

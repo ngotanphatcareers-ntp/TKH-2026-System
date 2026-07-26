@@ -343,6 +343,90 @@ async function findCurrentOpenSessionForActivity() {
 }
 
 
+async function findSessionDependencies(sessionId) {
+  const pool = await getPool();
+
+  const result = await pool
+    .request()
+    .input("sessionId", sql.Int, sessionId)
+    .query(`
+      SELECT
+        (
+          SELECT COUNT(*)
+          FROM dbo.attendance_records
+          WHERE session_id = @sessionId
+        ) AS attendanceRecordCount,
+
+        (
+          SELECT COUNT(*)
+          FROM dbo.bible_challenge_history
+          WHERE session_id = @sessionId
+        ) AS bibleChallengeHistoryCount,
+
+        (
+          SELECT COUNT(*)
+          FROM dbo.bible_challenge_rounds
+          WHERE session_id = @sessionId
+        ) AS bibleChallengeRoundCount,
+
+        (
+          SELECT COUNT(*)
+          FROM dbo.student_questions
+          WHERE session_id = @sessionId
+        ) AS studentQuestionCount;
+    `);
+
+  return result.recordset[0];
+}
+
+
+async function deleteSessionIfUnused(sessionId) {
+  const pool = await getPool();
+
+  const result = await pool
+    .request()
+    .input("sessionId", sql.Int, sessionId)
+    .query(`
+      DELETE targetSession
+
+      OUTPUT
+        DELETED.id
+
+      FROM dbo.sessions AS targetSession
+
+      WHERE targetSession.id = @sessionId
+        AND targetSession.status IN ('DRAFT', 'CLOSED')
+
+        AND NOT EXISTS (
+          SELECT 1
+          FROM dbo.attendance_records
+          WHERE session_id = @sessionId
+        )
+
+        AND NOT EXISTS (
+          SELECT 1
+          FROM dbo.bible_challenge_history
+          WHERE session_id = @sessionId
+        )
+
+        AND NOT EXISTS (
+          SELECT 1
+          FROM dbo.bible_challenge_rounds
+          WHERE session_id = @sessionId
+        )
+
+        AND NOT EXISTS (
+          SELECT 1
+          FROM dbo.student_questions
+          WHERE session_id = @sessionId
+        );
+    `);
+
+  return result.recordset[0] || null;
+}
+
+
+
 module.exports = {
   findSessionsBySeasonId,
   findSessionById,
@@ -350,4 +434,6 @@ module.exports = {
   createSession,
   openSession,
   closeSession,
+  findSessionDependencies,
+  deleteSessionIfUnused,
 };

@@ -4,6 +4,8 @@ const {
   createSession,
   openSession,
   closeSession,
+  findSessionDependencies,
+  deleteSessionIfUnused,
 } = require("../repositories/session.repository");
 
 const {
@@ -207,10 +209,98 @@ async function closeCurrentSeasonSession(sessionId) {
 }
 
 
+async function deleteCurrentSeasonSession(sessionId) {
+  const season = await findActiveSeason();
+
+  if (!season) {
+    return {
+      success: false,
+      code: "ACTIVE_SEASON_NOT_FOUND",
+    };
+  }
+
+  const session = await findSessionById(sessionId);
+
+  if (!session) {
+    return {
+      success: false,
+      code: "SESSION_NOT_FOUND",
+    };
+  }
+
+  if (Number(session.season_id) !== Number(season.id)) {
+    return {
+      success: false,
+      code: "SESSION_NOT_IN_ACTIVE_SEASON",
+    };
+  }
+
+  if (session.status === "OPEN") {
+    return {
+      success: false,
+      code: "OPEN_SESSION_CANNOT_DELETE",
+    };
+  }
+
+  if (!["DRAFT", "CLOSED"].includes(session.status)) {
+    return {
+      success: false,
+      code: "SESSION_STATUS_NOT_DELETABLE",
+    };
+  }
+
+  const dependencyResult =
+    await findSessionDependencies(sessionId);
+
+  const dependencies = {
+    attendanceRecordCount: Number(
+      dependencyResult.attendanceRecordCount || 0
+    ),
+    bibleChallengeHistoryCount: Number(
+      dependencyResult.bibleChallengeHistoryCount || 0
+    ),
+    bibleChallengeRoundCount: Number(
+      dependencyResult.bibleChallengeRoundCount || 0
+    ),
+    studentQuestionCount: Number(
+      dependencyResult.studentQuestionCount || 0
+    ),
+  };
+
+  const hasDependencies = Object.values(
+    dependencies
+  ).some((count) => count > 0);
+
+  if (hasDependencies) {
+    return {
+      success: false,
+      code: "SESSION_HAS_DEPENDENCIES",
+      dependencies,
+    };
+  }
+
+  const deletedSession =
+    await deleteSessionIfUnused(sessionId);
+
+  if (!deletedSession) {
+    return {
+      success: false,
+      code: "SESSION_DELETE_CONFLICT",
+    };
+  }
+
+  return {
+    success: true,
+    deletedSessionId: Number(deletedSession.id),
+  };
+}
+
+
 module.exports = {
   getCurrentSeasonSessions,
   getSessionById,
   createCurrentSeasonSession,
   openCurrentSeasonSession,
   closeCurrentSeasonSession,
+  deleteCurrentSeasonSession,
 };
