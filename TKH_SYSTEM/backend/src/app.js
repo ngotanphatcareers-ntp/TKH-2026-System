@@ -27,6 +27,7 @@ const adminEncouragementRoutes = require(
 );
 
 const adminTestRoutes = require("./routes/admin-test.routes");
+const examRoutes = require("./routes/exam.routes");
 
 const app = express();
 
@@ -62,6 +63,7 @@ app.use("/api/admin/members", memberRoutes);
 app.use("/api/admin/sessions", sessionRoutes);
 app.use("/api/sessions", sessionPublicRoutes);
 app.use("/api/admin/test", adminTestRoutes);
+app.use("/api/exams", examRoutes);
 
 app.get("/api/health", (req, res) => {
   res.status(200).json({

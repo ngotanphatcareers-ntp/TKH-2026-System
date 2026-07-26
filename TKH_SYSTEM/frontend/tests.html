@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TKH 2026 - Kho tài liệu học tập</title>
+    <title>TKH 2026 - Bài kiểm tra</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="app-page">
@@ -19,11 +19,11 @@
     <a href="schedule.html">Lịch học</a>
     <a href="student-directory.html">Hộp thư khích lệ</a>
     <a href="session-questions.html">Câu hỏi buổi học</a>
-    <a href="tests.html">Bài kiểm tra</a>
-    <a href="study-materials.html" class="active">Kho tài liệu</a>
+    <a href="tests.html" class="active">Bài kiểm tra</a>
+    <a href="study-materials.html">Kho tài liệu</a>
     <a href="admin-dashboard.html" class="admin-only">Trang Admin</a>
     <a href="change-password.html">Đổi mật khẩu</a>
-    
+
     <hr class="sidebar-divider">
 
         <a href="#" onclick="confirmLogout(event)" class="logout-menu">
@@ -32,28 +32,22 @@
 </aside>
 
 <main class="main-content">
-
     <div class="topbar">
         <div>
-            <h1>📚 Kho tài liệu học tập</h1>
-            <p>Nơi lưu trữ bài học, câu gốc, slide và tài liệu ôn tập.</p>
+            <h1>📝 Bài kiểm tra</h1>
+            <p>Tham gia bài kiểm tra theo thời gian do Ban Tổ Chức mở.</p>
         </div>
-
-        
     </div>
 
-    <section class="learning-hub-intro">
-        <h2>Learning Hub - TKH 2026</h2>
-        <p>
-            Các tài liệu sẽ được BTC cập nhật theo từng buổi học.
-            Học viên có thể mở lại bài học, xem câu gốc và tải tài liệu cần thiết.
-        </p>
-    </section>
+    <section class="attendance-box">
+        <h2>Bài kiểm tra hiện tại</h2>
 
-    <section id="studyMaterialsList" class="materials-list">
-        <p class="empty-note">Đang tải kho tài liệu...</p>
+        <div id="studentExamList">
+            <p class="empty-note">
+                Đang tải thông tin bài kiểm tra...
+            </p>
+        </div>
     </section>
-
 </main>
 <div id="logoutModal" class="modal-overlay hidden">
         <div class="modal-box">
@@ -66,7 +60,7 @@
                 </div>
         </div>
 </div>
-<script src="js/app.js?v=137"></script>
+<script src="js/app.js?v=151"></script>
 
 </body>
 </html>

@@ -9433,3 +9433,273 @@ async function loadBibleChallengeProgressDemo() {
         `;
     }
 }
+
+/*
+=====================================================
+Import Exam questions from Excel
+Admin only
+=====================================================
+*/
+async function importExamQuestionsFromExcel() {
+    const examIdInput =
+        document.getElementById(
+            "adminExamImportId"
+        );
+
+    const fileInput =
+        document.getElementById(
+            "adminExamQuestionsFile"
+        );
+
+    const button =
+        document.getElementById(
+            "adminExamImportButton"
+        );
+
+    const message =
+        document.getElementById(
+            "adminExamImportMessage"
+        );
+
+    if (
+        !examIdInput ||
+        !fileInput ||
+        !button ||
+        !message
+    ) {
+        return;
+    }
+
+    const currentUser =
+        JSON.parse(
+            localStorage.getItem(
+                "currentUser"
+            )
+        );
+
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
+
+    if (!currentUser || !token) {
+        window.location.href =
+            "index.html";
+        return;
+    }
+
+    if (
+        String(currentUser.role)
+            .toLowerCase() !== "admin"
+    ) {
+        message.style.color = "red";
+        message.innerText =
+            "Chỉ Admin được phép import câu hỏi.";
+        return;
+    }
+
+    const examId =
+        Number(examIdInput.value);
+
+    if (
+        !Number.isInteger(examId) ||
+        examId <= 0
+    ) {
+        message.style.color = "red";
+        message.innerText =
+            "Vui lòng nhập ID bài kiểm tra hợp lệ.";
+        examIdInput.focus();
+        return;
+    }
+
+    const file =
+        fileInput.files[0];
+
+    if (!file) {
+        message.style.color = "red";
+        message.innerText =
+            "Vui lòng chọn file câu hỏi Excel.";
+        return;
+    }
+
+    if (
+        !file.name
+            .toLowerCase()
+            .endsWith(".xlsx")
+    ) {
+        message.style.color = "red";
+        message.innerText =
+            "Chỉ chấp nhận file Excel định dạng .xlsx.";
+        return;
+    }
+
+    if (
+        file.size >
+        5 * 1024 * 1024
+    ) {
+        message.style.color = "red";
+        message.innerText =
+            "File Excel không được vượt quá 5 MB.";
+        return;
+    }
+
+    const formData =
+        new FormData();
+
+    formData.append(
+        "file",
+        file
+    );
+
+    const originalButtonText =
+        button.innerText;
+
+    button.disabled = true;
+    button.innerText =
+        "Đang import...";
+
+    message.style.color = "#555";
+    message.innerText =
+        "Đang tải và kiểm tra file Excel...";
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/admin/test/exams/${encodeURIComponent(examId)}/questions/import`,
+            {
+                method: "POST",
+                headers: {
+                    Authorization:
+                        `Bearer ${token}`
+                },
+                body: formData
+            }
+        );
+
+        const responseText =
+            await response.text();
+
+        let result = {};
+
+        if (responseText) {
+            try {
+                result =
+                    JSON.parse(
+                        responseText
+                    );
+            } catch {
+                result = {
+                    success: false,
+                    message:
+                        responseText
+                };
+            }
+        }
+
+        if (!response.ok || !result.success) {
+            const errorCode =
+                result?.error?.code ||
+                result?.code;
+
+            const messagesByCode = {
+                EXCEL_FILE_REQUIRED:
+                    "Vui lòng chọn file câu hỏi Excel.",
+                INVALID_EXCEL_FILE:
+                    "File Excel không hợp lệ hoặc không thể đọc.",
+                INVALID_EXCEL_FILE_TYPE:
+                    "Chỉ chấp nhận file Excel định dạng .xlsx.",
+                EXCEL_FILE_TOO_LARGE:
+                    "File Excel không được vượt quá 5 MB.",
+                INVALID_EXCEL_COLUMNS:
+                    "Các cột trong file Excel không đúng định dạng yêu cầu.",
+                INVALID_EXCEL_ROWS:
+                    "File Excel có dòng dữ liệu không hợp lệ.",
+                EXCEL_HAS_NO_QUESTIONS:
+                    "File Excel không có câu hỏi để import.",
+                INVALID_EXAM_ID:
+                    "ID bài kiểm tra không hợp lệ.",
+                EXAM_NOT_FOUND:
+                    "Không tìm thấy bài kiểm tra.",
+                EXAM_NOT_EDITABLE:
+                    "Bài kiểm tra hiện không còn được phép chỉnh sửa.",
+                INTERNAL_SERVER_ERROR:
+                    "Máy chủ gặp lỗi khi import câu hỏi."
+            };
+
+            const errorMessage =
+                result?.error?.message ||
+                result?.message ||
+                messagesByCode[
+                    errorCode
+                ] ||
+                "Không thể import câu hỏi từ file Excel.";
+
+            throw new Error(
+                errorMessage
+            );
+        }
+
+        const data =
+            result.data || {};
+
+        const countCandidates = [
+            data.importedCount,
+            data.importedQuestionsCount,
+            data.imported_questions_count,
+            data.questionCount,
+            data.questionsImported,
+            data.totalImported,
+            data.insertedCount,
+            data.importedQuestions
+        ];
+
+        const countValue =
+            countCandidates.find(
+                value =>
+                    typeof value ===
+                        "number" ||
+                    Array.isArray(value)
+            );
+
+        const importedCount =
+            Array.isArray(countValue)
+                ? countValue.length
+                : countValue;
+
+        message.style.color = "green";
+
+        if (
+            typeof importedCount ===
+            "number"
+        ) {
+            message.innerText =
+                `Đã import thành công ${importedCount} câu hỏi vào bài kiểm tra ID ${examId}.`;
+        } else {
+            message.innerText =
+                `Đã import câu hỏi thành công vào bài kiểm tra ID ${examId}.`;
+        }
+
+        fileInput.value = "";
+    } catch (error) {
+        console.error(
+            "Import Exam questions error:",
+            error
+        );
+
+        message.style.color = "red";
+
+        if (
+            error instanceof TypeError
+        ) {
+            message.innerText =
+                "Không thể kết nối Backend. Hãy kiểm tra server đang chạy ở cổng 5000.";
+        } else {
+            message.innerText =
+                error.message ||
+                "Không thể import câu hỏi từ file Excel.";
+        }
+    } finally {
+        button.disabled = false;
+        button.innerText =
+            originalButtonText;
+    }
+}

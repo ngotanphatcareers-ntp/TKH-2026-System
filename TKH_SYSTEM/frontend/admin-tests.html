@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TKH 2026 - Quản lý lịch học</title>
+    <title>TKH 2026 - Quản lý bài kiểm tra</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="app-page">
@@ -11,19 +11,20 @@
 <aside class="sidebar">
     <h2>TKH Admin</h2>
     <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰ Menu</button>
+
     <a href="admin-dashboard.html">Tổng quan Admin</a>
     <a href="admin-members.html">Quản lý thành viên</a>
     <a href="admin-groups.html">Quản lý nhóm</a>
     <a href="admin-attendance.html">Quản lý điểm danh</a>
     <a href="admin-session.html">Quản lý buổi học</a>
     <a href="admin-score.html">Quản lý điểm số</a>
-    <a href="admin-schedule.html" class="active">Quản lý lịch học</a>
+
     <a href="admin-bible-challenge.html">
             Bible Challenge
     </a>
-    <a href="admin-tests.html">Quản lý bài kiểm tra</a>
+    <a href="admin-tests.html" class="active">Quản lý bài kiểm tra</a>
     <a href="admin-study-materials.html">Kho tài liệu</a>
-    
+
     <a href="admin-questions.html">Câu hỏi học viên</a>
     <a href="admin-encouragement.html">Thống kê khích lệ</a>
     <hr class="sidebar-divider">
@@ -34,63 +35,58 @@
 </aside>
 
 <main class="main-content">
-
     <div class="topbar">
         <div>
-            <h1>Quản lý lịch học</h1>
-            <p>Cập nhật chủ đề, câu gốc và hoạt động cho từng buổi TKH.</p>
+            <h1>📝 Quản lý bài kiểm tra</h1>
+            <p>Tạo và quản lý nội dung bài kiểm tra TKH 2026.</p>
         </div>
-
-        
     </div>
 
-    <section class="attendance-box password-box">
-        <h2>Thêm / cập nhật nội dung lịch học</h2>
+    <section class="form-section">
+        <h2>Import câu hỏi từ Excel</h2>
 
-        <label>Buổi học</label>
+        <label for="adminExamImportId">
+            ID bài kiểm tra
+        </label>
 
-        <select
+        <input
+            type="number"
+            id="adminExamImportId"
             class="form-input"
-            id="scheduleSession">
-        </select>
+            min="1"
+            placeholder="Ví dụ: 1"
+        >
 
-        <label>Chủ đề</label>
-        <input type="text" id="scheduleTitle" placeholder="Ví dụ: Yêu thương và phục vụ">
+        <label for="adminExamQuestionsFile">
+            File câu hỏi (.xlsx)
+        </label>
 
-        <label>Câu gốc</label>
-        <input type="text" id="bibleVerse" placeholder="Ví dụ: Giăng 13:34">
+        <input
+            type="file"
+            id="adminExamQuestionsFile"
+            class="form-input"
+            accept=".xlsx"
+        >
 
-        <label>Mô tả</label>
-        <input type="text" id="scheduleActivity" placeholder="Ví dụ: Học Kinh Thánh, hoặc mô tả câu gốc/chủ đề">
-
-        <button class="checkin-btn" onclick="createScheduleDemo()">
-            Lưu lịch học
+        <button
+            type="button"
+            id="adminExamImportButton"
+            class="profile-btn"
+            onclick="importExamQuestionsFromExcel()"
+        >
+            Import Excel
         </button>
 
-        <p id="scheduleMessage"></p>
+        <p
+            id="adminExamImportMessage"
+            class="empty-note"
+        ></p>
+
+        <p class="empty-note">
+            File tối đa 5 MB. Câu hỏi mới sẽ được nối tiếp
+            sau các câu hỏi đang có.
+        </p>
     </section>
-
-    <div class="attendance-box">
-        <h2>Danh sách lịch học</h2>
-
-        <table class="score-table">
-            <thead>
-                <tr>
-                    <th>Ngày</th>
-                    <th>Chủ đề</th>
-                    <th>Câu gốc</th>
-                    <th>Mô tả</th>
-                </tr>
-            </thead>
-
-            <tbody id="adminScheduleTableBody">
-                <tr>
-                    <td colspan="4">Đang tải danh sách lịch học...</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
 </main>
 <div id="logoutModal" class="modal-overlay hidden">
         <div class="modal-box">
@@ -103,7 +99,7 @@
                 </div>
         </div>
 </div>
-<script src="js/app.js?v=137"></script>
+<script src="js/app.js?v=152"></script>
 
 </body>
 </html>
