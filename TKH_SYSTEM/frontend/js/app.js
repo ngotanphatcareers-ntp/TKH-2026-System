@@ -6444,37 +6444,168 @@ function loadAdminDashboardGroupStatsDemo() {
         `).join("");
 }
 
-function loadAdminDashboardExtraStatsDemo() {
-    const totalScoreElement = document.getElementById("adminDashboardTotalScore");
-    const newQuestionsElement = document.getElementById("adminDashboardNewQuestions");
-    const todayEncouragementsElement = document.getElementById("adminDashboardTodayEncouragements");
+async function loadAdminDashboardExtraStatsDemo() {
+    const totalScoreElement =
+        document.getElementById(
+            "adminDashboardTotalScore"
+        );
 
-    if (!totalScoreElement) {
+    const newQuestionsElement =
+        document.getElementById(
+            "adminDashboardNewQuestions"
+        );
+
+    const todayEncouragementsElement =
+        document.getElementById(
+            "adminDashboardTodayEncouragements"
+        );
+
+    if (
+        !totalScoreElement ||
+        !newQuestionsElement ||
+        !todayEncouragementsElement
+    ) {
         return;
     }
 
-    const scores = getStoredScoresDemo();
-    const questions = getStoredQuestionsDemo();
-    const encouragements = getStoredEncouragementsDemo();
+    const token =
+        localStorage.getItem("accessToken");
 
-    const today = new Date().toDateString();
+    if (!token) {
+        logoutDemo();
+        return;
+    }
 
-    const totalScore = scores.reduce(
-        (total, item) => total + Number(item.scoreValue),
-        0
-    );
+    totalScoreElement.innerText = "...";
+    newQuestionsElement.innerText = "...";
+    todayEncouragementsElement.innerText = "...";
 
-    const newQuestions = questions.filter(
-        item => item.status === "Mới"
-    ).length;
+    try {
+        const [
+            groups,
+            questionsResponse,
+            encouragementsResponse
+        ] = await Promise.all([
+            getGroupRankingApiData(),
 
-    const todayEncouragements = encouragements.filter(
-        item => item.dateKey === today
-    ).length;
+            fetch(
+                `${API_BASE_URL}/api/admin/questions`,
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization:
+                            `Bearer ${token}`
+                    }
+                }
+            ),
 
-    totalScoreElement.innerText = totalScore;
-    newQuestionsElement.innerText = newQuestions;
-    todayEncouragementsElement.innerText = todayEncouragements;
+            fetch(
+                `${API_BASE_URL}/api/admin/encouragements/stats?limit=5`,
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization:
+                            `Bearer ${token}`
+                    }
+                }
+            )
+        ]);
+
+        const [
+            questionsResult,
+            encouragementsResult
+        ] = await Promise.all([
+            questionsResponse.json(),
+            encouragementsResponse.json()
+        ]);
+
+        if (
+            questionsResponse.status === 401 ||
+            encouragementsResponse.status === 401
+        ) {
+            logoutDemo();
+            return;
+        }
+
+        if (
+            questionsResponse.status === 403 ||
+            encouragementsResponse.status === 403
+        ) {
+            window.location.href =
+                "dashboard.html";
+
+            return;
+        }
+
+        if (
+            !questionsResponse.ok ||
+            questionsResult.success !== true
+        ) {
+            throw new Error(
+                questionsResult?.error?.message ||
+                "Không thể tải thống kê câu hỏi."
+            );
+        }
+
+        if (
+            !encouragementsResponse.ok ||
+            encouragementsResult.success !== true
+        ) {
+            throw new Error(
+                encouragementsResult?.error?.message ||
+                encouragementsResult?.message ||
+                "Không thể tải thống kê lời khích lệ."
+            );
+        }
+
+        const totalScore = (
+            Array.isArray(groups)
+                ? groups
+                : []
+        ).reduce(
+            (total, item) =>
+                total +
+                (Number(item.totalScore) || 0),
+            0
+        );
+
+        const questions =
+            Array.isArray(
+                questionsResult.questions
+            )
+                ? questionsResult.questions
+                : [];
+
+        const newQuestions =
+            questions.filter(
+                item =>
+                    item.status !== "ANSWERED"
+            ).length;
+
+        const todayEncouragements =
+            Number(
+                encouragementsResult
+                    .summary?.today
+            ) || 0;
+
+        totalScoreElement.innerText =
+            totalScore;
+
+        newQuestionsElement.innerText =
+            newQuestions;
+
+        todayEncouragementsElement.innerText =
+            todayEncouragements;
+    } catch (error) {
+        console.error(
+            "Load admin dashboard extra stats error:",
+            error
+        );
+
+        totalScoreElement.innerText = "—";
+        newQuestionsElement.innerText = "—";
+        todayEncouragementsElement.innerText = "—";
+    }
 }
 
 function loadAdminEncouragementReviewDemo() {
