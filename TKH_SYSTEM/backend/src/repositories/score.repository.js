@@ -823,6 +823,124 @@ async function findScoreTransactionsBySeasonMembershipId(
 }
 
 
+async function findAllActiveGroupScoreBases() {
+  const pool = await getPool();
+
+  const result = await pool
+    .request()
+    .query(`
+      SELECT
+        g.id AS group_id,
+        g.code AS group_code,
+        g.name AS group_name,
+
+        COALESCE(
+          direct_group_scores.group_points,
+          0
+        ) AS group_points
+
+      FROM dbo.groups AS g
+
+      INNER JOIN dbo.seasons AS s
+        ON s.id = g.season_id
+        AND s.status = 'ACTIVE'
+
+      OUTER APPLY
+      (
+        SELECT
+          SUM(gst.points) AS group_points
+
+        FROM dbo.group_score_transactions AS gst
+
+        WHERE gst.group_id = g.id
+          AND gst.status = 'ACTIVE'
+      ) AS direct_group_scores
+
+      ORDER BY
+        g.name ASC;
+    `);
+
+  return result.recordset;
+}
+
+
+async function findActiveGroupMemberScoreTransactions() {
+  const pool = await getPool();
+
+  const result = await pool
+    .request()
+    .query(`
+      SELECT
+        g.id AS groupId,
+
+        sm.id AS seasonMembershipId,
+
+        st.id,
+
+        st.score_category
+          AS scoreCategory,
+
+        st.score_type
+          AS scoreType,
+
+        st.requested_points
+          AS requestedPoints,
+
+        st.applied_points
+          AS appliedPoints,
+
+        st.source_type
+          AS sourceType,
+
+        st.source_id
+          AS sourceId,
+
+        st.source_key
+          AS sourceKey,
+
+        st.description,
+        st.status,
+
+        st.created_by_user_id
+          AS createdByUserId,
+
+        st.created_at
+          AS createdAt,
+
+        st.reversed_by_user_id
+          AS reversedByUserId,
+
+        st.reversed_at
+          AS reversedAt,
+
+        st.reversal_reason
+          AS reversalReason
+
+      FROM dbo.groups AS g
+
+      INNER JOIN dbo.seasons AS s
+        ON s.id = g.season_id
+        AND s.status = 'ACTIVE'
+
+      INNER JOIN dbo.season_memberships AS sm
+        ON sm.group_id = g.id
+        AND sm.season_id = s.id
+        AND sm.status = 'ACTIVE'
+
+      LEFT JOIN dbo.score_transactions AS st
+        ON st.season_membership_id = sm.id
+
+      ORDER BY
+        g.id ASC,
+        sm.id ASC,
+        st.created_at ASC,
+        st.id ASC;
+    `);
+
+  return result.recordset;
+}
+
+
 module.exports = {
   findActiveMembershipByMemberId,
   findActiveMembershipByUsername,
@@ -835,4 +953,6 @@ module.exports = {
   createGroupScoreTransaction,
   createScoreTransaction,
   findScoreTransactionsBySeasonMembershipId,
+  findAllActiveGroupScoreBases,
+  findActiveGroupMemberScoreTransactions,
 };

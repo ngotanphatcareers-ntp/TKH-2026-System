@@ -15,6 +15,8 @@ const {
   createGroupScoreTransaction,
   findScoreTransactionsBySeasonMembershipId,
   createScoreTransaction,
+  findAllActiveGroupScoreBases,
+  findActiveGroupMemberScoreTransactions,
 } = require("../repositories/score.repository");
 
 const {
@@ -513,10 +515,84 @@ async function createAdminScoreTransaction({
 }
 
 
+function mapScoreTransactionHistoryItem(item) {
+  return {
+    id: Number(item.id),
+
+    seasonMembershipId:
+      Number(item.seasonMembershipId),
+
+    // Giữ "points" để Frontend hiện tại vẫn đọc được.
+    points:
+      Number(item.appliedPoints) || 0,
+
+    requestedPoints:
+      Number(item.requestedPoints) || 0,
+
+    appliedPoints:
+      Number(item.appliedPoints) || 0,
+
+    scoreCategory:
+      item.scoreCategory,
+
+    scoreType:
+      item.scoreType,
+
+    sourceType:
+      item.sourceType,
+
+    sourceTypeLabel:
+      getSourceTypeLabel(item.sourceType),
+
+    sourceId:
+      item.sourceId != null
+        ? Number(item.sourceId)
+        : null,
+
+    sourceKey:
+      item.sourceKey || null,
+
+    description:
+      item.description,
+
+    status:
+      item.status,
+
+    createdBy:
+      item.createdByUserId != null
+        ? {
+            id: Number(
+              item.createdByUserId
+            ),
+            username: null,
+          }
+        : null,
+
+    createdAt:
+      item.createdAt,
+
+    reversedByUserId:
+      item.reversedByUserId != null
+        ? Number(
+            item.reversedByUserId
+          )
+        : null,
+
+    reversedAt:
+      item.reversedAt || null,
+
+    reversalReason:
+      item.reversalReason || null,
+  };
+}
+
 async function getMyScores(memberId) {
+  const normalizedMemberId =
+    Number(memberId);
+
   if (
-    !Number.isInteger(Number(memberId)) ||
-    Number(memberId) <= 0
+    !Number.isInteger(normalizedMemberId) ||
+    normalizedMemberId <= 0
   ) {
     return {
       success: false,
@@ -526,7 +602,7 @@ async function getMyScores(memberId) {
 
   const membership =
     await findActiveMembershipByMemberId(
-      Number(memberId)
+      normalizedMemberId
     );
 
   if (!membership) {
@@ -536,33 +612,211 @@ async function getMyScores(memberId) {
     };
   }
 
-  const [
-    summary,
-    history,
-  ] = await Promise.all([
-    findIndividualScoreSummary(
+  const transactions =
+    await findScoreTransactionsBySeasonMembershipId(
       membership.season_membership_id
-    ),
+    );
 
-    findIndividualScoreHistory(
-      membership.season_membership_id
-    ),
-  ]);
+  const score =
+    calculateMemberSummary(transactions);
+
+  const activeTransactions =
+    transactions.filter(
+      item => item.status === "ACTIVE"
+    );
+
+  const otherPoints = Number(
+    (
+      score.learning.weightedScore +
+      score.discipline.weightedScore
+    ).toFixed(2)
+  );
 
   return {
     success: true,
-    season: mapSeason(membership),
-    member: mapMember(membership),
-    summary: mapSummary(summary),
-    history: history.map(mapHistoryItem),
+
+    season:
+      mapSeason(membership),
+
+    member:
+      mapMember(membership),
+
+    summary: {
+      // Các trường cũ được giữ để chưa làm hỏng Frontend.
+      totalPoints:
+        score.final.score,
+
+      attendancePoints:
+        score.attendance.weightedScore,
+
+      devotionPoints: 0,
+
+      otherPoints,
+
+      totalTransactions:
+        activeTransactions.length,
+
+      // Các trường chính thức của Score Foundation.
+      learningPoints:
+        score.learning.weightedScore,
+
+      disciplinePoints:
+        score.discipline.weightedScore,
+
+      maxPoints:
+        score.final.maxScore,
+
+      details: score,
+    },
+
+    history:
+      transactions.map(
+        mapScoreTransactionHistoryItem
+      ),
   };
 }
 
 
+function buildOfficialGroupRankings(
+  groupBases,
+  memberScoreRows
+) {
+  const membersByGroup = new Map();
+
+  memberScoreRows.forEach(row => {
+    const groupId = Number(row.groupId);
+
+    const seasonMembershipId =
+      Number(row.seasonMembershipId);
+
+    if (!membersByGroup.has(groupId)) {
+      membersByGroup.set(
+        groupId,
+        new Map()
+      );
+    }
+
+    const groupMembers =
+      membersByGroup.get(groupId);
+
+    if (
+      !groupMembers.has(
+        seasonMembershipId
+      )
+    ) {
+      groupMembers.set(
+        seasonMembershipId,
+        []
+      );
+    }
+
+    if (
+      row.id !== null &&
+      row.id !== undefined
+    ) {
+      groupMembers
+        .get(seasonMembershipId)
+        .push(row);
+    }
+  });
+
+  const totals = groupBases.map(group => {
+    const groupId =
+      Number(group.group_id);
+
+    const groupMembers =
+      membersByGroup.get(groupId) ||
+      new Map();
+
+    const individualPoints = Number(
+      Array.from(
+        groupMembers.values()
+      )
+        .reduce(
+          (total, transactions) => {
+            const memberScore =
+              calculateMemberSummary(
+                transactions
+              );
+
+            return (
+              total +
+              memberScore.final.score
+            );
+          },
+          0
+        )
+        .toFixed(2)
+    );
+
+    const groupPoints =
+      Number(group.group_points) || 0;
+
+    const totalPoints = Number(
+      (
+        individualPoints +
+        groupPoints
+      ).toFixed(2)
+    );
+
+    return {
+      group: {
+        id: groupId,
+        code: group.group_code,
+        name: group.group_name,
+      },
+
+      individualPoints,
+      groupPoints,
+      totalPoints,
+    };
+  });
+
+  totals.sort((left, right) => {
+    if (
+      right.totalPoints !==
+      left.totalPoints
+    ) {
+      return (
+        right.totalPoints -
+        left.totalPoints
+      );
+    }
+
+    return left.group.name.localeCompare(
+      right.group.name,
+      "vi"
+    );
+  });
+
+  let currentRanking = 0;
+  let previousTotal = null;
+
+  return totals.map((item, index) => {
+    if (
+      index === 0 ||
+      item.totalPoints !== previousTotal
+    ) {
+      currentRanking += 1;
+    }
+
+    previousTotal =
+      item.totalPoints;
+
+    return {
+      ranking: currentRanking,
+      ...item,
+    };
+  });
+}
+
 async function getMyGroupScores(memberId) {
+  const normalizedMemberId =
+    Number(memberId);
+
   if (
-    !Number.isInteger(Number(memberId)) ||
-    Number(memberId) <= 0
+    !Number.isInteger(normalizedMemberId) ||
+    normalizedMemberId <= 0
   ) {
     return {
       success: false,
@@ -572,7 +826,7 @@ async function getMyGroupScores(memberId) {
 
   const membership =
     await findActiveMembershipByMemberId(
-      Number(memberId)
+      normalizedMemberId
     );
 
   if (!membership) {
@@ -589,53 +843,59 @@ async function getMyGroupScores(memberId) {
     };
   }
 
-  const groupId = Number(
-    membership.group_id
-  );
+  const groupId =
+    Number(membership.group_id);
 
   const [
-    summary,
     history,
-    rankings,
+    groupBases,
+    memberScoreRows,
   ] = await Promise.all([
-    findGroupScoreSummary(groupId),
     findGroupScoreHistory(groupId),
-    findAllGroupScoreRankings(),
+    findAllActiveGroupScoreBases(),
+    findActiveGroupMemberScoreTransactions(),
   ]);
 
-  if (!summary) {
+  const rankings =
+    buildOfficialGroupRankings(
+      groupBases,
+      memberScoreRows
+    );
+
+  const currentGroup =
+    rankings.find(
+      item => item.group.id === groupId
+    ) || null;
+
+  if (!currentGroup) {
     return {
       success: false,
       code: "GROUP_NOT_FOUND",
     };
   }
 
-  const mappedRankings =
-    rankings.map(mapGroupRankingItem);
-
-  const currentRanking =
-    mappedRankings.find(
-      item => item.group.id === groupId
-    ) || null;
-
   return {
     success: true,
 
-    season: mapSeason(membership),
+    season:
+      mapSeason(membership),
 
-    group: {
-      id: Number(summary.group_id),
-      code: summary.group_code,
-      name: summary.group_name,
+    group:
+      currentGroup.group,
+
+    summary: {
+      individualPoints:
+        currentGroup.individualPoints,
+
+      groupPoints:
+        currentGroup.groupPoints,
+
+      totalPoints:
+        currentGroup.totalPoints,
     },
 
-    summary:
-      mapGroupScoreSummary(summary),
-
     ranking:
-      currentRanking
-        ? currentRanking.ranking
-        : null,
+      currentGroup.ranking,
 
     history:
       history.map(
@@ -646,11 +906,19 @@ async function getMyGroupScores(memberId) {
 
 
 async function getGroupRankings() {
-  const rankings =
-    await findAllGroupScoreRankings();
+  const [
+    groupBases,
+    memberScoreRows,
+  ] = await Promise.all([
+    findAllActiveGroupScoreBases(),
+    findActiveGroupMemberScoreTransactions(),
+  ]);
 
   const groups =
-    rankings.map(mapGroupRankingItem);
+    buildOfficialGroupRankings(
+      groupBases,
+      memberScoreRows
+    );
 
   return {
     success: true,
