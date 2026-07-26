@@ -13,4 +13,11 @@ router.get(
   memberController.getMembers
 );
 
+router.post(
+  "/import",
+  authenticateToken,
+  requireRole("ADMIN"),
+  memberController.importMembers
+);
+
 module.exports = router;

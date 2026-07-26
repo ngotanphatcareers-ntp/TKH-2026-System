@@ -3871,22 +3871,78 @@ function generateStudentUsername(index) {
 }
 
 //hàm import
-function importStudentsExcelDemo() {
-    const fileInput = document.getElementById("studentExcelFile");
-    const message = document.getElementById("studentImportMessage");
+function parseStudentBirthDateForApiDemo(value) {
+    if (typeof value === "number") {
+        const excelDate = XLSX.SSF.parse_date_code(value);
 
-    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        if (!excelDate) {
+            return "";
+        }
+
+        return [
+            String(excelDate.y).padStart(4, "0"),
+            String(excelDate.m).padStart(2, "0"),
+            String(excelDate.d).padStart(2, "0")
+        ].join("-");
+    }
+
+    const text = String(value || "").trim();
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+        return text;
+    }
+
+    const match = text.match(
+        /^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/
+    );
+
+    if (!match) {
+        return "";
+    }
+
+    return [
+        match[3],
+        match[2].padStart(2, "0"),
+        match[1].padStart(2, "0")
+    ].join("-");
+}
+
+async function importStudentsExcelDemo() {
+    const fileInput =
+        document.getElementById("studentExcelFile");
+
+    const message =
+        document.getElementById("studentImportMessage");
+
+    if (
+        !fileInput ||
+        !fileInput.files ||
+        fileInput.files.length === 0
+    ) {
         message.style.color = "red";
-        message.innerText = "Vui lòng chọn file Excel để import.";
+        message.innerText =
+            "Vui lòng chọn file Excel để import.";
         return;
     }
 
-    const file = fileInput.files[0];
-    const reader = new FileReader();
+    const token = localStorage.getItem("accessToken");
 
-    reader.onload = function(event) {
-        const data = new Uint8Array(event.target.result);
-        const workbook = XLSX.read(data, { type: "array" });
+    if (!token) {
+        logoutDemo();
+        return;
+    }
+
+    message.style.color = "#2563eb";
+    message.innerText =
+        "Đang đọc file và import học viên...";
+
+    try {
+        const file = fileInput.files[0];
+        const data = await file.arrayBuffer();
+
+        const workbook = XLSX.read(data, {
+            type: "array"
+        });
 
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
@@ -3895,61 +3951,106 @@ function importStudentsExcelDemo() {
             defval: ""
         });
 
-        if (rows.length === 0) {
-            message.style.color = "red";
-            message.innerText = "File Excel không có dữ liệu.";
-            return;
+        const nonEmptyRows = rows.filter(row =>
+            Object.values(row).some(value =>
+                String(value ?? "").trim() !== ""
+            )
+        );
+
+        if (nonEmptyRows.length === 0) {
+            throw new Error("File Excel không có dữ liệu.");
         }
 
-        const importedStudents = [];
+        const students = nonEmptyRows.map((row, index) => {
+            const rowNumber = index + 2;
 
-        rows.forEach((row, index) => {
-            const fullName = String(row["Họ và tên"] || "").trim();
-            const gender = String(row["Giới tính"] || "").trim();
-            const birthDate = formatExcelDateDemo(
-                row["Ngày sinh"] ||
-                row["Ngày Sinh"] ||
-                ""
-            );
-            const phone = String(row["Điện thoại"] || "").trim();
-            const groupName = String(row["Nhóm nhỏ"] || "").trim();
+            const student = {
+                rowNumber,
+                fullName: String(
+                    row["Họ và tên"] || ""
+                ).trim(),
+                gender: String(
+                    row["Giới tính"] || ""
+                ).trim(),
+                birthDate:
+                    parseStudentBirthDateForApiDemo(
+                        row["Ngày sinh"] ||
+                        row["Ngày Sinh"] ||
+                        ""
+                    ),
+                phone: String(
+                    row["Điện thoại"] || ""
+                ).trim(),
+                groupName: String(
+                    row["Nhóm nhỏ"] || ""
+                ).trim()
+            };
 
-            if (!fullName || !gender || !birthDate || !phone || !groupName) {
-                return;
+            if (
+                !student.fullName ||
+                !student.gender ||
+                !student.birthDate ||
+                !student.phone ||
+                !student.groupName
+            ) {
+                throw new Error(
+                    `Dòng ${rowNumber} thiếu hoặc sai dữ liệu bắt buộc.`
+                );
             }
 
-            importedStudents.push({
-                username: generateStudentUsername(importedStudents.length),
-                defaultPassword: "123456",
-                role: "student",
-                fullName: fullName,
-                shortName: getShortNameFromFullName(fullName),
-                gender: gender,
-                birthDate: birthDate,
-                phone: phone,
-                groupName: groupName
-            });
+            return student;
         });
 
-        if (importedStudents.length === 0) {
-            message.style.color = "red";
-            message.innerText = "Không có học viên hợp lệ để import.";
+        const response = await fetch(
+            `${API_BASE_URL}/api/admin/members/import`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    students
+                })
+            }
+        );
+
+        let result = {};
+
+        try {
+            result = await response.json();
+        } catch (parseError) {
+            result = {};
+        }
+
+        if (response.status === 401) {
+            logoutDemo();
             return;
         }
 
-        localStorage.setItem(
-            "importedStudentsDemo",
-            JSON.stringify(importedStudents)
-        );
+        if (!response.ok || !result.success) {
+            throw new Error(
+                result?.error?.message ||
+                "Không thể import danh sách học viên."
+            );
+        }
 
         message.style.color = "green";
         message.innerText =
-            "Đã import thành công " + importedStudents.length + " học viên.";
+            `Đã import thành công ${result.data.total} học viên. ` +
+            `Mật khẩu mặc định: ${result.data.defaultPassword}.`;
 
-        loadAdminMembersTableDemo();
-    };
+        fileInput.value = "";
 
-    reader.readAsArrayBuffer(file);
+        await loadAdminMembersTableDemo();
+    } catch (error) {
+        console.error("Import students error:", error);
+
+        message.style.color = "red";
+        message.innerText =
+            error.message ||
+            "Không thể import danh sách học viên.";
+    }
 }//hết
 
 //hàm hiển thị đã import
@@ -4104,6 +4205,14 @@ async function loadAdminMembersTableDemo() {
             const tkhCode = member.tkhCode || username || "—";
             const fullName = member.fullName || "—";
             const phone = member.phone || "—";
+            const gender = member.gender || "—";
+            const birthDate = member.birthDate
+                ? String(member.birthDate)
+                    .slice(0, 10)
+                    .split("-")
+                    .reverse()
+                    .join("/")
+                : "—";
             const groupName = group?.name || "Chưa phân nhóm";
 
             return `
@@ -4115,8 +4224,8 @@ async function loadAdminMembersTableDemo() {
                 >
                     <td>${tkhCode}</td>
                     <td>${fullName}</td>
-                    <td>—</td>
-                    <td>—</td>
+                    <td>${gender}</td>
+                    <td>${birthDate}</td>
                     <td>${phone}</td>
                     <td>${groupName}</td>
                     <td>Học viên</td>
