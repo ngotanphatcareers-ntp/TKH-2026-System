@@ -1,6 +1,6 @@
 # TKH 2026 — PROJECT STATUS
 
-Cập nhật: 25/07/2026  
+Cập nhật: 26/07/2026
 Branch hiện tại: `feat/frontend-backend-integration`
 
 ## 1. Mục đích
@@ -32,7 +32,7 @@ Không được quay lại test API, SSMS hoặc migration của module `FROZEN`
 | JWT Authentication | Hoàn thành | Hoàn thành luồng đăng nhập | FROZEN |
 | Bible Challenge | Hoàn thành | Frontend demo vẫn còn phần localStorage cần kiểm kê | BACKEND FROZEN |
 | Question | API đã hoàn thành và test | Chưa xác nhận tích hợp hoàn chỉnh | BACKEND FROZEN |
-| Encouragement | Hoàn thành và đã test | Send, recipients, inbox, read, pin và anonymous đã hoạt động | INTEGRATION NEARLY FROZEN |
+| Encouragement | Hoàn thành và đã test | Send, recipients, inbox, read, pin và anonymous đã hoạt động | FROZEN |
 | Session / Attendance | Có database và phần hỗ trợ Bible Challenge | Frontend chủ yếu còn demo/localStorage | INTEGRATION PENDING |
 | Score cá nhân / nhóm | Có database và score transaction | Chưa tích hợp hoàn chỉnh | INTEGRATION PENDING |
 | QR Kết Ước | Thiết kế và business đã đóng băng | Chưa triển khai backend | IMPLEMENTATION PENDING |
@@ -77,11 +77,13 @@ Trạng thái chính thức: `FROZEN`.
 - Ghim và bỏ ghim.
 - Refresh vẫn giữ dữ liệu.
 
-Known issue:
+Thời gian hiển thị đã được xác nhận đúng:
 
-- Thời gian hiển thị trên Frontend đang lệch so với thời gian database/server.
+- API trả thời gian UTC có ký hiệu `Z`.
+- Frontend dùng `new Date(item.createdAt)` để tự chuyển sang giờ Việt Nam UTC+7.
+- Không cần sửa Backend, SQL Server hoặc helper thời gian dùng cho module khác.
 
-Sau khi xử lý lỗi thời gian và kiểm tra luồng hiện tại một lần, chuyển module sang `FROZEN`.
+Trạng thái chính thức: `FROZEN`.
 
 ## 6. LocalStorage
 
