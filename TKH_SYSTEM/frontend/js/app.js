@@ -11292,16 +11292,28 @@ function renderStudentExams(exams) {
                         exam.status || ""
                     ).toUpperCase();
 
+                const hasJoinedWaitingRoom =
+                    exam.alreadyJoined === true ||
+                    Boolean(exam.waitingRoom);
+
+                const isWaitingForStart =
+                    status ===
+                        "WAITING_ROOM_OPEN" &&
+                    hasJoinedWaitingRoom;
+
                 const canJoin =
                     status ===
-                    "WAITING_ROOM_OPEN";
+                        "WAITING_ROOM_OPEN" &&
+                    !hasJoinedWaitingRoom;
 
                 return `
                     <article
                         class="student-exam-card ${
-                            canJoin
-                                ? "student-exam-card-open"
-                                : "student-exam-card-disabled"
+                            isWaitingForStart
+                                ? "student-exam-card-joined"
+                                : canJoin
+                                    ? "student-exam-card-open"
+                                    : "student-exam-card-disabled"
                         }"
                     >
                         <div class="student-exam-card-header">
@@ -11362,9 +11374,11 @@ function renderStudentExams(exams) {
                             ${canJoin ? "" : "disabled"}
                         >
                             ${escapeStudentExamHtml(
-                                getStudentExamActionLabel(
-                                    status
-                                )
+                                isWaitingForStart
+                                    ? "Đang chờ Admin bắt đầu"
+                                    : getStudentExamActionLabel(
+                                        status
+                                    )
                             )}
                         </button>
                     </article>
@@ -11488,7 +11502,7 @@ async function joinStudentExamWaitingRoom(
         }
 
         button.innerText =
-            "Đã vào phòng chờ";
+            "Đang chờ Admin bắt đầu";
 
         button.classList.add(
             "student-exam-joined-button"

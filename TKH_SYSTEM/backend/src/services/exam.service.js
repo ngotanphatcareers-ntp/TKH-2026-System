@@ -202,11 +202,36 @@ async function getExams({
       ].includes(exam.status);
     });
 
+    const examsWithWaitingRoomState =
+    await Promise.all(
+      visibleExams.map(async (exam) => {
+        const waitingRoom =
+          await findWaitingRoomEntry({
+            examId: exam.id,
+
+            seasonMembershipId:
+              context.membership.id,
+          });
+
+        return {
+          ...mapExam(exam),
+
+          alreadyJoined:
+            Boolean(waitingRoom),
+
+          waitingRoom:
+            waitingRoom
+              ? mapWaitingRoomEntry(
+                  waitingRoom
+                )
+              : null,
+        };
+      })
+    );
+
   return {
     success: true,
-
-    exams:
-      visibleExams.map(mapExam),
+    exams: examsWithWaitingRoomState,
   };
 }
 
