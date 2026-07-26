@@ -6,12 +6,8 @@ const {
 const {
   findActiveMembershipByMemberId,
   findActiveMembershipByUsername,
-  findIndividualScoreSummary,
-  findIndividualScoreHistory,
-  createIndividualScoreTransaction,
-  findGroupScoreSummary,
+  findActiveGroupById,
   findGroupScoreHistory,
-  findAllGroupScoreRankings,
   createGroupScoreTransaction,
   findScoreTransactionsBySeasonMembershipId,
   createScoreTransaction,
@@ -32,6 +28,13 @@ const ADMIN_SOURCE_TYPES = new Set([
   "OTHER",
 ]);
 
+const ADMIN_SCORE_TYPE_BY_SOURCE_TYPE = {
+  MANUAL: "PARTICIPATION",
+  MEMORY_VERSE: "PARTICIPATION",
+  GAME: "PARTICIPATION",
+  LATE: "DISCIPLINE_COMPLIANCE",
+  OTHER: "PARTICIPATION",
+};
 
 const SOURCE_TYPE_LABELS = {
   MANUAL: "Điểm thủ công",
@@ -1041,8 +1044,8 @@ async function createAdminGroupScore({
   }
 
   const group =
-    await findGroupScoreSummary(
-      normalizedGroupId
+    await findActiveGroupById(
+        normalizedGroupId
     );
 
   if (!group) {
@@ -1096,18 +1099,6 @@ async function createAdminIndividualScore({
   description,
   adminUserId,
 }) {
-  const normalizedUsername =
-    typeof username === "string"
-      ? username.trim()
-      : "";
-
-  if (!normalizedUsername) {
-    return {
-      success: false,
-      code: "USERNAME_REQUIRED",
-    };
-  }
-
   const normalizedSourceType =
     typeof sourceType === "string"
       ? sourceType.trim().toUpperCase()
@@ -1131,7 +1122,8 @@ async function createAdminIndividualScore({
     };
   }
 
-  const normalizedPoints = Number(points);
+  const normalizedPoints =
+    Number(points);
 
   if (!Number.isInteger(normalizedPoints)) {
     return {
@@ -1147,80 +1139,104 @@ async function createAdminIndividualScore({
     };
   }
 
-  const normalizedDescription =
-    typeof description === "string"
-      ? description.trim()
-      : "";
+  const scoreType =
+    ADMIN_SCORE_TYPE_BY_SOURCE_TYPE[
+      normalizedSourceType
+    ];
 
-  if (!normalizedDescription) {
-    return {
-      success: false,
-      code: "DESCRIPTION_REQUIRED",
-    };
-  }
+  const result =
+    await createAdminScoreTransaction({
+      username,
 
-  if (normalizedDescription.length > 500) {
-    return {
-      success: false,
-      code: "DESCRIPTION_TOO_LONG",
-      maximumLength: 500,
-    };
-  }
+      scoreType,
 
-  const normalizedAdminUserId =
-    Number(adminUserId);
-
-  if (
-    !Number.isInteger(
-      normalizedAdminUserId
-    ) ||
-    normalizedAdminUserId <= 0
-  ) {
-    return {
-      success: false,
-      code: "ADMIN_USER_REQUIRED",
-    };
-  }
-
-  const membership =
-    await findActiveMembershipByUsername(
-      normalizedUsername
-    );
-
-  if (!membership) {
-    return {
-      success: false,
-      code:
-        "ACTIVE_MEMBERSHIP_NOT_FOUND",
-    };
-  }
-
-  const transaction =
-    await createIndividualScoreTransaction({
-      seasonMembershipId:
-        membership.season_membership_id,
-
-      points: normalizedPoints,
+      requestedPoints:
+        normalizedPoints,
 
       sourceType:
         normalizedSourceType,
 
-      sourceId: null,
+      description,
 
-      description:
-        normalizedDescription,
-
-      createdByUserId:
-        normalizedAdminUserId,
+      adminUserId,
     });
+
+  if (!result.success) {
+    return result;
+  }
+
+  const transaction =
+    result.transaction;
 
   return {
     success: true,
-    transaction:
-      mapCreatedTransaction(
-        transaction,
-        membership
-      ),
+
+    transaction: {
+      id:
+        Number(transaction.id),
+
+      seasonMembershipId:
+        Number(
+          transaction.seasonMembershipId
+        ),
+
+      // Giữ field cũ cho Frontend.
+      points:
+        Number(
+          transaction.appliedPoints
+        ) || 0,
+
+      requestedPoints:
+        Number(
+          transaction.requestedPoints
+        ) || 0,
+
+      appliedPoints:
+        Number(
+          transaction.appliedPoints
+        ) || 0,
+
+      scoreCategory:
+        transaction.scoreCategory,
+
+      scoreType:
+        transaction.scoreType,
+
+      sourceType:
+        transaction.sourceType,
+
+      sourceTypeLabel:
+        getSourceTypeLabel(
+          transaction.sourceType
+        ),
+
+      sourceId:
+        transaction.sourceId != null
+          ? Number(transaction.sourceId)
+          : null,
+
+      sourceKey:
+        transaction.sourceKey || null,
+
+      description:
+        transaction.description,
+
+      status:
+        transaction.status,
+
+      member:
+        result.member,
+
+      createdByUserId:
+        transaction.createdByUserId != null
+          ? Number(
+              transaction.createdByUserId
+            )
+          : null,
+
+      createdAt:
+        transaction.createdAt,
+    },
   };
 }
 

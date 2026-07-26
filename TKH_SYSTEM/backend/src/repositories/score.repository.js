@@ -118,283 +118,6 @@ async function findActiveMembershipByUsername(
   return result.recordset[0] || null;
 }
 
-
-async function findIndividualScoreSummary(
-  seasonMembershipId
-) {
-  const pool = await getPool();
-
-  const result = await pool
-    .request()
-    .input(
-      "seasonMembershipId",
-      sql.Int,
-      seasonMembershipId
-    )
-    .query(`
-      SELECT
-        COALESCE(
-          SUM(points),
-          0
-        ) AS total_points,
-
-        COALESCE(
-          SUM(
-            CASE
-              WHEN source_type = 'ATTENDANCE'
-              THEN points
-              ELSE 0
-            END
-          ),
-          0
-        ) AS attendance_points,
-
-        COALESCE(
-          SUM(
-            CASE
-              WHEN source_type = 'DEVOTION'
-              THEN points
-              ELSE 0
-            END
-          ),
-          0
-        ) AS devotion_points,
-
-        COALESCE(
-          SUM(
-            CASE
-              WHEN source_type NOT IN (
-                'ATTENDANCE',
-                'DEVOTION'
-              )
-              THEN points
-              ELSE 0
-            END
-          ),
-          0
-        ) AS other_points,
-
-        COUNT(*) AS total_transactions
-
-      FROM dbo.individual_score_transactions
-
-      WHERE season_membership_id =
-            @seasonMembershipId
-        AND status = 'ACTIVE';
-    `);
-
-  return result.recordset[0];
-}
-
-
-async function findIndividualScoreHistory(
-  seasonMembershipId
-) {
-  const pool = await getPool();
-
-  const result = await pool
-    .request()
-    .input(
-      "seasonMembershipId",
-      sql.Int,
-      seasonMembershipId
-    )
-    .query(`
-      SELECT
-        ist.id,
-        ist.season_membership_id,
-        ist.points,
-        ist.source_type,
-        ist.source_id,
-        ist.description,
-        ist.status,
-        ist.created_by_user_id,
-        ist.created_at,
-
-        creator.username
-          AS created_by_username
-
-      FROM dbo.individual_score_transactions
-        AS ist
-
-      LEFT JOIN dbo.users AS creator
-        ON creator.id =
-           ist.created_by_user_id
-
-      WHERE ist.season_membership_id =
-            @seasonMembershipId
-        AND ist.status = 'ACTIVE'
-
-      ORDER BY
-        ist.created_at DESC,
-        ist.id DESC;
-    `);
-
-  return result.recordset;
-}
-
-
-async function createIndividualScoreTransaction({
-  seasonMembershipId,
-  points,
-  sourceType,
-  sourceId = null,
-  description,
-  createdByUserId = null,
-}) {
-  const pool = await getPool();
-
-  const result = await pool
-    .request()
-    .input(
-      "seasonMembershipId",
-      sql.Int,
-      seasonMembershipId
-    )
-    .input(
-      "points",
-      sql.Int,
-      points
-    )
-    .input(
-      "sourceType",
-      sql.VarChar(50),
-      sourceType
-    )
-    .input(
-      "sourceId",
-      sql.Int,
-      sourceId
-    )
-    .input(
-      "description",
-      sql.NVarChar(500),
-      description || null
-    )
-    .input(
-      "createdByUserId",
-      sql.Int,
-      createdByUserId
-    )
-    .query(`
-      INSERT INTO
-        dbo.individual_score_transactions
-      (
-        season_membership_id,
-        points,
-        source_type,
-        source_id,
-        description,
-        status,
-        created_by_user_id
-      )
-
-      OUTPUT
-        INSERTED.id,
-        INSERTED.season_membership_id,
-        INSERTED.points,
-        INSERTED.source_type,
-        INSERTED.source_id,
-        INSERTED.description,
-        INSERTED.status,
-        INSERTED.created_by_user_id,
-        INSERTED.created_at
-
-      VALUES
-      (
-        @seasonMembershipId,
-        @points,
-        @sourceType,
-        @sourceId,
-        @description,
-        'ACTIVE',
-        @createdByUserId
-      );
-    `);
-
-  return result.recordset[0];
-}
-
-
-
-async function findGroupScoreSummary(groupId) {
-  const pool = await getPool();
-
-  const result = await pool
-    .request()
-    .input(
-      "groupId",
-      sql.Int,
-      groupId
-    )
-    .query(`
-      SELECT
-        g.id AS group_id,
-        g.code AS group_code,
-        g.name AS group_name,
-
-        COALESCE(
-          individual_scores.individual_points,
-          0
-        ) AS individual_points,
-
-        COALESCE(
-          direct_group_scores.group_points,
-          0
-        ) AS group_points,
-
-        COALESCE(
-          individual_scores.individual_points,
-          0
-        )
-        +
-        COALESCE(
-          direct_group_scores.group_points,
-          0
-        ) AS total_points
-
-      FROM dbo.groups AS g
-
-      OUTER APPLY
-      (
-        SELECT
-          SUM(ist.points)
-            AS individual_points
-
-        FROM dbo.season_memberships AS sm
-
-        INNER JOIN
-          dbo.individual_score_transactions AS ist
-          ON ist.season_membership_id = sm.id
-          AND ist.status = 'ACTIVE'
-
-        INNER JOIN dbo.seasons AS s
-          ON s.id = sm.season_id
-          AND s.status = 'ACTIVE'
-
-        WHERE sm.group_id = g.id
-          AND sm.status = 'ACTIVE'
-      ) AS individual_scores
-
-      OUTER APPLY
-      (
-        SELECT
-          SUM(gst.points)
-            AS group_points
-
-        FROM dbo.group_score_transactions AS gst
-
-        WHERE gst.group_id = g.id
-          AND gst.status = 'ACTIVE'
-      ) AS direct_group_scores
-
-      WHERE g.id = @groupId;
-    `);
-
-  return result.recordset[0] || null;
-}
-
-
 async function findGroupScoreHistory(groupId) {
   const pool = await getPool();
 
@@ -438,97 +161,7 @@ async function findGroupScoreHistory(groupId) {
 }
 
 
-async function findAllGroupScoreRankings() {
-  const pool = await getPool();
 
-  const result = await pool
-    .request()
-    .query(`
-      WITH group_totals AS
-      (
-        SELECT
-          g.id AS group_id,
-          g.code AS group_code,
-          g.name AS group_name,
-
-          COALESCE(
-            individual_scores.individual_points,
-            0
-          ) AS individual_points,
-
-          COALESCE(
-            direct_group_scores.group_points,
-            0
-          ) AS group_points,
-
-          COALESCE(
-            individual_scores.individual_points,
-            0
-          )
-          +
-          COALESCE(
-            direct_group_scores.group_points,
-            0
-          ) AS total_points
-
-        FROM dbo.groups AS g
-
-        INNER JOIN dbo.seasons AS s
-          ON s.id = g.season_id
-          AND s.status = 'ACTIVE'
-
-        OUTER APPLY
-        (
-          SELECT
-            SUM(ist.points)
-              AS individual_points
-
-          FROM dbo.season_memberships AS sm
-
-          INNER JOIN
-            dbo.individual_score_transactions AS ist
-            ON ist.season_membership_id = sm.id
-            AND ist.status = 'ACTIVE'
-
-          WHERE sm.group_id = g.id
-            AND sm.season_id = s.id
-            AND sm.status = 'ACTIVE'
-        ) AS individual_scores
-
-        OUTER APPLY
-        (
-          SELECT
-            SUM(gst.points)
-              AS group_points
-
-          FROM dbo.group_score_transactions AS gst
-
-          WHERE gst.group_id = g.id
-            AND gst.status = 'ACTIVE'
-        ) AS direct_group_scores
-      )
-
-      SELECT
-        group_id,
-        group_code,
-        group_name,
-        individual_points,
-        group_points,
-        total_points,
-
-        DENSE_RANK() OVER (
-          ORDER BY total_points DESC
-        ) AS ranking
-
-      FROM group_totals
-
-      ORDER BY
-        total_points DESC,
-        group_name ASC;
-    `);
-
-  return result.recordset;
-}
 
 
 async function createGroupScoreTransaction({
@@ -941,15 +574,42 @@ async function findActiveGroupMemberScoreTransactions() {
 }
 
 
+async function findActiveGroupById(
+  groupId
+) {
+  const pool = await getPool();
+
+  const result = await pool
+    .request()
+    .input(
+      "groupId",
+      sql.Int,
+      groupId
+    )
+    .query(`
+      SELECT TOP (1)
+        g.id AS group_id,
+        g.code AS group_code,
+        g.name AS group_name
+
+      FROM dbo.groups AS g
+
+      INNER JOIN dbo.seasons AS s
+        ON s.id = g.season_id
+        AND s.status = 'ACTIVE'
+
+      WHERE g.id = @groupId;
+    `);
+
+  return result.recordset[0] || null;
+}
+
+
 module.exports = {
   findActiveMembershipByMemberId,
   findActiveMembershipByUsername,
-  findIndividualScoreSummary,
-  findIndividualScoreHistory,
-  createIndividualScoreTransaction,
-  findGroupScoreSummary,
+  findActiveGroupById,
   findGroupScoreHistory,
-  findAllGroupScoreRankings,
   createGroupScoreTransaction,
   createScoreTransaction,
   findScoreTransactionsBySeasonMembershipId,
