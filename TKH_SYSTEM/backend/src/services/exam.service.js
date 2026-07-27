@@ -10,11 +10,13 @@ const {
   openDraftExamWaitingRoomById,
   findActiveExamBySeasonId,
   startWaitingRoomExamById,
+  advanceInProgressExamQuestionById,
   finishInProgressExamById,
   closeOpenExamWaitingRoomById,
   findExamRealtimeStateById,
   createLateJoinAttempt,
   updateWaitingRoomLastSeen,
+  saveStudentExamAnswer,
 } = require(
   "../repositories/exam.repository"
 );
@@ -1335,6 +1337,129 @@ async function startExam({
 
 /*
 =====================================================
+Admin: Advance to the next Exam question
+=====================================================
+*/
+
+async function advanceExamQuestion({
+  examId,
+}) {
+  const normalizedExamId =
+    Number(examId);
+
+  if (
+    !Number.isInteger(normalizedExamId) ||
+    normalizedExamId <= 0
+  ) {
+    return {
+      success: false,
+      code: "INVALID_EXAM_ID",
+    };
+  }
+
+  const activeSeason =
+    await findActiveSeason();
+
+  if (!activeSeason) {
+    return {
+      success: false,
+      code: "ACTIVE_SEASON_NOT_FOUND",
+    };
+  }
+
+  const exam =
+    await findExamById(
+      normalizedExamId
+    );
+
+  if (!exam) {
+    return {
+      success: false,
+      code: "EXAM_NOT_FOUND",
+    };
+  }
+
+  if (
+    Number(exam.season_id) !==
+    Number(activeSeason.id)
+  ) {
+    return {
+      success: false,
+      code: "EXAM_NOT_IN_ACTIVE_SEASON",
+    };
+  }
+
+  if (
+    String(exam.status).toUpperCase() !==
+    "IN_PROGRESS"
+  ) {
+    return {
+      success: false,
+      code: "EXAM_NOT_IN_PROGRESS",
+    };
+  }
+
+  const result =
+    await advanceInProgressExamQuestionById({
+      examId: normalizedExamId,
+      seasonId: activeSeason.id,
+    });
+
+  if (result.status !== "ADVANCED") {
+    return {
+      success: false,
+      code: result.status,
+
+      questionEndsAt:
+        result.questionEndsAt,
+
+      currentQuestionIndex:
+        result.currentQuestionIndex,
+
+      totalQuestions:
+        result.totalQuestions,
+    };
+  }
+
+  return {
+    success: true,
+
+    data: {
+      examId:
+        normalizedExamId,
+
+      liveState: {
+        currentQuestionId:
+          result.liveState
+            .current_question_id,
+
+        currentQuestionIndex:
+          result.liveState
+            .current_question_index,
+
+        questionStartedAt:
+          result.liveState
+            .question_started_at,
+
+        questionEndsAt:
+          result.liveState
+            .question_ends_at,
+
+        state:
+          result.liveState.state,
+
+        totalQuestions:
+          Number(
+            result.liveState
+              .total_questions
+          ) || 0,
+      },
+    },
+  };
+}
+
+/*
+=====================================================
 Admin: Finish Exam
 =====================================================
 */
@@ -1941,12 +2066,132 @@ async function touchWaitingRoomPresence({
 }
 
 
+/*
+=====================================================
+Submit or update Student Exam answer
+=====================================================
+*/
+
+async function submitExamAnswer({
+  memberId,
+  examId,
+  questionId,
+  answer,
+}) {
+  const normalizedExamId =
+    Number(examId);
+
+  const normalizedQuestionId =
+    Number(questionId);
+
+  const normalizedAnswer =
+    String(answer || "")
+      .trim()
+      .toUpperCase();
+
+  if (
+    !Number.isInteger(normalizedExamId) ||
+    normalizedExamId <= 0
+  ) {
+    return {
+      success: false,
+      code: "INVALID_EXAM_ID",
+    };
+  }
+
+  if (
+    !Number.isInteger(
+      normalizedQuestionId
+    ) ||
+    normalizedQuestionId <= 0
+  ) {
+    return {
+      success: false,
+      code: "INVALID_QUESTION_ID",
+    };
+  }
+
+  if (
+    !["A", "B", "C", "D"].includes(
+      normalizedAnswer
+    )
+  ) {
+    return {
+      success: false,
+      code: "INVALID_ANSWER",
+    };
+  }
+
+  const context =
+    await resolveActiveMembership(
+      memberId
+    );
+
+  if (!context.success) {
+    return context;
+  }
+
+  const saveResult =
+    await saveStudentExamAnswer({
+      examId:
+        normalizedExamId,
+
+      questionId:
+        normalizedQuestionId,
+
+      seasonMembershipId:
+        context.membership.id,
+
+      answer:
+        normalizedAnswer,
+    });
+
+  if (
+    saveResult.status !==
+    "ANSWER_ACCEPTED"
+  ) {
+    return {
+      success: false,
+      code: saveResult.status,
+    };
+  }
+
+  const savedAnswer =
+    saveResult.answer;
+
+  return {
+    success: true,
+
+    data: {
+      examId:
+        normalizedExamId,
+
+      attemptId:
+        savedAnswer.attempt_id,
+
+      questionId:
+        savedAnswer.question_id,
+
+      answer:
+        savedAnswer.chosen_answer,
+
+      answeredAt:
+        savedAnswer.answered_at,
+
+      updatedAt:
+        savedAnswer.updated_at,
+    },
+  };
+}
+
 module.exports = {
+    submitExamAnswer,
   getExamRealtimeState,
   joinExamRealtime,
   touchWaitingRoomPresence,
 
   finishExam,
+  advanceExamQuestion,
   closeExamWaitingRoom,
   startExam,
   openExamWaitingRoom,

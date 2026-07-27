@@ -20,6 +20,7 @@ const {
   openExamWaitingRoomController,
   closeExamWaitingRoomController,
   startExamController,
+  advanceExamQuestionController,
   finishExamController,
 } = require(
   "../controllers/exam.controller"
@@ -120,6 +121,18 @@ Start Exam
 router.patch(
   "/exams/:examId/start",
   startExamController
+);
+
+/*
+=====================================================
+PATCH /api/admin/test/exams/:examId/next-question
+Open the next question after the current timer locks
+=====================================================
+*/
+
+router.patch(
+  "/exams/:examId/next-question",
+  advanceExamQuestionController
 );
 
 

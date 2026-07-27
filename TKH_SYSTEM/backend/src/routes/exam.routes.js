@@ -7,6 +7,7 @@ const authenticateToken = require(
 const {
   getExamsController,
   joinWaitingRoomController,
+  submitExamAnswerController,
 } = require(
   "../controllers/exam.controller"
 );
@@ -48,5 +49,17 @@ router.post(
   joinWaitingRoomController
 );
 
+
+/*
+=====================================================
+POST /api/exams/:examId/attempt/answer
+Submit or update the current Student answer
+=====================================================
+*/
+
+router.post(
+  "/:examId/attempt/answer",
+  submitExamAnswerController
+);
 
 module.exports = router;

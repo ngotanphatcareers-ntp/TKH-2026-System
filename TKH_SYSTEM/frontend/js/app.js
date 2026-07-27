@@ -1,4 +1,5 @@
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL =
+    "https://equation-photograph-shannon-fda.trycloudflare.com";
 
 const demoUsers = [
     {
@@ -9581,6 +9582,7 @@ function getAdminExamStatusLabel(status) {
         WAITING_ROOM_OPEN:
             "Đang mở phòng chờ",
         IN_PROGRESS: "Đang diễn ra",
+        SUBMITTING: "Đang thu bài",
         PAUSED: "Tạm dừng",
         COMPLETED: "Đã hoàn tất",
         CANCELLED: "Đã hủy"
@@ -9598,6 +9600,7 @@ function getAdminExamStatusClass(status) {
         SCHEDULED: "scheduled",
         WAITING_ROOM_OPEN: "open",
         IN_PROGRESS: "progress",
+        SUBMITTING: "progress",
         PAUSED: "paused",
         COMPLETED: "completed",
         CANCELLED: "cancelled"
@@ -9852,6 +9855,42 @@ function renderAdminExams(exams) {
 
                             <button
                                 type="button"
+                                class="admin-exam-start-btn ${status === "WAITING_ROOM_OPEN" ? "" : "hidden"}"
+                                data-exam-id="${examId}"
+                                ${status === "WAITING_ROOM_OPEN"
+                                    ? ""
+                                    : "disabled"}
+                                title="Bắt đầu bài kiểm tra cho các học viên trong phòng chờ"
+                            >
+                                Bắt đầu
+                            </button>
+
+                            <button
+                                type="button"
+                                class="admin-exam-next-btn ${status === "IN_PROGRESS" ? "" : "hidden"}"
+                                data-exam-id="${examId}"
+                                ${status === "IN_PROGRESS"
+                                    ? ""
+                                    : "disabled"}
+                                title="Mở câu tiếp theo sau khi câu hiện tại hết thời gian"
+                            >
+                                Câu tiếp theo
+                            </button>
+
+                            <button
+                                type="button"
+                                class="admin-exam-finish-btn ${status === "IN_PROGRESS" ? "" : "hidden"}"
+                                data-exam-id="${examId}"
+                                ${status === "IN_PROGRESS"
+                                    ? ""
+                                    : "disabled"}
+                                title="Kết thúc bài kiểm tra và thu bài của học viên"
+                            >
+                                Kết thúc
+                            </button>
+
+                            <button
+                                type="button"
                                 class="admin-exam-delete-btn"
                                 data-exam-id="${examId}"
                                 ${String(
@@ -9955,6 +9994,106 @@ function renderAdminExams(exams) {
             );
         });
 
+
+    tableBody
+        .querySelectorAll(
+            ".admin-exam-start-btn"
+        )
+        .forEach(button => {
+            button.addEventListener(
+                "click",
+                () => {
+                    const examId =
+                        Number(
+                            button.dataset
+                                .examId
+                        );
+
+                    const exam =
+                        validExams.find(
+                            item =>
+                                Number(
+                                    item.id
+                                ) === examId
+                        );
+
+                    startAdminExamFromApi({
+                        examId,
+                        examName:
+                            exam?.name || "",
+                        button
+                    });
+                }
+            );
+        });
+
+
+    tableBody
+        .querySelectorAll(
+            ".admin-exam-next-btn"
+        )
+        .forEach(button => {
+            button.addEventListener(
+                "click",
+                () => {
+                    const examId =
+                        Number(
+                            button.dataset
+                                .examId
+                        );
+
+                    const exam =
+                        validExams.find(
+                            item =>
+                                Number(
+                                    item.id
+                                ) === examId
+                        );
+
+                    advanceAdminExamQuestionFromApi({
+                        examId,
+                        examName:
+                            exam?.name || "",
+                        button
+                    });
+                }
+            );
+        });
+
+
+        tableBody
+        .querySelectorAll(
+            ".admin-exam-finish-btn"
+        )
+        .forEach(button => {
+            button.addEventListener(
+                "click",
+                () => {
+                    const examId =
+                        Number(
+                            button.dataset
+                                .examId
+                        );
+
+                    const exam =
+                        validExams.find(
+                            item =>
+                                Number(
+                                    item.id
+                                ) === examId
+                        );
+
+                    finishAdminExamFromApi({
+                        examId,
+                        examName:
+                            exam?.name || "",
+                        button
+                    });
+                }
+            );
+        });
+
+
     tableBody
         .querySelectorAll(
             ".admin-exam-delete-btn"
@@ -9986,10 +10125,6 @@ function renderAdminExams(exams) {
                 }
             );
         });
-
-    message.classList.add(
-        "hidden"
-    );
 
     tableWrapper.classList.remove(
         "hidden"
@@ -10267,6 +10402,501 @@ async function closeAdminExamWaitingRoomFromApi({
             window.alert(
                 error.message ||
                 "Không thể đóng phòng chờ."
+            );
+        }
+    } finally {
+        if (
+            button &&
+            button.isConnected
+        ) {
+            button.disabled = false;
+            button.innerText =
+                originalButtonText;
+        }
+    }
+}
+
+async function startAdminExamFromApi({
+    examId,
+    examName,
+    button
+}) {
+    const normalizedExamId =
+        Number(examId);
+
+    if (
+        !Number.isInteger(normalizedExamId) ||
+        normalizedExamId <= 0
+    ) {
+        window.alert(
+            "ID bài kiểm tra không hợp lệ."
+        );
+        return;
+    }
+
+    const displayName =
+        String(examName || "").trim() ||
+        `ID ${normalizedExamId}`;
+
+    const confirmed =
+        window.confirm(
+            `Bắt đầu bài kiểm tra “${displayName}”?\n\nSau khi bắt đầu, bài kiểm tra sẽ được mở đồng thời cho các học viên trong phòng chờ.`
+        );
+
+    if (!confirmed) {
+        return;
+    }
+
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
+
+    if (!token) {
+        window.location.href =
+            "index.html";
+        return;
+    }
+
+    const originalButtonText =
+        button?.innerText || "Bắt đầu";
+
+    if (button) {
+        button.disabled = true;
+        button.innerText =
+            "Đang bắt đầu...";
+    }
+
+    try {
+        const response =
+            await fetch(
+                `${API_BASE_URL}/api/admin/test/exams/${normalizedExamId}/start`,
+                {
+                    method: "PATCH",
+
+                    headers: {
+                        Authorization:
+                            `Bearer ${token}`
+                    }
+                }
+            );
+
+        let result = {};
+
+        try {
+            result =
+                await response.json();
+        } catch {
+            result = {};
+        }
+
+        if (
+            response.status === 401 ||
+            response.status === 403
+        ) {
+            localStorage.removeItem(
+                "accessToken"
+            );
+
+            localStorage.removeItem(
+                "currentUser"
+            );
+
+            window.location.href =
+                "index.html";
+            return;
+        }
+
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+            const errorCode =
+                result?.error?.code ||
+                result?.code ||
+                "";
+
+            const errorMessages = {
+                INVALID_EXAM_ID:
+                    "ID bài kiểm tra không hợp lệ.",
+
+                EXAM_NOT_FOUND:
+                    "Không tìm thấy bài kiểm tra.",
+
+                EXAM_NOT_IN_ACTIVE_SEASON:
+                    "Bài kiểm tra không thuộc mùa đang hoạt động.",
+
+                EXAM_NOT_WAITING_ROOM_OPEN:
+                    "Bài kiểm tra không còn ở trạng thái mở phòng chờ.",
+
+                EXAM_HAS_NO_QUESTIONS:
+                    "Bài kiểm tra chưa có câu hỏi.",
+
+                ACTIVE_SEASON_NOT_FOUND:
+                    "Không tìm thấy mùa đang hoạt động.",
+
+                UNAUTHORIZED:
+                    "Phiên đăng nhập đã hết hạn.",
+
+                FORBIDDEN:
+                    "Bạn không có quyền bắt đầu bài kiểm tra."
+            };
+
+            throw new Error(
+                errorMessages[errorCode] ||
+                result?.error?.message ||
+                result?.message ||
+                "Không thể bắt đầu bài kiểm tra."
+            );
+        }
+
+        window.alert(
+            `Bài kiểm tra “${displayName}” đã bắt đầu.`
+        );
+
+        await loadAdminExamsFromApi();
+    } catch (error) {
+        console.error(
+            "Start Admin Exam error:",
+            error
+        );
+
+        if (error instanceof TypeError) {
+            window.alert(
+                "Không thể kết nối Backend. Hãy kiểm tra server đang chạy ở cổng 5000."
+            );
+        } else {
+            window.alert(
+                error.message ||
+                "Không thể bắt đầu bài kiểm tra."
+            );
+        }
+    } finally {
+        if (
+            button &&
+            button.isConnected
+        ) {
+            button.disabled = false;
+            button.innerText =
+                originalButtonText;
+        }
+    }
+}
+
+async function finishAdminExamFromApi({
+    examId,
+    examName,
+    button
+}) {
+    const normalizedExamId =
+        Number(examId);
+
+    if (
+        !Number.isInteger(normalizedExamId) ||
+        normalizedExamId <= 0
+    ) {
+        window.alert(
+            "ID bài kiểm tra không hợp lệ."
+        );
+        return;
+    }
+
+    const displayName =
+        String(examName || "").trim() ||
+        `ID ${normalizedExamId}`;
+
+    const confirmed =
+        window.confirm(
+            `Kết thúc bài kiểm tra “${displayName}”?\n\nHệ thống sẽ thu bài của học viên. Hành động này không thể hoàn tác.`
+        );
+
+    if (!confirmed) {
+        return;
+    }
+
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
+
+    if (!token) {
+        window.location.href =
+            "index.html";
+        return;
+    }
+
+    const originalButtonText =
+        button?.innerText || "Kết thúc";
+
+    if (button) {
+        button.disabled = true;
+        button.innerText =
+            "Đang kết thúc...";
+    }
+
+    try {
+        const response =
+            await fetch(
+                `${API_BASE_URL}/api/admin/test/exams/${normalizedExamId}/finish`,
+                {
+                    method: "PATCH",
+
+                    headers: {
+                        Authorization:
+                            `Bearer ${token}`
+                    }
+                }
+            );
+
+        let result = {};
+
+        try {
+            result =
+                await response.json();
+        } catch {
+            result = {};
+        }
+
+        if (
+            response.status === 401 ||
+            response.status === 403
+        ) {
+            localStorage.removeItem(
+                "accessToken"
+            );
+
+            localStorage.removeItem(
+                "currentUser"
+            );
+
+            window.location.href =
+                "index.html";
+            return;
+        }
+
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+            const errorCode =
+                result?.error?.code ||
+                result?.code ||
+                "";
+
+            const errorMessages = {
+                INVALID_EXAM_ID:
+                    "ID bài kiểm tra không hợp lệ.",
+
+                EXAM_NOT_FOUND:
+                    "Không tìm thấy bài kiểm tra.",
+
+                EXAM_NOT_IN_ACTIVE_SEASON:
+                    "Bài kiểm tra không thuộc mùa đang hoạt động.",
+
+                EXAM_NOT_IN_PROGRESS:
+                    "Bài kiểm tra không còn ở trạng thái đang diễn ra.",
+
+                ACTIVE_SEASON_NOT_FOUND:
+                    "Không tìm thấy mùa đang hoạt động.",
+
+                UNAUTHORIZED:
+                    "Phiên đăng nhập đã hết hạn.",
+
+                FORBIDDEN:
+                    "Bạn không có quyền kết thúc bài kiểm tra."
+            };
+
+            throw new Error(
+                errorMessages[errorCode] ||
+                result?.error?.message ||
+                result?.message ||
+                "Không thể kết thúc bài kiểm tra."
+            );
+        }
+
+        window.alert(
+            `Đã gửi lệnh kết thúc bài kiểm tra “${displayName}”. Hệ thống đang thu bài của học viên.`
+        );
+
+        await loadAdminExamsFromApi();
+    } catch (error) {
+        console.error(
+            "Finish Admin Exam error:",
+            error
+        );
+
+        if (error instanceof TypeError) {
+            window.alert(
+                "Không thể kết nối Backend. Hãy kiểm tra server đang chạy ở cổng 5000."
+            );
+        } else {
+            window.alert(
+                error.message ||
+                "Không thể kết thúc bài kiểm tra."
+            );
+        }
+    } finally {
+        if (
+            button &&
+            button.isConnected
+        ) {
+            button.disabled = false;
+            button.innerText =
+                originalButtonText;
+        }
+    }
+}
+
+async function advanceAdminExamQuestionFromApi({
+    examId,
+    examName,
+    button
+}) {
+    const normalizedExamId =
+        Number(examId);
+
+    if (
+        !Number.isInteger(normalizedExamId) ||
+        normalizedExamId <= 0
+    ) {
+        window.alert(
+            "ID bài kiểm tra không hợp lệ."
+        );
+        return;
+    }
+
+    const displayName =
+        String(examName || "").trim() ||
+        `ID ${normalizedExamId}`;
+
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
+
+    if (!token) {
+        window.location.href =
+            "index.html";
+        return;
+    }
+
+    const originalButtonText =
+        button?.innerText ||
+        "Câu tiếp theo";
+
+    if (button) {
+        button.disabled = true;
+        button.innerText =
+            "Đang mở...";
+    }
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/admin/test/exams/${normalizedExamId}/next-question`,
+            {
+                method: "PATCH",
+
+                headers: {
+                    Authorization:
+                        `Bearer ${token}`
+                }
+            }
+        );
+
+        const responseText =
+            await response.text();
+
+        let result = {};
+
+        try {
+            result =
+                responseText
+                    ? JSON.parse(responseText)
+                    : {};
+        } catch {
+            result = {};
+        }
+
+        if (
+            response.status === 401 ||
+            response.status === 403
+        ) {
+            logoutDemo();
+            return;
+        }
+
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+            const errorMessages = {
+                INVALID_EXAM_ID:
+                    "ID bài kiểm tra không hợp lệ.",
+
+                ACTIVE_SEASON_NOT_FOUND:
+                    "Không tìm thấy mùa TKH đang hoạt động.",
+
+                EXAM_NOT_FOUND:
+                    "Không tìm thấy bài kiểm tra.",
+
+                EXAM_NOT_IN_ACTIVE_SEASON:
+                    "Bài kiểm tra không thuộc mùa đang hoạt động.",
+
+                EXAM_NOT_IN_PROGRESS:
+                    "Bài kiểm tra không còn diễn ra.",
+
+                LIVE_STATE_NOT_FOUND:
+                    "Không tìm thấy trạng thái câu hỏi hiện tại.",
+
+                CURRENT_QUESTION_STILL_ACTIVE:
+                    "Câu hiện tại vẫn còn thời gian. Hãy chờ câu được khóa rồi mở câu tiếp theo.",
+
+                LAST_QUESTION_REACHED:
+                    "Đây đã là câu cuối. Hãy bấm Kết thúc để thu bài."
+            };
+
+            throw new Error(
+                errorMessages[
+                    result.code || ""
+                ] ||
+                result.message ||
+                "Không thể mở câu tiếp theo."
+            );
+        }
+
+        const liveState =
+            result.data?.liveState || {};
+
+        const currentQuestionIndex =
+            Number(
+                liveState
+                    .currentQuestionIndex
+            ) || 0;
+
+        const totalQuestions =
+            Number(
+                liveState.totalQuestions
+            ) || 0;
+
+        window.alert(
+            `Đã mở Câu ${currentQuestionIndex}/${totalQuestions} của “${displayName}”.`
+        );
+
+        await loadAdminExamsFromApi();
+    } catch (error) {
+        console.error(
+            "Advance Admin Exam question error:",
+            error
+        );
+
+        if (error instanceof TypeError) {
+            window.alert(
+                "Không thể kết nối Backend. Hãy kiểm tra server đang chạy ở cổng 5000."
+            );
+        } else {
+            window.alert(
+                error.message ||
+                "Không thể mở câu tiếp theo."
             );
         }
     } finally {
@@ -11223,6 +11853,836 @@ function formatStudentExamDate(value) {
 }
 
 
+/*
+=====================================================
+Student Exam realtime
+=====================================================
+*/
+
+let studentExamSocket = null;
+let activeStudentExamId = null;
+let activeStudentExamAttemptId = null;
+let studentExamSyncTimer = null;
+
+
+function getStudentExamSocket() {
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
+
+    if (!token) {
+        logoutDemo();
+
+        throw new Error(
+            "Phiên đăng nhập đã hết hạn."
+        );
+    }
+
+    if (typeof window.io !== "function") {
+        throw new Error(
+            "Không tải được Socket.IO."
+        );
+    }
+
+    if (
+        studentExamSocket &&
+        studentExamSocket.auth?.token === token
+    ) {
+        return studentExamSocket;
+    }
+
+    if (studentExamSocket) {
+        studentExamSocket.disconnect();
+    }
+
+    studentExamSocket =
+        window.io(
+            `${API_BASE_URL}/exams`,
+            {
+                auth: {
+                    token
+                },
+
+                transports: [
+                    "websocket",
+                    "polling"
+                ]
+            }
+        );
+
+    studentExamSocket.on(
+        "connect_error",
+        error => {
+            console.error(
+                "Student Exam Socket connection error:",
+                error
+            );
+        }
+    );
+
+    const synchronizeActiveExam =
+        payload => {
+            const payloadExamId =
+                Number(payload?.examId);
+
+            if (
+                !activeStudentExamId ||
+                payloadExamId !==
+                    activeStudentExamId
+            ) {
+                return;
+            }
+
+            clearTimeout(
+                studentExamSyncTimer
+            );
+
+            studentExamSyncTimer =
+                setTimeout(
+                    () => {
+                        enterStudentExamRealtime(
+                            activeStudentExamId
+                        );
+                    },
+                    100
+                );
+        };
+
+    studentExamSocket.on(
+        "exam:status",
+        synchronizeActiveExam
+    );
+
+    studentExamSocket.on(
+        "exam:started",
+        synchronizeActiveExam
+    );
+
+    return studentExamSocket;
+}
+
+
+function emitStudentExamJoin(examId) {
+    return new Promise(
+        (resolve, reject) => {
+            let socket;
+
+            try {
+                socket =
+                    getStudentExamSocket();
+            } catch (error) {
+                reject(error);
+                return;
+            }
+
+            const timeoutId =
+                setTimeout(
+                    () => {
+                        reject(
+                            new Error(
+                                "Máy chủ phản hồi quá chậm."
+                            )
+                        );
+                    },
+                    10000
+                );
+
+            socket.emit(
+                "exam:join",
+                {
+                    examId
+                },
+                result => {
+                    clearTimeout(
+                        timeoutId
+                    );
+
+                    if (!result?.success) {
+                        const messagesByCode = {
+                            INVALID_EXAM_ID:
+                                "ID bài kiểm tra không hợp lệ.",
+
+                            EXAM_NOT_FOUND:
+                                "Không tìm thấy bài kiểm tra.",
+
+                            EXAM_NOT_IN_ACTIVE_SEASON:
+                                "Bài kiểm tra không thuộc mùa TKH hiện tại.",
+
+                            EXAM_NOT_AVAILABLE:
+                                "Bài kiểm tra chưa mở cho học viên.",
+
+                            EXAM_ALREADY_COMPLETED:
+                                "Bạn đã hoàn thành bài kiểm tra này.",
+
+                            EXAM_NOT_JOINABLE:
+                                "Hiện chưa thể tham gia bài kiểm tra.",
+
+                            CURRENT_QUESTION_NOT_ACTIVE:
+                                "Câu hỏi hiện tại đã bị khóa.",
+
+                            LIVE_STATE_NOT_FOUND:
+                                "Chưa có câu hỏi nào được mở.",
+
+                            ACTIVE_MEMBERSHIP_NOT_FOUND:
+                                "Không tìm thấy thông tin tham gia TKH.",
+
+                            EXAM_SOCKET_FORBIDDEN:
+                                "Tài khoản không có quyền tham gia."
+                        };
+
+                        reject(
+                            new Error(
+                                messagesByCode[
+                                    result?.code
+                                ] ||
+                                "Không thể vào bài kiểm tra."
+                            )
+                        );
+
+                        return;
+                    }
+
+                    resolve(result);
+                }
+            );
+        }
+    );
+}
+
+
+/*
+=====================================================
+Student Exam answer submission
+=====================================================
+*/
+
+let studentExamAnswerLockTimer = null;
+
+
+function getStudentExamAnswerStorageKey(
+    examId,
+    questionId
+) {
+    return (
+        `studentExamAnswer:${examId}:${questionId}`
+    );
+}
+
+
+function getStoredStudentExamAnswer(
+    examId,
+    questionId
+) {
+    return (
+        localStorage.getItem(
+            getStudentExamAnswerStorageKey(
+                examId,
+                questionId
+            )
+        ) || ""
+    );
+}
+
+
+function lockStudentExamAnswerButtons() {
+    document
+        .querySelectorAll(
+            ".student-exam-answer-button"
+        )
+        .forEach(button => {
+            button.disabled = true;
+        });
+
+    const status =
+        document.getElementById(
+            "studentExamAnswerStatus"
+        );
+
+    if (status) {
+        status.innerText =
+            "Đã hết thời gian trả lời. Đáp án đã được khóa.";
+    }
+}
+
+
+function scheduleStudentExamAnswerLock(
+    questionEndsAt
+) {
+    if (studentExamAnswerLockTimer) {
+        clearTimeout(
+            studentExamAnswerLockTimer
+        );
+
+        studentExamAnswerLockTimer = null;
+    }
+
+    if (!questionEndsAt) {
+        return;
+    }
+
+    const endsAtMilliseconds =
+        Date.parse(questionEndsAt);
+
+    if (
+        !Number.isFinite(
+            endsAtMilliseconds
+        )
+    ) {
+        return;
+    }
+
+    const remainingMilliseconds =
+        endsAtMilliseconds - Date.now();
+
+    if (remainingMilliseconds <= 0) {
+        lockStudentExamAnswerButtons();
+        return;
+    }
+
+    studentExamAnswerLockTimer =
+        setTimeout(
+            lockStudentExamAnswerButtons,
+            remainingMilliseconds
+        );
+}
+
+
+function paintStudentExamSelectedAnswer(
+    selectedAnswer
+) {
+    document
+        .querySelectorAll(
+            ".student-exam-answer-button"
+        )
+        .forEach(button => {
+            const isSelected =
+                button.dataset.answer ===
+                selectedAnswer;
+
+            button.style.background =
+                isSelected
+                    ? "#2563eb"
+                    : "";
+
+            button.style.color =
+                isSelected
+                    ? "#ffffff"
+                    : "";
+
+            button.style.borderColor =
+                isSelected
+                    ? "#2563eb"
+                    : "";
+        });
+}
+
+
+async function submitStudentExamAnswerFromApi(
+    button
+) {
+    const examId =
+        Number(button?.dataset.examId);
+
+    const questionId =
+        Number(button?.dataset.questionId);
+
+    const answer =
+        String(
+            button?.dataset.answer || ""
+        )
+            .trim()
+            .toUpperCase();
+
+    if (
+        !Number.isInteger(examId) ||
+        !Number.isInteger(questionId) ||
+        !["A", "B", "C", "D"].includes(
+            answer
+        )
+    ) {
+        window.alert(
+            "Thông tin đáp án không hợp lệ."
+        );
+
+        return;
+    }
+
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
+
+    if (!token) {
+        logoutDemo();
+        return;
+    }
+
+    const answerButtons =
+        document.querySelectorAll(
+            ".student-exam-answer-button"
+        );
+
+    const status =
+        document.getElementById(
+            "studentExamAnswerStatus"
+        );
+
+    answerButtons.forEach(
+        answerButton => {
+            answerButton.disabled = true;
+        }
+    );
+
+    if (status) {
+        status.innerText =
+            `Đang lưu đáp án ${answer}...`;
+    }
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/exams/${encodeURIComponent(examId)}/attempt/answer`,
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json",
+
+                    Authorization:
+                        `Bearer ${token}`
+                },
+
+                body: JSON.stringify({
+                    question_id:
+                        questionId,
+
+                    answer
+                })
+            }
+        );
+
+        const responseText =
+            await response.text();
+
+        let result = {};
+
+        try {
+            result =
+                responseText
+                    ? JSON.parse(
+                        responseText
+                    )
+                    : {};
+        } catch (parseError) {
+            result = {};
+        }
+
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
+
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+            const errorMessages = {
+                INVALID_EXAM_ID:
+                    "Bài kiểm tra không hợp lệ.",
+
+                INVALID_QUESTION_ID:
+                    "Câu hỏi không hợp lệ.",
+
+                INVALID_ANSWER:
+                    "Đáp án không hợp lệ.",
+
+                EXAM_NOT_FOUND:
+                    "Không tìm thấy bài kiểm tra.",
+
+                EXAM_NOT_IN_PROGRESS:
+                    "Bài kiểm tra đã kết thúc.",
+
+                ATTEMPT_NOT_FOUND:
+                    "Không tìm thấy lượt làm bài.",
+
+                QUESTION_NOT_ACTIVE:
+                    "Câu hỏi hiện không còn mở.",
+
+                ANSWER_TOO_LATE:
+                    "Đã hết thời gian trả lời."
+            };
+
+            const submitError =
+                new Error(
+                    errorMessages[
+                        result.code
+                    ] ||
+                    result.message ||
+                    "Không thể lưu đáp án."
+                );
+
+            submitError.code =
+                result.code;
+
+            throw submitError;
+        }
+
+        localStorage.setItem(
+            getStudentExamAnswerStorageKey(
+                examId,
+                questionId
+            ),
+            answer
+        );
+
+        paintStudentExamSelectedAnswer(
+            answer
+        );
+
+        if (status) {
+            status.innerText =
+                `Đã lưu đáp án ${answer}. Bạn vẫn có thể đổi đáp án khi câu hỏi còn mở.`;
+        }
+
+        const questionEndsAt =
+            button.dataset
+                .questionEndsAt;
+
+        const endsAtMilliseconds =
+            Date.parse(
+                questionEndsAt
+            );
+
+        const stillWithinTime =
+            !Number.isFinite(
+                endsAtMilliseconds
+            ) ||
+            Date.now() <
+                endsAtMilliseconds;
+
+        answerButtons.forEach(
+            answerButton => {
+                answerButton.disabled =
+                    !stillWithinTime;
+            }
+        );
+    } catch (error) {
+        console.error(
+            "Submit Student Exam answer error:",
+            error
+        );
+
+        const shouldLock =
+            error.code ===
+                "QUESTION_NOT_ACTIVE" ||
+            error.code ===
+                "ANSWER_TOO_LATE" ||
+            error.code ===
+                "EXAM_NOT_IN_PROGRESS";
+
+        if (shouldLock) {
+            lockStudentExamAnswerButtons();
+        } else {
+            answerButtons.forEach(
+                answerButton => {
+                    answerButton.disabled =
+                        false;
+                }
+            );
+        }
+
+        if (status) {
+            status.innerText =
+                error.message ||
+                "Không thể lưu đáp án.";
+        }
+    }
+}
+
+function renderStudentExamRealtimeView(
+    examId,
+    result
+) {
+    const list =
+        document.getElementById(
+            "studentExamList"
+        );
+
+    if (!list) {
+        return;
+    }
+
+    const data =
+        result?.data || {};
+
+    const realtimeState =
+        data.realtimeState || {};
+
+    const attempt =
+        data.attempt || null;
+
+    const attemptId =
+        Number(attempt?.id);
+
+    activeStudentExamId =
+        Number(examId);
+
+    if (
+        Number.isInteger(attemptId) &&
+        attemptId > 0
+    ) {
+        activeStudentExamAttemptId =
+            attemptId;
+
+        sessionStorage.setItem(
+            "activeStudentExamId",
+            String(activeStudentExamId)
+        );
+
+        sessionStorage.setItem(
+            "activeStudentExamAttemptId",
+            String(attemptId)
+        );
+    }
+
+    if (
+        data.mode === "WAITING_ROOM"
+    ) {
+        list.innerHTML = `
+            <article class="student-exam-card student-exam-card-joined">
+                <div class="student-exam-card-header">
+                    <span class="student-exam-status">
+                        Phòng chờ
+                    </span>
+                </div>
+
+                <h3>
+                    Bạn đã vào phòng chờ
+                </h3>
+
+                <p class="empty-note">
+                    Vui lòng giữ trang này mở.
+                    Hệ thống sẽ tự cập nhật khi Admin bắt đầu bài.
+                </p>
+            </article>
+        `;
+
+        scheduleStudentExamAnswerLock("");
+
+        return;
+    }
+
+    const questionId =
+        Number(
+            realtimeState.currentQuestionId
+        );
+
+    const questionIndex =
+        Number(
+            realtimeState.currentQuestionIndex
+        );
+
+    const totalQuestions =
+        Number(
+            attempt?.totalQuestions
+        ) || 0;
+
+    const liveState =
+        String(
+            realtimeState.liveState || ""
+        ).toUpperCase();
+
+    if (
+        !Number.isInteger(questionId) ||
+        questionId <= 0 ||
+        !Number.isInteger(questionIndex) ||
+        questionIndex <= 0
+    ) {
+        list.innerHTML = `
+            <article class="student-exam-card student-exam-card-joined">
+                <div class="student-exam-card-header">
+                    <span class="student-exam-status">
+                        Đang diễn ra
+                    </span>
+                </div>
+
+                <h3>
+                    Bài kiểm tra đã bắt đầu
+                </h3>
+
+                <p class="empty-note">
+                    Đang chờ Admin mở câu hỏi đầu tiên...
+                </p>
+            </article>
+        `;
+
+        return;
+    }
+
+    const isQuestionActive =
+        liveState === "ACTIVE";
+    
+    const questionEndsAt =
+        realtimeState.questionEndsAt ||
+        realtimeState.question_ends_at ||
+        "";
+
+    const questionEndsAtMilliseconds =
+        Date.parse(questionEndsAt);
+
+    const isWithinAnswerTime =
+        !Number.isFinite(
+            questionEndsAtMilliseconds
+        ) ||
+        Date.now() <
+            questionEndsAtMilliseconds;
+
+    const canSubmitAnswer =
+        isQuestionActive &&
+        isWithinAnswerTime;
+
+    const selectedAnswer =
+        getStoredStudentExamAnswer(
+            examId,
+            questionId
+        );
+
+    list.innerHTML = `
+        <article class="student-exam-card student-exam-card-open">
+            <div class="student-exam-card-header">
+                <span class="student-exam-type">
+                    Câu ${questionIndex}/${totalQuestions}
+                </span>
+
+                <span class="student-exam-status">
+                    ${
+                        isQuestionActive
+                            ? "Đang trả lời"
+                            : "Đã khóa"
+                    }
+                </span>
+            </div>
+
+            <h3>
+                Câu hỏi số ${questionIndex}
+            </h3>
+
+            <p class="empty-note">
+                Nội dung câu hỏi được trình chiếu
+                trên màn hình chung.
+            </p>
+
+            <div class="student-exam-grid">
+                ${["A", "B", "C", "D"]
+                    .map(answer => `
+                        <button
+                            type="button"
+                            class="student-exam-join-button student-exam-answer-button"
+                            data-exam-id="${examId}"
+                            data-question-id="${questionId}"
+                            data-answer="${answer}"
+                            data-question-ends-at="${escapeStudentExamHtml(
+                                questionEndsAt
+                            )}"
+                            onclick="submitStudentExamAnswerFromApi(this)"
+                            ${canSubmitAnswer ? "" : "disabled"}
+                            ${
+                                selectedAnswer === answer
+                                    ? 'style="background:#2563eb;color:#ffffff;border-color:#2563eb;"'
+                                    : ""
+                            }
+                        >
+                            ${answer}
+                        </button>
+                    `)
+                    .join("")}
+            </div>
+
+            <p
+                class="empty-note"
+                id="studentExamAnswerStatus"
+            >
+                ${
+                    canSubmitAnswer
+                        ? selectedAnswer
+                            ? `Đáp án đã chọn: ${selectedAnswer}. Bạn có thể đổi khi câu hỏi còn mở.`
+                            : "Chọn một đáp án A, B, C hoặc D."
+                        : "Câu hỏi hiện đã khóa."
+                }
+            </p>
+        </article>
+    `;
+
+    scheduleStudentExamAnswerLock(
+        canSubmitAnswer
+            ? questionEndsAt
+            : ""
+    );
+}
+
+
+async function enterStudentExamRealtime(
+    examId,
+    button = null
+) {
+    const normalizedExamId =
+        Number(examId);
+
+    if (
+        !Number.isInteger(
+            normalizedExamId
+        ) ||
+        normalizedExamId <= 0
+    ) {
+        window.alert(
+            "ID bài kiểm tra không hợp lệ."
+        );
+
+        return;
+    }
+
+    const originalButtonText =
+        button?.innerText || "";
+
+    if (button) {
+        button.disabled = true;
+        button.innerText =
+            "Đang kết nối...";
+    }
+
+    try {
+        activeStudentExamId =
+            normalizedExamId;
+
+        const result =
+            await emitStudentExamJoin(
+                normalizedExamId
+            );
+
+        renderStudentExamRealtimeView(
+            normalizedExamId,
+            result
+        );
+    } catch (error) {
+        console.error(
+            "Enter Student Exam realtime error:",
+            error
+        );
+
+        if (button) {
+            button.disabled = false;
+            button.innerText =
+                originalButtonText;
+        }
+
+        window.alert(
+            error.message ||
+            "Không thể kết nối đến bài kiểm tra."
+        );
+    }
+}
+
 function renderStudentExams(exams) {
     const list =
         document.getElementById(
@@ -11305,13 +12765,20 @@ function renderStudentExams(exams) {
                     status ===
                         "WAITING_ROOM_OPEN" &&
                     !hasJoinedWaitingRoom;
+                const isInProgress =
+                    status === "IN_PROGRESS";
+
+                const canOpenExam =
+                    canJoin ||
+                    isWaitingForStart ||
+                    isInProgress;
 
                 return `
                     <article
                         class="student-exam-card ${
                             isWaitingForStart
                                 ? "student-exam-card-joined"
-                                : canJoin
+                                : canOpenExam
                                     ? "student-exam-card-open"
                                     : "student-exam-card-disabled"
                         }"
@@ -11371,14 +12838,17 @@ function renderStudentExams(exams) {
                             type="button"
                             class="student-exam-join-button"
                             data-exam-id="${examId}"
-                            ${canJoin ? "" : "disabled"}
+                            data-exam-status="${escapeStudentExamHtml(status)}"
+                            ${canOpenExam ? "" : "disabled"}
                         >
                             ${escapeStudentExamHtml(
-                                isWaitingForStart
-                                    ? "Đang chờ Admin bắt đầu"
-                                    : getStudentExamActionLabel(
-                                        status
-                                    )
+                                isInProgress
+                                    ? "Vào làm bài"
+                                    : isWaitingForStart
+                                        ? "Trở lại phòng chờ"
+                                        : getStudentExamActionLabel(
+                                            status
+                                        )
                             )}
                         </button>
                     </article>
@@ -11395,7 +12865,7 @@ function renderStudentExams(exams) {
             button.addEventListener(
                 "click",
                 () => {
-                    joinStudentExamWaitingRoom(
+                    enterStudentExamRealtime(
                         button.dataset.examId,
                         button
                     );

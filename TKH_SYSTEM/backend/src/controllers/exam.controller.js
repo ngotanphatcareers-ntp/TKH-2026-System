@@ -7,9 +7,11 @@ const {
   joinWaitingRoom,
   importExamQuestionsFromExcel,
   startExam,
+  advanceExamQuestion,
   finishExam,
   openExamWaitingRoom,
   closeExamWaitingRoom,
+  submitExamAnswer,
 } = require(
   "../services/exam.service"
 );
@@ -46,6 +48,9 @@ const STATUS_BY_CODE = {
   EXAM_NOT_EDITABLE: 409,
   EXAM_NOT_DRAFT: 409,
   EXAM_NOT_IN_PROGRESS: 409,
+  LIVE_STATE_NOT_FOUND: 409,
+  CURRENT_QUESTION_STILL_ACTIVE: 409,
+  LAST_QUESTION_REACHED: 409,
   EXAM_HAS_ATTEMPTS: 409,
   EXAM_HAS_NO_QUESTIONS: 409,
   ANOTHER_EXAM_ACTIVE: 409,
@@ -646,6 +651,53 @@ async function startExamController(
   }
 }
 
+/*
+=====================================================
+Admin: Advance to the next Exam question
+=====================================================
+*/
+
+async function advanceExamQuestionController(
+  req,
+  res,
+  next
+) {
+  try {
+    const result =
+      await advanceExamQuestion({
+        examId:
+          req.params.examId,
+      });
+
+    if (!result.success) {
+      return sendErrorResponse(
+        res,
+        result
+      );
+    }
+
+    await emitExamRealtimeEvents(
+      req,
+      {
+        examId:
+          req.params.examId,
+
+        eventNames: [
+          "exam:status",
+          "exam:question-started",
+        ],
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: result.data,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 
 /*
 =====================================================
@@ -695,8 +747,75 @@ async function finishExamController(
 }
 
 
+/*
+=====================================================
+Student: Submit or update Exam answer
+=====================================================
+*/
+
+async function submitExamAnswerController(
+  req,
+  res,
+  next
+) {
+  try {
+    const result =
+      await submitExamAnswer({
+        memberId:
+          req.user.memberId,
+
+        examId:
+          req.params.examId,
+
+        questionId:
+          req.body?.question_id,
+
+        answer:
+          req.body?.answer,
+      });
+
+    if (!result.success) {
+      const statusCodeByError = {
+        INVALID_EXAM_ID: 400,
+        INVALID_QUESTION_ID: 400,
+        INVALID_ANSWER: 400,
+
+        ACTIVE_SEASON_NOT_FOUND: 404,
+        ACTIVE_MEMBERSHIP_NOT_FOUND: 403,
+
+        EXAM_NOT_FOUND: 404,
+        EXAM_NOT_IN_PROGRESS: 409,
+        ATTEMPT_NOT_FOUND: 404,
+        QUESTION_NOT_ACTIVE: 409,
+        ANSWER_TOO_LATE: 409,
+      };
+
+      const httpStatus =
+        statusCodeByError[
+          result.code
+        ] || 400;
+
+      return res
+        .status(httpStatus)
+        .json({
+          success: false,
+          code: result.code,
+        });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result.data,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
+submitExamAnswerController,
 finishExamController,
+advanceExamQuestionController,
 closeExamWaitingRoomController,
 startExamController,
 openExamWaitingRoomController,

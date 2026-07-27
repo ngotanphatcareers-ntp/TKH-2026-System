@@ -1191,6 +1191,302 @@ async function startWaitingRoomExamById({
 
 /*
 =====================================================
+Advance one in-progress Exam to the next question
+
+- Reconcile the current question timer
+- Only advance after the current question is LOCKED
+- Activate the next question with a fresh timer
+=====================================================
+*/
+
+async function advanceInProgressExamQuestionById({
+  examId,
+  seasonId,
+}) {
+  const pool = await getPool();
+
+  const transaction =
+    new sql.Transaction(pool);
+
+  let transactionStarted = false;
+
+  try {
+    await transaction.begin(
+      sql.ISOLATION_LEVEL.SERIALIZABLE
+    );
+
+    transactionStarted = true;
+
+    const examResult =
+      await new sql.Request(transaction)
+        .input(
+          "examId",
+          sql.Int,
+          examId
+        )
+        .input(
+          "seasonId",
+          sql.Int,
+          seasonId
+        )
+        .query(`
+          SELECT
+            e.id,
+            e.season_id,
+            e.name,
+            e.type,
+            e.status,
+            e.time_per_question
+          FROM dbo.exams AS e
+            WITH (UPDLOCK, HOLDLOCK)
+          WHERE e.id = @examId
+            AND e.season_id = @seasonId;
+        `);
+
+    const exam =
+      examResult.recordset[0] || null;
+
+    if (!exam) {
+      await transaction.rollback();
+      transactionStarted = false;
+
+      return {
+        status: "EXAM_NOT_FOUND",
+      };
+    }
+
+    if (
+      String(exam.status).toUpperCase() !==
+      "IN_PROGRESS"
+    ) {
+      await transaction.rollback();
+      transactionStarted = false;
+
+      return {
+        status: "EXAM_NOT_IN_PROGRESS",
+      };
+    }
+
+    /*
+    The database is authoritative for the timer. This
+    also makes the endpoint work even if no student
+    browser performed a realtime sync at expiry.
+    */
+
+    await new sql.Request(transaction)
+      .input(
+        "examId",
+        sql.Int,
+        examId
+      )
+      .query(`
+        UPDATE dbo.exam_live_states
+        SET
+          state = 'LOCKED',
+          updated_at = SYSDATETIME()
+        WHERE exam_id = @examId
+          AND state = 'ACTIVE'
+          AND question_ends_at IS NOT NULL
+          AND question_ends_at <=
+              SYSDATETIME();
+      `);
+
+    const liveStateResult =
+      await new sql.Request(transaction)
+        .input(
+          "examId",
+          sql.Int,
+          examId
+        )
+        .query(`
+          SELECT
+            els.current_question_id,
+            els.current_question_index,
+            els.question_started_at,
+            els.question_ends_at,
+            els.state,
+            (
+              SELECT COUNT(*)
+              FROM dbo.exam_questions AS eq
+              WHERE eq.exam_id = @examId
+            ) AS total_questions
+          FROM dbo.exam_live_states AS els
+            WITH (UPDLOCK, HOLDLOCK)
+          WHERE els.exam_id = @examId;
+        `);
+
+    const liveState =
+      liveStateResult.recordset[0] ||
+      null;
+
+    if (
+      !liveState ||
+      !liveState.current_question_id ||
+      !liveState.current_question_index
+    ) {
+      await transaction.rollback();
+      transactionStarted = false;
+
+      return {
+        status: "LIVE_STATE_NOT_FOUND",
+      };
+    }
+
+    if (
+      String(liveState.state).toUpperCase() ===
+      "ACTIVE"
+    ) {
+      await transaction.rollback();
+      transactionStarted = false;
+
+      return {
+        status:
+          "CURRENT_QUESTION_STILL_ACTIVE",
+
+        questionEndsAt:
+          liveState.question_ends_at,
+      };
+    }
+
+    const nextQuestionResult =
+      await new sql.Request(transaction)
+        .input(
+          "examId",
+          sql.Int,
+          examId
+        )
+        .input(
+          "currentQuestionIndex",
+          sql.Int,
+          liveState.current_question_index
+        )
+        .query(`
+          SELECT TOP (1)
+            eq.id,
+            eq.question_index
+          FROM dbo.exam_questions AS eq
+          WHERE eq.exam_id = @examId
+            AND eq.question_index >
+                @currentQuestionIndex
+          ORDER BY eq.question_index ASC;
+        `);
+
+    const nextQuestion =
+      nextQuestionResult.recordset[0] ||
+      null;
+
+    if (!nextQuestion) {
+      await transaction.rollback();
+      transactionStarted = false;
+
+      return {
+        status: "LAST_QUESTION_REACHED",
+
+        currentQuestionIndex:
+          Number(
+            liveState.current_question_index
+          ) || 0,
+
+        totalQuestions:
+          Number(
+            liveState.total_questions
+          ) || 0,
+      };
+    }
+
+    const advanceResult =
+      await new sql.Request(transaction)
+        .input(
+          "examId",
+          sql.Int,
+          examId
+        )
+        .input(
+          "nextQuestionId",
+          sql.Int,
+          nextQuestion.id
+        )
+        .input(
+          "nextQuestionIndex",
+          sql.Int,
+          nextQuestion.question_index
+        )
+        .input(
+          "timePerQuestion",
+          sql.Int,
+          exam.time_per_question
+        )
+        .input(
+          "totalQuestions",
+          sql.Int,
+          liveState.total_questions
+        )
+        .query(`
+          DECLARE @startedAt DATETIME2(0)
+            = SYSDATETIME();
+
+          DECLARE @questionEndsAt DATETIME2(0)
+            = DATEADD(
+                SECOND,
+                @timePerQuestion,
+                @startedAt
+              );
+
+          UPDATE dbo.exam_live_states
+          SET
+            current_question_id =
+              @nextQuestionId,
+            current_question_index =
+              @nextQuestionIndex,
+            question_started_at =
+              @startedAt,
+            question_ends_at =
+              @questionEndsAt,
+            state = 'ACTIVE',
+            updated_at = @startedAt
+          WHERE exam_id = @examId;
+
+          SELECT
+            @nextQuestionId
+              AS current_question_id,
+            @nextQuestionIndex
+              AS current_question_index,
+            @startedAt
+              AS question_started_at,
+            @questionEndsAt
+              AS question_ends_at,
+            'ACTIVE' AS state,
+            @totalQuestions
+              AS total_questions;
+        `);
+
+    await transaction.commit();
+    transactionStarted = false;
+
+    return {
+      status: "ADVANCED",
+      exam,
+      liveState:
+        advanceResult.recordset[0],
+    };
+  } catch (error) {
+    if (transactionStarted) {
+      try {
+        await transaction.rollback();
+      } catch (rollbackError) {
+        console.error(
+          "Advance Exam question rollback error:",
+          rollbackError
+        );
+      }
+    }
+
+    throw error;
+  }
+}
+
+/*
+=====================================================
 Finish one Exam
 
 - Lock the in-progress Exam
@@ -1805,22 +2101,321 @@ async function updateWaitingRoomLastSeen({
 }
 
 
+/*
+=====================================================
+Submit or update one Student Exam answer
+
+- Resolve the active attempt from membership
+- Only accept the current ACTIVE question
+- Reject answers after server deadline
+- Insert first answer or update changed answer
+=====================================================
+*/
+
+async function saveStudentExamAnswer({
+  examId,
+  questionId,
+  seasonMembershipId,
+  answer,
+}) {
+  const pool = await getPool();
+
+  const transaction =
+    new sql.Transaction(pool);
+
+  let transactionStarted = false;
+
+  try {
+    await transaction.begin(
+      sql.ISOLATION_LEVEL.SERIALIZABLE
+    );
+
+    transactionStarted = true;
+
+    /*
+    Lock Exam, active Attempt and live state so
+    Admin cannot change the question halfway through
+    this answer transaction.
+    */
+
+    const contextResult =
+      await new sql.Request(transaction)
+        .input(
+          "examId",
+          sql.Int,
+          examId
+        )
+        .input(
+          "questionId",
+          sql.Int,
+          questionId
+        )
+        .input(
+          "seasonMembershipId",
+          sql.Int,
+          seasonMembershipId
+        )
+        .query(`
+          SELECT TOP (1)
+            e.id AS exam_id,
+            e.status AS exam_status,
+
+            ea.id AS attempt_id,
+            ea.status AS attempt_status,
+
+            eq.id AS question_id,
+            eq.correct_answer,
+
+            els.current_question_id,
+            els.state AS live_state,
+            els.question_ends_at,
+
+            SYSDATETIME() AS server_now
+
+          FROM dbo.exams AS e
+            WITH (UPDLOCK, HOLDLOCK)
+
+          LEFT JOIN dbo.exam_attempts AS ea
+            WITH (UPDLOCK, HOLDLOCK)
+            ON ea.exam_id = e.id
+            AND ea.season_membership_id =
+                @seasonMembershipId
+            AND ea.status = 'IN_PROGRESS'
+
+          LEFT JOIN dbo.exam_questions AS eq
+            ON eq.exam_id = e.id
+            AND eq.id = @questionId
+
+          LEFT JOIN dbo.exam_live_states AS els
+            WITH (UPDLOCK, HOLDLOCK)
+            ON els.exam_id = e.id
+
+          WHERE e.id = @examId;
+        `);
+
+    const context =
+      contextResult.recordset[0] || null;
+
+    if (!context) {
+      await transaction.rollback();
+      transactionStarted = false;
+
+      return {
+        status: "EXAM_NOT_FOUND",
+      };
+    }
+
+    if (
+      String(
+        context.exam_status || ""
+      ).toUpperCase() !== "IN_PROGRESS"
+    ) {
+      await transaction.rollback();
+      transactionStarted = false;
+
+      return {
+        status: "EXAM_NOT_IN_PROGRESS",
+      };
+    }
+
+    if (
+      !context.attempt_id ||
+      String(
+        context.attempt_status || ""
+      ).toUpperCase() !== "IN_PROGRESS"
+    ) {
+      await transaction.rollback();
+      transactionStarted = false;
+
+      return {
+        status: "ATTEMPT_NOT_FOUND",
+      };
+    }
+
+    const liveState =
+      String(
+        context.live_state || ""
+      ).toUpperCase();
+
+    if (
+      !context.question_id ||
+      liveState !== "ACTIVE" ||
+      Number(
+        context.current_question_id
+      ) !== Number(questionId)
+    ) {
+      await transaction.rollback();
+      transactionStarted = false;
+
+      return {
+        status: "QUESTION_NOT_ACTIVE",
+      };
+    }
+
+    const serverNow =
+      context.server_now
+        ? new Date(context.server_now)
+        : null;
+
+    const questionEndsAt =
+      context.question_ends_at
+        ? new Date(
+            context.question_ends_at
+          )
+        : null;
+
+    if (
+      !serverNow ||
+      !questionEndsAt ||
+      serverNow >= questionEndsAt
+    ) {
+      await transaction.rollback();
+      transactionStarted = false;
+
+      return {
+        status: "ANSWER_TOO_LATE",
+      };
+    }
+
+    /*
+    Do not use MERGE here.
+
+    The unique constraint on
+    attempt_id + question_id prevents duplicate rows.
+    An existing answer is updated while the question
+    remains ACTIVE.
+    */
+
+    const answerResult =
+      await new sql.Request(transaction)
+        .input(
+          "attemptId",
+          sql.Int,
+          context.attempt_id
+        )
+        .input(
+          "questionId",
+          sql.Int,
+          questionId
+        )
+        .input(
+          "answer",
+          sql.Char(1),
+          answer
+        )
+        .input(
+          "correctAnswer",
+          sql.Char(1),
+          context.correct_answer
+        )
+        .query(`
+          DECLARE @acceptedAt DATETIME2(3)
+            = SYSDATETIME();
+
+          DECLARE @isCorrect BIT =
+            CASE
+              WHEN @answer = @correctAnswer
+                THEN 1
+              ELSE 0
+            END;
+
+          IF EXISTS
+          (
+            SELECT 1
+            FROM dbo.exam_attempt_answers
+              WITH (UPDLOCK, HOLDLOCK)
+            WHERE attempt_id = @attemptId
+              AND question_id = @questionId
+          )
+          BEGIN
+            UPDATE dbo.exam_attempt_answers
+            SET
+              chosen_answer = @answer,
+              is_correct = @isCorrect,
+              answered_at = @acceptedAt,
+              updated_at = @acceptedAt
+            WHERE attempt_id = @attemptId
+              AND question_id = @questionId;
+          END
+          ELSE
+          BEGIN
+            INSERT INTO dbo.exam_attempt_answers
+            (
+              attempt_id,
+              question_id,
+              chosen_answer,
+              is_correct,
+              answered_at,
+              updated_at
+            )
+            VALUES
+            (
+              @attemptId,
+              @questionId,
+              @answer,
+              @isCorrect,
+              @acceptedAt,
+              @acceptedAt
+            );
+          END;
+
+          SELECT
+            eaa.id,
+            eaa.attempt_id,
+            eaa.question_id,
+            eaa.chosen_answer,
+            eaa.is_correct,
+            eaa.answered_at,
+            eaa.updated_at
+          FROM dbo.exam_attempt_answers AS eaa
+          WHERE eaa.attempt_id = @attemptId
+            AND eaa.question_id = @questionId;
+        `);
+
+    const savedAnswer =
+      answerResult.recordset[0] || null;
+
+    await transaction.commit();
+    transactionStarted = false;
+
+    return {
+      status: "ANSWER_ACCEPTED",
+      answer: savedAnswer,
+    };
+  } catch (error) {
+    if (transactionStarted) {
+      try {
+        await transaction.rollback();
+      } catch (rollbackError) {
+        console.error(
+          "Save Student Exam answer rollback error:",
+          rollbackError
+        );
+      }
+    }
+
+    throw error;
+  }
+}
+
 module.exports = {
-  findExamRealtimeStateById,
-  createLateJoinAttempt,
-  updateWaitingRoomLastSeen,
-  finishInProgressExamById,
-  startWaitingRoomExamById,
-  closeOpenExamWaitingRoomById,
-  findActiveExamBySeasonId,
-  openDraftExamWaitingRoomById,
-  deleteDraftExamById,
-  createExamRecord,
-  findExamsBySeasonId,
-  findExamById,
-  findWaitingRoomEntry,
-  findLatestAttemptByExamAndMembership,
-  createWaitingRoomEntry,
-  findMaximumQuestionIndexByExamId,
-  createExamQuestion,
+saveStudentExamAnswer,  
+findExamRealtimeStateById,
+createLateJoinAttempt,
+updateWaitingRoomLastSeen,
+finishInProgressExamById,
+advanceInProgressExamQuestionById,
+startWaitingRoomExamById,
+closeOpenExamWaitingRoomById,
+findActiveExamBySeasonId,
+openDraftExamWaitingRoomById,
+deleteDraftExamById,
+createExamRecord,
+findExamsBySeasonId,
+findExamById,
+findWaitingRoomEntry,
+findLatestAttemptByExamAndMembership,
+createWaitingRoomEntry,
+findMaximumQuestionIndexByExamId,
+createExamQuestion,
 };
