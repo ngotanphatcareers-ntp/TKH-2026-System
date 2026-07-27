@@ -1,5 +1,5 @@
 const API_BASE_URL =
-    "https://equation-photograph-shannon-fda.trycloudflare.com";
+    "https://suits-raising-defeat-appears.trycloudflare.com";
 
 const demoUsers = [
     {
