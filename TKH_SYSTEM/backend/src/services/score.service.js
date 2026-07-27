@@ -731,26 +731,40 @@ function buildOfficialGroupRankings(
       membersByGroup.get(groupId) ||
       new Map();
 
-    const individualPoints = Number(
-      Array.from(
-        groupMembers.values()
-      )
-        .reduce(
-          (total, transactions) => {
-            const memberScore =
-              calculateMemberSummary(
-                transactions
-              );
+    const memberTransactions =
+  Array.from(
+    groupMembers.values()
+  );
 
-            return (
-              total +
-              memberScore.final.score
-            );
-          },
-          0
+const memberCount =
+  memberTransactions.length;
+
+const totalMemberPoints =
+  memberTransactions.reduce(
+    (total, transactions) => {
+      const memberScore =
+        calculateMemberSummary(
+          transactions
+        );
+
+      return (
+        total +
+        Number(
+          memberScore.final.score || 0
         )
-        .toFixed(2)
-    );
+      );
+    },
+    0
+  );
+
+const individualPoints = Number(
+  (
+    memberCount > 0
+      ? totalMemberPoints /
+        memberCount
+      : 0
+  ).toFixed(2)
+);
 
     const groupPoints =
       Number(group.group_points) || 0;
