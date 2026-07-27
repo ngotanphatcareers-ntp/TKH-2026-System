@@ -1593,30 +1593,78 @@ async function finishInProgressExamById({
           DECLARE @attemptsCompleted INT;
           DECLARE @liveStateUpdated INT;
 
-          UPDATE dbo.exam_attempts
-          SET
-            status = 'COMPLETED',
-            updated_at = @completedAt
-          WHERE exam_id = @examId
-            AND status = 'IN_PROGRESS';
+          ;WITH AttemptResults AS
+(
+  SELECT
+    ea.id AS attempt_id,
 
-          SET @attemptsCompleted = @@ROWCOUNT;
+    COALESCE(
+      SUM(
+        CASE
+          WHEN eaa.is_correct = 1
+          THEN 1
+          ELSE 0
+        END
+      ),
+      0
+    ) AS correct_count,
 
-          UPDATE dbo.exam_live_states
-          SET
-            state = 'LOCKED',
-            question_ends_at =
-              CASE
-                WHEN question_ends_at IS NULL
-                  OR question_ends_at >
-                    @completedAt
-                THEN @completedAt
-                ELSE question_ends_at
-              END,
-            updated_at = @completedAt
-          WHERE exam_id = @examId;
+    COALESCE(
+      SUM(
+        CASE
+          WHEN eaa.is_correct = 1
+          THEN eq.points
+          ELSE 0
+        END
+      ),
+      0
+    ) AS score
 
-          SET @liveStateUpdated = @@ROWCOUNT;
+  FROM dbo.exam_attempts AS ea
+
+  LEFT JOIN dbo.exam_attempt_answers AS eaa
+    ON eaa.attempt_id = ea.id
+
+  LEFT JOIN dbo.exam_questions AS eq
+    ON eq.id = eaa.question_id
+    AND eq.exam_id = ea.exam_id
+
+  WHERE ea.exam_id = @examId
+    AND ea.status = 'IN_PROGRESS'
+
+  GROUP BY ea.id
+)
+
+UPDATE ea
+SET
+  ea.status = 'COMPLETED',
+  ea.submitted_at = @completedAt,
+  ea.correct_count =
+    results.correct_count,
+  ea.score =
+    results.score,
+  ea.updated_at = @completedAt
+FROM dbo.exam_attempts AS ea
+
+INNER JOIN AttemptResults AS results
+  ON results.attempt_id = ea.id;
+
+SET @attemptsCompleted = @@ROWCOUNT;
+
+UPDATE dbo.exam_live_states
+SET
+  state = 'LOCKED',
+  question_ends_at =
+    CASE
+      WHEN question_ends_at IS NULL
+        OR question_ends_at > @completedAt
+      THEN @completedAt
+      ELSE question_ends_at
+    END,
+  updated_at = @completedAt
+WHERE exam_id = @examId;
+
+SET @liveStateUpdated = @@ROWCOUNT;
 
           UPDATE dbo.exams
           SET
