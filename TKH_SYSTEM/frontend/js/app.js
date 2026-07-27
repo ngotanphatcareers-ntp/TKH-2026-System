@@ -200,7 +200,7 @@ const attendanceCheckinConfigDemo = {
 };
 
 
-let currentCheckinRadiusMeters = 200;
+let currentCheckinRadiusMeters = 50;
 let currentAttendanceSessionApi = null;
 
 
