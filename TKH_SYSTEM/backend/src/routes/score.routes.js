@@ -40,6 +40,12 @@ router.get(
   scoreController.getGroupRankings
 );
 
+router.get(
+  "/individuals",
+  authenticateToken,
+  scoreController.getIndividualRankings
+);
+
 
 router.post(
   "/admin/individual",

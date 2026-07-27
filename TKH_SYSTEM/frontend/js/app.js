@@ -5337,68 +5337,249 @@ function getPersonalRankingDemo() {
     return ranking;
 }
 
-function loadTopPersonalRankingDemo() {
-    const tableBody = document.getElementById("topPersonalRankingBody");
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+
+let individualRankingApiPromise = null;
+
+
+async function getIndividualRankingApiData(
+    forceRefresh = false
+) {
+    if (
+        forceRefresh ||
+        !individualRankingApiPromise
+    ) {
+        individualRankingApiPromise =
+            (async () => {
+                const token =
+                    localStorage.getItem(
+                        "accessToken"
+                    );
+
+                if (!token) {
+                    window.location.href =
+                        "index.html";
+
+                    throw new Error(
+                        "Phiên đăng nhập không tồn tại."
+                    );
+                }
+
+                const response =
+                    await fetch(
+                        `${API_BASE_URL}/api/scores/individuals`,
+                        {
+                            headers: {
+                                Authorization:
+                                    `Bearer ${token}`
+                            }
+                        }
+                    );
+
+                let result = null;
+
+                try {
+                    result =
+                        await response.json();
+                } catch (error) {
+                    throw new Error(
+                        "Backend trả về dữ liệu không hợp lệ."
+                    );
+                }
+
+                if (response.status === 401) {
+                    localStorage.removeItem(
+                        "accessToken"
+                    );
+
+                    localStorage.removeItem(
+                        "currentUser"
+                    );
+
+                    localStorage.removeItem(
+                        "currentUsername"
+                    );
+
+                    window.location.href =
+                        "index.html";
+
+                    throw new Error(
+                        "Phiên đăng nhập đã hết hạn."
+                    );
+                }
+
+                if (
+                    !response.ok ||
+                    !result.success
+                ) {
+                    throw new Error(
+                        result?.error?.message ||
+                        "Không thể tải bảng xếp hạng cá nhân."
+                    );
+                }
+
+                return result.data;
+            })()
+            .catch(error => {
+                individualRankingApiPromise =
+                    null;
+
+                throw error;
+            });
+    }
+
+    return individualRankingApiPromise;
+}
+
+
+async function loadTopPersonalRankingDemo() {
+    const tableBody =
+        document.getElementById(
+            "topPersonalRankingBody"
+        );
 
     if (!tableBody) {
         return;
     }
 
-    const ranking = getPersonalRankingDemo()
-        .filter(item => item.totalScore > 0)
-        .slice(0, 10);
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="3">
+                Đang tải bảng xếp hạng...
+            </td>
+        </tr>
+    `;
 
-    if (ranking.length === 0) {
+    try {
+        const data =
+            await getIndividualRankingApiData();
+
+        const ranking =
+            Array.isArray(data?.top10)
+                ? data.top10
+                : [];
+
+        if (ranking.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="3">
+                        Chưa có dữ liệu xếp hạng.
+                    </td>
+                </tr>
+            `;
+
+            return;
+        }
+
+        tableBody.innerHTML =
+            ranking.map(item => {
+                const rankingNumber =
+                    Number(item.ranking) || "-";
+
+                const fullName =
+                    item.member?.fullName ||
+                    "Không xác định";
+
+                const groupName =
+                    item.group?.name ||
+                    "Chưa phân nhóm";
+
+                return `
+                    <tr>
+                        <td>
+                            #${rankingNumber}
+                        </td>
+
+                        <td>
+                            ${escapeHtml(fullName)}
+                        </td>
+
+                        <td>
+                            ${escapeHtml(groupName)}
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+    } catch (error) {
+        console.error(
+            "Load personal rankings error:",
+            error
+        );
+
         tableBody.innerHTML = `
             <tr>
-                <td colspan="3">Chưa có dữ liệu xếp hạng.</td>
+                <td colspan="3">
+                    Không thể tải bảng xếp hạng cá nhân.
+                </td>
             </tr>
         `;
-        return;
     }
-
-    tableBody.innerHTML = ranking.map((item, index) => `
-        <tr>
-            <td>#${index + 1}</td>
-            <td>${item.fullName}</td>
-            <td>${item.groupName}</td>
-        </tr>
-    `).join("");
 }
 
 
-function loadMyPersonalRankDemo() {
-    const rankElement = document.getElementById("myPersonalRank");
-    const rankTextElement = document.getElementById("myPersonalRankText");
+async function loadMyPersonalRankDemo() {
+    const rankElement =
+        document.getElementById(
+            "myPersonalRank"
+        );
 
-    if (!rankElement || !rankTextElement) {
+    const rankTextElement =
+        document.getElementById(
+            "myPersonalRankText"
+        );
+
+    if (
+        !rankElement ||
+        !rankTextElement
+    ) {
         return;
     }
 
-    const currentUser = getCurrentUserDemo();
+    rankElement.innerText = "...";
 
-    if (!currentUser) {
-        window.location.href = "index.html";
-        return;
-    }
-
-    const ranking = getPersonalRankingDemo();
-
-    const myIndex = ranking.findIndex(
-        item =>
-            item.username.toLowerCase() ===
-            currentUser.username.toLowerCase()
-    );
-
-    if (myIndex === -1) {
-        rankElement.innerText = "-";
-        rankTextElement.innerText = "Chưa có dữ liệu xếp hạng";
-        return;
-    }
-
-    rankElement.innerText = "#" + (myIndex + 1);
     rankTextElement.innerText =
-        "Trong " + ranking.length + " học viên";
+        "Đang tải xếp hạng";
+
+    try {
+        const data =
+            await getIndividualRankingApiData();
+
+        const myRanking =
+            data?.myRanking || null;
+
+        if (!myRanking) {
+            rankElement.innerText = "-";
+
+            rankTextElement.innerText =
+                "Chưa có dữ liệu xếp hạng";
+
+            return;
+        }
+
+        rankElement.innerText =
+            `#${myRanking.ranking}`;
+
+        rankTextElement.innerText =
+            `Trong ${Number(data.total) || 0} học viên`;
+    } catch (error) {
+        console.error(
+            "Load personal rank error:",
+            error
+        );
+
+        rankElement.innerText = "-";
+
+        rankTextElement.innerText =
+            "Không thể tải xếp hạng";
+    }
 }
 
 
@@ -9809,6 +9990,17 @@ function renderAdminExams(exams) {
                         <div class="admin-exam-actions">
                             <button
                                 type="button"
+                                class="admin-exam-presentation-btn"
+                                onclick="window.open(
+                                    'admin-test-screen.html?examId=${examId}',
+                                    '_blank'
+                                )"
+                            >
+                                📺 Trình chiếu
+                            </button>
+                        
+                            <button
+                                type="button"
                                 class="admin-exam-select-btn"
                                 data-exam-id="${examId}"
                             >
@@ -13110,3 +13302,522 @@ document.addEventListener(
     "DOMContentLoaded",
     loadStudentExamsFromApi
 );
+
+
+function openAdminExamPresentationScreen() {
+  const examIdInput = window.prompt(
+    "Nhập ID bài kiểm tra cần trình chiếu:"
+  );
+
+  if (examIdInput === null) {
+    return;
+  }
+
+  const examId = Number(examIdInput);
+
+  if (
+    !Number.isInteger(examId) ||
+    examId <= 0
+  ) {
+    window.alert(
+      "ID bài kiểm tra không hợp lệ."
+    );
+
+    return;
+  }
+
+  window.open(
+    `admin-test-screen.html?examId=${examId}`,
+    "_blank",
+    "noopener,noreferrer"
+  );
+}
+
+/*
+=====================================================
+Admin Exam Presentation Screen
+=====================================================
+*/
+
+let adminExamPresentationTimer = null;
+let adminExamPresentationPoller = null;
+let adminExamPresentationLastQuestionId = null;
+
+
+function getAdminExamPresentationId() {
+    const params =
+        new URLSearchParams(
+            window.location.search
+        );
+
+    const examId =
+        Number(params.get("examId"));
+
+    if (
+        !Number.isInteger(examId) ||
+        examId <= 0
+    ) {
+        return null;
+    }
+
+    return examId;
+}
+
+
+function setAdminExamPresentationMessage(
+    message
+) {
+    const waitingCard =
+        document.getElementById(
+            "presentationWaitingCard"
+        );
+
+    const questionCard =
+        document.getElementById(
+            "presentationQuestionCard"
+        );
+
+    const messageElement =
+        document.getElementById(
+            "presentationMessage"
+        );
+
+    if (
+        !waitingCard ||
+        !questionCard ||
+        !messageElement
+    ) {
+        return;
+    }
+
+    waitingCard.classList.remove(
+        "hidden"
+    );
+
+    questionCard.classList.add(
+        "hidden"
+    );
+
+    messageElement.innerText =
+        message;
+}
+
+
+function startAdminExamPresentationCountdown(
+    questionEndsAt
+) {
+    clearInterval(
+        adminExamPresentationTimer
+    );
+
+    const timerElement =
+        document.getElementById(
+            "presentationTimer"
+        );
+
+    const statusElement =
+        document.getElementById(
+            "presentationStatus"
+        );
+
+    if (!timerElement) {
+        return;
+    }
+
+    const endsAt =
+        Date.parse(questionEndsAt);
+
+    function updateTimer() {
+        if (!Number.isFinite(endsAt)) {
+            timerElement.innerText = "--";
+            return;
+        }
+
+        const remainingSeconds =
+            Math.max(
+                Math.ceil(
+                    (
+                        endsAt -
+                        Date.now()
+                    ) / 1000
+                ),
+                0
+            );
+
+        timerElement.innerText =
+            String(
+                remainingSeconds
+            ).padStart(2, "0");
+
+        if (remainingSeconds <= 0) {
+            clearInterval(
+                adminExamPresentationTimer
+            );
+
+            if (statusElement) {
+                statusElement.innerText =
+                    "Đã hết giờ";
+            }
+        }
+    }
+
+    updateTimer();
+
+    adminExamPresentationTimer =
+        setInterval(
+            updateTimer,
+            250
+        );
+}
+
+
+function renderAdminExamPresentation(
+    payload
+) {
+    const exam =
+        payload?.exam || {};
+
+    const liveState =
+        payload?.liveState ||
+        payload?.realtimeState ||
+        {};
+
+    const question =
+        payload?.question ||
+        liveState?.question ||
+        {};
+
+    const examNameElement =
+        document.getElementById(
+            "presentationExamName"
+        );
+
+    const counterElement =
+        document.getElementById(
+            "presentationQuestionCounter"
+        );
+
+    const waitingCard =
+        document.getElementById(
+            "presentationWaitingCard"
+        );
+
+    const questionCard =
+        document.getElementById(
+            "presentationQuestionCard"
+        );
+
+    if (examNameElement) {
+        examNameElement.innerText =
+            exam.name ||
+            "Bài kiểm tra TKH 2026";
+    }
+
+    const examStatus =
+        String(
+            exam.status || ""
+        ).toUpperCase();
+
+    if (
+        examStatus === "COMPLETED"
+    ) {
+        clearInterval(
+            adminExamPresentationTimer
+        );
+
+        setAdminExamPresentationMessage(
+            "Bài kiểm tra đã kết thúc. Cảm ơn các bạn đã tham gia!"
+        );
+
+        if (counterElement) {
+            counterElement.innerText =
+                "Đã hoàn tất";
+        }
+
+        return;
+    }
+
+    if (
+        examStatus ===
+        "WAITING_ROOM_OPEN"
+    ) {
+        setAdminExamPresentationMessage(
+            "Phòng chờ đã mở. Các học viên vui lòng đăng nhập và vào phòng."
+        );
+
+        return;
+    }
+
+    const questionId =
+        Number(
+            question.id ||
+            liveState.currentQuestionId
+        );
+
+    const questionIndex =
+        Number(
+            question.questionIndex ||
+            question.questionNo ||
+            liveState.currentQuestionIndex
+        );
+
+    const totalQuestions =
+        Number(
+            liveState.totalQuestions ||
+            exam.totalQuestions
+        );
+
+    if (
+        !Number.isInteger(questionId) ||
+        questionId <= 0
+    ) {
+        setAdminExamPresentationMessage(
+            examStatus === "IN_PROGRESS"
+                ? "Bài kiểm tra đã bắt đầu. Đang chờ Admin mở câu hỏi đầu tiên..."
+                : "Đang chờ bài kiểm tra bắt đầu..."
+        );
+
+        return;
+    }
+
+    waitingCard?.classList.add(
+        "hidden"
+    );
+
+    questionCard?.classList.remove(
+        "hidden"
+    );
+
+    if (counterElement) {
+        counterElement.innerText =
+            `Câu ${questionIndex || "-"} / ${totalQuestions || "-"}`;
+    }
+
+    const statusElement =
+        document.getElementById(
+            "presentationStatus"
+        );
+
+    const liveStatus =
+        String(
+            liveState.liveState ||
+            liveState.state ||
+            ""
+        ).toUpperCase();
+
+    if (statusElement) {
+        statusElement.innerText =
+            liveStatus === "ACTIVE"
+                ? "Đang trả lời"
+                : "Đã khóa";
+    }
+
+    const questionText =
+        question.questionText ||
+        question.content ||
+        question.text ||
+        liveState.questionText ||
+        "Không tải được nội dung câu hỏi.";
+
+    document.getElementById(
+        "presentationQuestionText"
+    ).innerText =
+        questionText;
+
+    const answers =
+        question.answers ||
+        question.options ||
+        {};
+
+    const optionA =
+        question.optionA ??
+        question.answerA ??
+        answers.A ??
+        answers.a ??
+        "—";
+
+    const optionB =
+        question.optionB ??
+        question.answerB ??
+        answers.B ??
+        answers.b ??
+        "—";
+
+    const optionC =
+        question.optionC ??
+        question.answerC ??
+        answers.C ??
+        answers.c ??
+        "—";
+
+    const optionD =
+        question.optionD ??
+        question.answerD ??
+        answers.D ??
+        answers.d ??
+        "—";
+
+    document.getElementById(
+        "presentationAnswerA"
+    ).innerText = optionA;
+
+    document.getElementById(
+        "presentationAnswerB"
+    ).innerText = optionB;
+
+    document.getElementById(
+        "presentationAnswerC"
+    ).innerText = optionC;
+
+    document.getElementById(
+        "presentationAnswerD"
+    ).innerText = optionD;
+
+    const questionEndsAt =
+        liveState.questionEndsAt ||
+        liveState.question_ends_at ||
+        question.questionEndsAt ||
+        "";
+
+    if (
+        liveStatus === "ACTIVE"
+    ) {
+        startAdminExamPresentationCountdown(
+            questionEndsAt
+        );
+    } else {
+        clearInterval(
+            adminExamPresentationTimer
+        );
+
+        const timerElement =
+            document.getElementById(
+                "presentationTimer"
+            );
+
+        if (timerElement) {
+            timerElement.innerText = "00";
+        }
+    }
+
+    adminExamPresentationLastQuestionId =
+        questionId;
+}
+
+
+async function loadAdminExamPresentation() {
+    const container =
+        document.getElementById(
+            "presentationWaitingCard"
+        );
+
+    if (!container) {
+        return;
+    }
+
+    const examId =
+        getAdminExamPresentationId();
+
+    if (!examId) {
+        setAdminExamPresentationMessage(
+            "ID bài kiểm tra không hợp lệ."
+        );
+
+        return;
+    }
+
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
+
+    if (!token) {
+        window.location.href =
+            "index.html";
+
+        return;
+    }
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/admin/test/exams/${examId}/presentation`,
+            {
+                method: "GET",
+
+                headers: {
+                    Authorization:
+                        `Bearer ${token}`
+                }
+            }
+        );
+
+        const result =
+            await response.json();
+
+        if (
+            response.status === 401 ||
+            response.status === 403
+        ) {
+            window.location.href =
+                "index.html";
+
+            return;
+        }
+
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+            throw new Error(
+                result?.error?.message ||
+                result?.message ||
+                "Không thể tải màn hình trình chiếu."
+            );
+        }
+
+        renderAdminExamPresentation(
+            result.data || result
+        );
+    } catch (error) {
+        console.error(
+            "Load exam presentation error:",
+            error
+        );
+
+        setAdminExamPresentationMessage(
+            error.message ||
+            "Không thể kết nối đến bài kiểm tra."
+        );
+    }
+}
+
+
+function initializeAdminExamPresentation() {
+    const container =
+        document.getElementById(
+            "presentationWaitingCard"
+        );
+
+    if (!container) {
+        return;
+    }
+
+    loadAdminExamPresentation();
+
+    clearInterval(
+        adminExamPresentationPoller
+    );
+
+    adminExamPresentationPoller =
+        setInterval(
+            loadAdminExamPresentation,
+            1000
+        );
+}
+
+
+document.addEventListener(
+    "DOMContentLoaded",
+    initializeAdminExamPresentation
+);
+

@@ -2446,7 +2446,113 @@ async function saveStudentExamAnswer({
   }
 }
 
+
+/*
+=====================================================
+Get Admin Exam presentation state
+
+Read-only data for the TV / projector screen:
+- Exam information
+- Current live state
+- Current question and four answers
+- Answered count for the current question
+=====================================================
+*/
+
+async function findExamPresentationById(
+  examId
+) {
+  const pool = await getPool();
+
+  const result =
+    await pool.request()
+      .input(
+        "examId",
+        sql.Int,
+        examId
+      )
+      .query(`
+        /*
+        Reconcile timer before reading.
+        Database remains the source of truth.
+        */
+
+        UPDATE dbo.exam_live_states
+        SET
+          state = 'LOCKED',
+          updated_at = SYSDATETIME()
+        WHERE exam_id = @examId
+          AND state = 'ACTIVE'
+          AND question_ends_at IS NOT NULL
+          AND question_ends_at <=
+              SYSDATETIME();
+
+        SELECT
+          e.id AS exam_id,
+          e.name AS exam_name,
+          e.type AS exam_type,
+          e.status AS exam_status,
+          e.time_per_question,
+          e.result_visibility,
+
+          (
+            SELECT COUNT(*)
+            FROM dbo.exam_questions AS total_eq
+            WHERE total_eq.exam_id = e.id
+          ) AS total_questions,
+
+          els.current_question_id,
+          els.current_question_index,
+          els.question_started_at,
+          els.question_ends_at,
+          els.state AS live_state,
+
+          eq.question_text,
+          eq.answer_a,
+          eq.answer_b,
+          eq.answer_c,
+          eq.answer_d,
+
+          (
+            SELECT COUNT(*)
+            FROM dbo.exam_attempt_answers
+              AS eaa
+            INNER JOIN dbo.exam_attempts
+              AS ea
+              ON ea.id = eaa.attempt_id
+            WHERE ea.exam_id = e.id
+              AND eaa.question_id =
+                  els.current_question_id
+          ) AS answered_count,
+
+          (
+            SELECT COUNT(*)
+            FROM dbo.exam_attempts AS ea
+            WHERE ea.exam_id = e.id
+          ) AS total_attempts,
+
+          SYSDATETIME() AS server_time
+
+        FROM dbo.exams AS e
+
+        LEFT JOIN dbo.exam_live_states
+          AS els
+          ON els.exam_id = e.id
+
+        LEFT JOIN dbo.exam_questions
+          AS eq
+          ON eq.id =
+              els.current_question_id
+          AND eq.exam_id = e.id
+
+        WHERE e.id = @examId;
+      `);
+
+  return result.recordset[0] || null;
+}
+
 module.exports = {
+findExamPresentationById,
 saveStudentExamAnswer,  
 findExamRealtimeStateById,
 createLateJoinAttempt,

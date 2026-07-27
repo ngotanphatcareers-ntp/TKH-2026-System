@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TKH 2026 - Màn hình trình chiếu bài kiểm tra</title>
+  <style>
+    :root {
+      --bg-1: #071426;
+      --bg-2: #123a62;
+      --panel: rgba(255,255,255,.97);
+      --text: #111827;
+      --muted: #64748b;
+      --primary: #1d4ed8;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --warning: #d97706;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(59,130,246,.28), transparent 35%),
+        linear-gradient(135deg, var(--bg-1), var(--bg-2));
+      color: white;
+      overflow: hidden;
+    }
+
+    .screen {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 24px 36px 18px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      border-bottom: 2px solid rgba(255,255,255,.18);
+      padding-bottom: 16px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(24px, 2.3vw, 38px);
+      letter-spacing: .5px;
+    }
+
+    .exam-name {
+      margin-top: 7px;
+      font-size: clamp(16px, 1.5vw, 24px);
+      opacity: .85;
+    }
+
+    .counter {
+      flex: 0 0 auto;
+      background: rgba(255,255,255,.14);
+      border: 1px solid rgba(255,255,255,.22);
+      padding: 12px 22px;
+      border-radius: 999px;
+      font-size: clamp(18px, 1.7vw, 28px);
+      font-weight: 800;
+    }
+
+    .main {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 22px 0;
+    }
+
+    .card {
+      width: min(1320px, 100%);
+      max-height: calc(100vh - 160px);
+      overflow: auto;
+      background: var(--panel);
+      color: var(--text);
+      border-radius: 28px;
+      box-shadow: 0 28px 80px rgba(0,0,0,.32);
+      padding: 28px 36px 32px;
+    }
+
+    .hidden { display: none !important; }
+
+    .waiting {
+      text-align: center;
+      padding: 60px 30px;
+    }
+
+    .waiting-icon {
+      font-size: clamp(60px, 7vw, 110px);
+      margin-bottom: 18px;
+    }
+
+    .waiting-title {
+      font-size: clamp(32px, 4vw, 60px);
+      margin: 0 0 14px;
+    }
+
+    .waiting-text {
+      margin: 0;
+      font-size: clamp(21px, 2.2vw, 34px);
+      color: #475569;
+      line-height: 1.5;
+    }
+
+    .top-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .status {
+      justify-self: start;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: clamp(18px, 1.6vw, 26px);
+      font-weight: 800;
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .status.locked {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+
+    .answered {
+      color: #334155;
+      font-size: clamp(18px, 1.5vw, 24px);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .timer {
+      min-width: 112px;
+      text-align: center;
+      font-size: clamp(50px, 5vw, 82px);
+      line-height: 1;
+      font-weight: 900;
+      color: var(--danger);
+    }
+
+    .timer.safe { color: var(--success); }
+    .timer.warning { color: var(--warning); }
+
+    .question {
+      margin: 10px auto 28px;
+      max-width: 1160px;
+      text-align: center;
+      font-size: clamp(30px, 3.5vw, 56px);
+      line-height: 1.25;
+    }
+
+    .answers {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .answer {
+      min-height: 100px;
+      padding: 18px 22px;
+      border-radius: 20px;
+      border: 3px solid #d7dee8;
+      background: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      font-size: clamp(22px, 2.1vw, 34px);
+      line-height: 1.25;
+    }
+
+    .answer-label {
+      flex: 0 0 54px;
+      width: 54px;
+      height: 54px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--primary);
+      color: white;
+      font-size: 28px;
+      font-weight: 900;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      font-size: 15px;
+      opacity: .75;
+    }
+
+    .connection-error {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      background: rgba(185,28,28,.95);
+      color: white;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      display: none;
+    }
+
+    @media (max-width: 900px) {
+      body { overflow: auto; }
+      .screen { padding: 18px; }
+      .header { align-items: flex-start; }
+      .answers { grid-template-columns: 1fr; }
+      .top-row { grid-template-columns: 1fr auto; }
+      .answered { grid-column: 1 / -1; }
+      .card { max-height: none; padding: 22px; }
+      .footer { display: none; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="screen">
+    <header class="header">
+      <div class="brand">
+        <h1>📝 THÁNH KINH HÈ 2026</h1>
+        <div id="examName" class="exam-name">Đang tải bài kiểm tra...</div>
+      </div>
+      <div id="questionCounter" class="counter">Câu - / -</div>
+    </header>
+
+    <main class="main">
+      <section id="waitingCard" class="card waiting">
+        <div id="waitingIcon" class="waiting-icon">⏳</div>
+        <h2 id="waitingTitle" class="waiting-title">Đang kết nối</h2>
+        <p id="waitingText" class="waiting-text">
+          Vui lòng chờ hệ thống tải trạng thái bài kiểm tra.
+        </p>
+      </section>
+
+      <section id="questionCard" class="card hidden">
+        <div class="top-row">
+          <div id="statusBadge" class="status">Đang trả lời</div>
+          <div id="answeredCount" class="answered">👥 Đã trả lời: 0 / 0</div>
+          <div id="timer" class="timer">00</div>
+        </div>
+
+        <h2 id="questionText" class="question">Nội dung câu hỏi</h2>
+
+        <div class="answers">
+          <div class="answer">
+            <div class="answer-label">A</div>
+            <div id="answerA">—</div>
+          </div>
+          <div class="answer">
+            <div class="answer-label">B</div>
+            <div id="answerB">—</div>
+          </div>
+          <div class="answer">
+            <div class="answer-label">C</div>
+            <div id="answerC">—</div>
+          </div>
+          <div class="answer">
+            <div class="answer-label">D</div>
+            <div id="answerD">—</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>Màn hình trình chiếu dành cho BTC</span>
+      <span>Nhấn F11 để xem toàn màn hình</span>
+    </footer>
+  </div>
+
+  <div id="connectionError" class="connection-error">
+    Mất kết nối Backend — đang thử lại...
+  </div>
+
+  <script>
+    const API_BASE_URL =
+      "https://equation-photograph-shannon-fda.trycloudflare.com";
+
+    let poller = null;
+    let countdownTimer = null;
+    let lastPayload = null;
+
+    function getExamId() {
+      const params = new URLSearchParams(window.location.search);
+      const examId = Number(params.get("examId"));
+
+      return Number.isInteger(examId) && examId > 0
+        ? examId
+        : null;
+    }
+
+    function showWaiting({
+      icon = "⏳",
+      title,
+      text,
+      counter = "Câu - / -"
+    }) {
+      document.getElementById("waitingIcon").textContent = icon;
+      document.getElementById("waitingTitle").textContent = title;
+      document.getElementById("waitingText").textContent = text;
+      document.getElementById("questionCounter").textContent = counter;
+
+      document.getElementById("waitingCard").classList.remove("hidden");
+      document.getElementById("questionCard").classList.add("hidden");
+
+      clearInterval(countdownTimer);
+    }
+
+    function showQuestion() {
+      document.getElementById("waitingCard").classList.add("hidden");
+      document.getElementById("questionCard").classList.remove("hidden");
+    }
+
+    function startCountdown(questionEndsAt, liveState) {
+      clearInterval(countdownTimer);
+
+      const timerEl = document.getElementById("timer");
+      const statusEl = document.getElementById("statusBadge");
+      const endMs = Date.parse(questionEndsAt);
+
+      function update() {
+        const isActive = String(liveState || "").toUpperCase() === "ACTIVE";
+
+        if (!isActive || !Number.isFinite(endMs)) {
+          timerEl.textContent = "00";
+          timerEl.className = "timer";
+          statusEl.textContent = "Đã hết giờ";
+          statusEl.className = "status locked";
+          return;
+        }
+
+        const remaining = Math.max(
+          Math.ceil((endMs - Date.now()) / 1000),
+          0
+        );
+
+        timerEl.textContent = String(remaining).padStart(2, "0");
+
+        if (remaining > 5) {
+          timerEl.className = "timer safe";
+        } else if (remaining > 2) {
+          timerEl.className = "timer warning";
+        } else {
+          timerEl.className = "timer";
+        }
+
+        if (remaining <= 0) {
+          clearInterval(countdownTimer);
+          statusEl.textContent = "Đã hết giờ";
+          statusEl.className = "status locked";
+        }
+      }
+
+      update();
+      countdownTimer = setInterval(update, 250);
+    }
+
+    function renderPresentation(data) {
+      lastPayload = data;
+
+      const exam = data?.exam || {};
+      const liveState = data?.liveState || {};
+      const question = data?.question || null;
+
+      document.getElementById("examName").textContent =
+        exam.name || "Bài kiểm tra TKH 2026";
+
+      const examStatus = String(exam.status || "").toUpperCase();
+
+      if (examStatus === "COMPLETED") {
+        showWaiting({
+          icon: "🎉",
+          title: "BÀI THI ĐÃ KẾT THÚC",
+          text: "Cảm ơn các bạn đã tham gia!",
+          counter: "Đã hoàn tất"
+        });
+        return;
+      }
+
+      if (examStatus === "WAITING_ROOM_OPEN") {
+        showWaiting({
+          icon: "👥",
+          title: "PHÒNG CHỜ ĐÃ MỞ",
+          text: "Các học viên vui lòng đăng nhập và vào phòng chờ.",
+          counter: `0 / ${Number(exam.totalQuestions) || 0}`
+        });
+        return;
+      }
+
+      if (examStatus === "DRAFT" || examStatus === "SCHEDULED") {
+        showWaiting({
+          icon: "🕒",
+          title: "ĐANG CHỜ BẮT ĐẦU",
+          text: "Bài kiểm tra chưa được mở.",
+          counter: `0 / ${Number(exam.totalQuestions) || 0}`
+        });
+        return;
+      }
+
+      if (!question?.id) {
+        showWaiting({
+          icon: "⏳",
+          title: "ĐANG CHỜ CÂU HỎI",
+          text: "Admin đang chuẩn bị mở câu hỏi tiếp theo.",
+          counter: `Câu - / ${Number(exam.totalQuestions) || 0}`
+        });
+        return;
+      }
+
+      showQuestion();
+
+      const currentIndex = Number(
+        question.questionIndex || liveState.currentQuestionIndex
+      ) || "-";
+
+      const totalQuestions = Number(
+        liveState.totalQuestions || exam.totalQuestions
+      ) || "-";
+
+      document.getElementById("questionCounter").textContent =
+        `Câu ${currentIndex} / ${totalQuestions}`;
+
+      document.getElementById("questionText").textContent =
+        question.questionText || "Không tải được nội dung câu hỏi.";
+
+      document.getElementById("answerA").textContent = question.optionA ?? "—";
+      document.getElementById("answerB").textContent = question.optionB ?? "—";
+      document.getElementById("answerC").textContent = question.optionC ?? "—";
+      document.getElementById("answerD").textContent = question.optionD ?? "—";
+
+      const answered = Number(liveState.answeredCount) || 0;
+      const attempts = Number(liveState.totalAttempts) || 0;
+
+      document.getElementById("answeredCount").textContent =
+        `👥 Đã trả lời: ${answered} / ${attempts}`;
+
+      const state = String(liveState.liveState || "").toUpperCase();
+      const statusEl = document.getElementById("statusBadge");
+
+      if (state === "ACTIVE") {
+        statusEl.textContent = "Đang trả lời";
+        statusEl.className = "status";
+      } else {
+        statusEl.textContent = "Đã hết giờ";
+        statusEl.className = "status locked";
+      }
+
+      startCountdown(liveState.questionEndsAt, state);
+    }
+
+    async function loadPresentation() {
+      const examId = getExamId();
+      const token = localStorage.getItem("accessToken");
+      const errorEl = document.getElementById("connectionError");
+
+      if (!examId) {
+        showWaiting({
+          icon: "⚠️",
+          title: "ID BÀI THI KHÔNG HỢP LỆ",
+          text: "Hãy mở trang với dạng: admin-test-screen.html?examId=10"
+        });
+        return;
+      }
+
+      if (!token) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/api/admin/test/exams/${examId}/presentation`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`
+            },
+            cache: "no-store"
+          }
+        );
+
+        const result = await response.json();
+
+        if (response.status === 401 || response.status === 403) {
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("currentUser");
+          window.location.href = "index.html";
+          return;
+        }
+
+        if (!response.ok || result.success !== true) {
+          throw new Error(
+            result?.error?.message ||
+            "Không thể tải màn hình trình chiếu."
+          );
+        }
+
+        errorEl.style.display = "none";
+        renderPresentation(result.data);
+      } catch (error) {
+        console.error("Presentation load error:", error);
+        errorEl.style.display = "block";
+
+        if (!lastPayload) {
+          showWaiting({
+            icon: "📡",
+            title: "KHÔNG THỂ KẾT NỐI",
+            text: "Hệ thống đang thử kết nối lại Backend..."
+          });
+        }
+      }
+    }
+
+    function initializePresentation() {
+      loadPresentation();
+
+      clearInterval(poller);
+      poller = setInterval(loadPresentation, 1000);
+    }
+
+    document.addEventListener("DOMContentLoaded", initializePresentation);
+  </script>
+</body>
+</html>

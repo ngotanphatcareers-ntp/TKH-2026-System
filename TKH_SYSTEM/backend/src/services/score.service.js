@@ -13,6 +13,7 @@ const {
   createScoreTransaction,
   findAllActiveGroupScoreBases,
   findActiveGroupMemberScoreTransactions,
+  findActiveMemberScoreTransactions,
 } = require("../repositories/score.repository");
 
 const {
@@ -827,6 +828,152 @@ const individualPoints = Number(
   });
 }
 
+
+function buildIndividualRankings(rows) {
+  const members = new Map();
+
+  rows.forEach(row => {
+    const seasonMembershipId =
+      Number(row.seasonMembershipId);
+
+    if (!members.has(seasonMembershipId)) {
+      members.set(seasonMembershipId, {
+        seasonMembershipId,
+
+        member: {
+          id: Number(row.memberId),
+          tkhCode: row.tkhCode || null,
+          username: row.username || null,
+          fullName:
+            row.fullName ||
+            "Không xác định",
+        },
+
+        group: row.groupId
+          ? {
+              id: Number(row.groupId),
+              code: row.groupCode || null,
+              name:
+                row.groupName ||
+                "Chưa phân nhóm",
+            }
+          : null,
+
+        transactions: [],
+      });
+    }
+
+    if (
+      row.id !== null &&
+      row.id !== undefined
+    ) {
+      members
+        .get(seasonMembershipId)
+        .transactions.push(row);
+    }
+  });
+
+  const rankingRows =
+    Array.from(members.values())
+      .map(item => {
+        const score =
+          calculateMemberSummary(
+            item.transactions
+          );
+
+        return {
+          seasonMembershipId:
+            item.seasonMembershipId,
+
+          member: item.member,
+          group: item.group,
+
+          totalPoints:
+            Number(score.final.score) || 0,
+        };
+      });
+
+  rankingRows.sort((left, right) => {
+    if (
+      right.totalPoints !==
+      left.totalPoints
+    ) {
+      return (
+        right.totalPoints -
+        left.totalPoints
+      );
+    }
+
+    return left.member.fullName.localeCompare(
+      right.member.fullName,
+      "vi"
+    );
+  });
+
+  let currentRanking = 0;
+  let previousPoints = null;
+
+  return rankingRows.map(
+    (item, index) => {
+      if (
+        index === 0 ||
+        item.totalPoints !== previousPoints
+      ) {
+        currentRanking = index + 1;
+      }
+
+      previousPoints =
+        item.totalPoints;
+
+      return {
+        ranking: currentRanking,
+        ...item,
+      };
+    }
+  );
+}
+
+
+async function getIndividualRankings(memberId) {
+  const normalizedMemberId =
+    Number(memberId);
+
+  if (
+    !Number.isInteger(normalizedMemberId) ||
+    normalizedMemberId <= 0
+  ) {
+    return {
+      success: false,
+      code: "MEMBER_ACCOUNT_REQUIRED",
+    };
+  }
+
+  const rows =
+    await findActiveMemberScoreTransactions();
+
+  const rankings =
+    buildIndividualRankings(rows);
+
+  const myRanking =
+    rankings.find(
+      item =>
+        item.member.id ===
+        normalizedMemberId
+    ) || null;
+
+  return {
+    success: true,
+
+    top10:
+      rankings.slice(0, 10),
+
+    myRanking,
+
+    total:
+      rankings.length,
+  };
+}
+
 async function getMyGroupScores(memberId) {
   const normalizedMemberId =
     Number(memberId);
@@ -1262,6 +1409,7 @@ module.exports = {
   getMyScores,
   getMyGroupScores,
   getGroupRankings,
+  getIndividualRankings,
 
   createAdminIndividualScore,
   createAdminGroupScore,

@@ -16,6 +16,12 @@ const {
   "../services/exam.service"
 );
 
+const {
+  findExamPresentationById,
+} = require(
+  "../repositories/exam.repository"
+);
+
 
 /*
 =====================================================
@@ -812,7 +818,184 @@ async function submitExamAnswerController(
   }
 }
 
+/*
+=====================================================
+Admin: Get Exam presentation screen data
+=====================================================
+*/
+
+async function getExamPresentationController(
+  req,
+  res,
+  next
+) {
+  try {
+    const examId =
+      Number(req.params.examId);
+
+    if (
+      !Number.isInteger(examId) ||
+      examId <= 0
+    ) {
+      return res.status(400).json({
+        success: false,
+
+        error: {
+          code: "INVALID_EXAM_ID",
+          message:
+            "Exam ID không hợp lệ.",
+        },
+      });
+    }
+
+    const presentation =
+      await findExamPresentationById(
+        examId
+      );
+
+    if (!presentation) {
+      return res.status(404).json({
+        success: false,
+
+        error: {
+          code: "EXAM_NOT_FOUND",
+          message:
+            "Không tìm thấy bài kiểm tra.",
+        },
+      });
+    }
+
+    const currentQuestionId =
+      Number(
+        presentation
+          .current_question_id
+      );
+
+    const hasCurrentQuestion =
+      Number.isInteger(
+        currentQuestionId
+      ) &&
+      currentQuestionId > 0;
+
+    return res.status(200).json({
+      success: true,
+
+      data: {
+        exam: {
+          id:
+            Number(
+              presentation.exam_id
+            ),
+
+          name:
+            presentation.exam_name,
+
+          type:
+            presentation.exam_type,
+
+          status:
+            presentation.exam_status,
+
+          timePerQuestion:
+            Number(
+              presentation
+                .time_per_question
+            ) || 0,
+
+          resultVisibility:
+            presentation
+              .result_visibility,
+
+          totalQuestions:
+            Number(
+              presentation
+                .total_questions
+            ) || 0,
+        },
+
+        liveState: {
+          currentQuestionId:
+            hasCurrentQuestion
+              ? currentQuestionId
+              : null,
+
+          currentQuestionIndex:
+            Number(
+              presentation
+                .current_question_index
+            ) || null,
+
+          questionStartedAt:
+            presentation
+              .question_started_at,
+
+          questionEndsAt:
+            presentation
+              .question_ends_at,
+
+          liveState:
+            presentation.live_state,
+
+          totalQuestions:
+            Number(
+              presentation
+                .total_questions
+            ) || 0,
+
+          answeredCount:
+            Number(
+              presentation
+                .answered_count
+            ) || 0,
+
+          totalAttempts:
+            Number(
+              presentation
+                .total_attempts
+            ) || 0,
+
+          serverTime:
+            presentation.server_time,
+        },
+
+        question:
+          hasCurrentQuestion
+            ? {
+                id:
+                  currentQuestionId,
+
+                questionIndex:
+                  Number(
+                    presentation
+                      .current_question_index
+                  ) || null,
+
+                questionText:
+                  presentation
+                    .question_text,
+
+                optionA:
+                  presentation.answer_a,
+
+                optionB:
+                  presentation.answer_b,
+
+                optionC:
+                  presentation.answer_c,
+
+                optionD:
+                  presentation.answer_d,
+              }
+            : null,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
+getExamPresentationController,
 submitExamAnswerController,
 finishExamController,
 advanceExamQuestionController,

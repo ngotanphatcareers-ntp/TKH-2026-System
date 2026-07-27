@@ -219,6 +219,96 @@ async function getGroupRankings(
 }
 
 
+async function getIndividualRankings(
+  req,
+  res,
+  next
+) {
+  try {
+    const result =
+      await scoreService
+        .getIndividualRankings(
+          req.user.memberId
+        );
+
+    if (!result.success) {
+      const errorMap = {
+        MEMBER_ACCOUNT_REQUIRED: {
+          status: 403,
+          message:
+            "Tài khoản này chưa được liên kết với học viên.",
+        },
+      };
+
+      const mappedError =
+        errorMap[result.code] || {
+          status: 400,
+          message:
+            "Không thể tải bảng xếp hạng cá nhân.",
+        };
+
+      return res
+        .status(mappedError.status)
+        .json({
+          success: false,
+          error: {
+            code:
+              result.code ||
+              "GET_INDIVIDUAL_RANKINGS_ERROR",
+
+            message:
+              mappedError.message,
+          },
+        });
+    }
+
+    const top10 =
+      result.top10.map(item => ({
+        ranking: item.ranking,
+
+        member: {
+          tkhCode:
+            item.member.tkhCode,
+
+          fullName:
+            item.member.fullName,
+        },
+
+        group: item.group
+          ? {
+              id: item.group.id,
+              code: item.group.code,
+              name: item.group.name,
+            }
+          : null,
+      }));
+
+    return res.status(200).json({
+      success: true,
+
+      data: {
+        top10,
+
+        myRanking:
+          result.myRanking
+            ? {
+                ranking:
+                  result.myRanking.ranking,
+
+                totalPoints:
+                  result.myRanking
+                    .totalPoints,
+              }
+            : null,
+
+        total: result.total,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 async function createAdminGroupScore(
   req,
   res,
@@ -453,6 +543,7 @@ module.exports = {
   getMyScores,
   getMyGroupScores,
   getGroupRankings,
+  getIndividualRankings,
   createAdminIndividualScore,
   createAdminGroupScore,
 };

@@ -129,32 +129,167 @@ async function findGroupScoreHistory(groupId) {
       groupId
     )
     .query(`
+      /*
+       * Lịch sử điểm nhóm gồm:
+       * 1. Điểm cộng trực tiếp cho nhóm.
+       * 2. Điểm phát sinh từ từng thành viên
+       *    đang thuộc nhóm trong mùa hiện tại.
+       */
+
       SELECT
-        gst.id,
-        gst.group_id,
-        gst.points,
-        gst.source_type,
-        gst.source_id,
-        gst.description,
-        gst.status,
-        gst.created_by_user_id,
-        gst.created_at,
+        history.id,
+        history.group_id,
+        history.points,
+        history.source_type,
+        history.source_id,
+        history.description,
+        history.status,
+        history.created_by_user_id,
+        history.created_at,
+        history.created_by_username,
+        history.history_type,
+        history.member_id,
+        history.tkh_code,
+        history.member_full_name
 
-        creator.username
-          AS created_by_username
+      FROM
+      (
+        /*
+         * Điểm được cộng/trừ trực tiếp cho nhóm.
+         */
+        SELECT
+          gst.id,
 
-      FROM dbo.group_score_transactions AS gst
+          gst.group_id,
 
-      LEFT JOIN dbo.users AS creator
-        ON creator.id =
-           gst.created_by_user_id
+          CAST(
+            gst.points AS DECIMAL(10, 2)
+          ) AS points,
 
-      WHERE gst.group_id = @groupId
-        AND gst.status = 'ACTIVE'
+          gst.source_type,
+          gst.source_id,
+
+          COALESCE(
+            NULLIF(
+              LTRIM(
+                RTRIM(gst.description)
+              ),
+              ''
+            ),
+            N'Điểm trực tiếp của nhóm'
+          ) AS description,
+
+          gst.status,
+          gst.created_by_user_id,
+          gst.created_at,
+
+          creator.username
+            AS created_by_username,
+
+          'GROUP'
+            AS history_type,
+
+          CAST(NULL AS INT)
+            AS member_id,
+
+          CAST(NULL AS NVARCHAR(50))
+            AS tkh_code,
+
+          CAST(NULL AS NVARCHAR(255))
+            AS member_full_name
+
+        FROM dbo.group_score_transactions
+          AS gst
+
+        LEFT JOIN dbo.users AS creator
+          ON creator.id =
+             gst.created_by_user_id
+
+        WHERE gst.group_id = @groupId
+          AND gst.status = 'ACTIVE'
+
+
+        UNION ALL
+
+
+        /*
+         * Điểm phát sinh từ thành viên
+         * thuộc nhóm trong mùa đang hoạt động.
+         */
+        SELECT
+          st.id,
+
+          sm.group_id,
+
+          CAST(
+            st.applied_points
+            AS DECIMAL(10, 2)
+          ) AS points,
+
+          st.source_type,
+          st.source_id,
+
+          CONCAT(
+            N'Điểm cá nhân - ',
+            m.full_name,
+            CASE
+              WHEN
+                st.description IS NOT NULL
+                AND LTRIM(
+                  RTRIM(st.description)
+                ) <> ''
+              THEN CONCAT(
+                N': ',
+                st.description
+              )
+              ELSE N''
+            END
+          ) AS description,
+
+          st.status,
+          st.created_by_user_id,
+          st.created_at,
+
+          creator.username
+            AS created_by_username,
+
+          'MEMBER'
+            AS history_type,
+
+          m.id
+            AS member_id,
+
+          m.tkh_code,
+
+          m.full_name
+            AS member_full_name
+
+        FROM dbo.score_transactions AS st
+
+        INNER JOIN dbo.season_memberships
+          AS sm
+          ON sm.id =
+             st.season_membership_id
+
+        INNER JOIN dbo.seasons AS s
+          ON s.id = sm.season_id
+          AND s.status = 'ACTIVE'
+
+        INNER JOIN dbo.members AS m
+          ON m.id = sm.member_id
+
+        LEFT JOIN dbo.users AS creator
+          ON creator.id =
+             st.created_by_user_id
+
+        WHERE sm.group_id = @groupId
+          AND sm.status = 'ACTIVE'
+          AND st.status = 'ACTIVE'
+      ) AS history
 
       ORDER BY
-        gst.created_at DESC,
-        gst.id DESC;
+        history.created_at DESC,
+        history.id DESC;
     `);
 
   return result.recordset;
@@ -605,7 +740,98 @@ async function findActiveGroupById(
 }
 
 
+async function findActiveMemberScoreTransactions() {
+  const pool = await getPool();
+
+  const result = await pool
+    .request()
+    .query(`
+      SELECT
+        sm.id AS seasonMembershipId,
+        sm.member_id AS memberId,
+
+        m.tkh_code AS tkhCode,
+        m.full_name AS fullName,
+
+        u.username,
+
+        g.id AS groupId,
+        g.code AS groupCode,
+        g.name AS groupName,
+
+        st.id,
+
+        st.score_category
+          AS scoreCategory,
+
+        st.score_type
+          AS scoreType,
+
+        st.requested_points
+          AS requestedPoints,
+
+        st.applied_points
+          AS appliedPoints,
+
+        st.source_type
+          AS sourceType,
+
+        st.source_id
+          AS sourceId,
+
+        st.source_key
+          AS sourceKey,
+
+        st.description,
+        st.status,
+
+        st.created_by_user_id
+          AS createdByUserId,
+
+        st.created_at
+          AS createdAt,
+
+        st.reversed_by_user_id
+          AS reversedByUserId,
+
+        st.reversed_at
+          AS reversedAt,
+
+        st.reversal_reason
+          AS reversalReason
+
+      FROM dbo.season_memberships AS sm
+
+      INNER JOIN dbo.seasons AS s
+        ON s.id = sm.season_id
+        AND s.status = 'ACTIVE'
+
+      INNER JOIN dbo.members AS m
+        ON m.id = sm.member_id
+
+      LEFT JOIN dbo.users AS u
+        ON u.member_id = m.id
+        AND u.is_active = 1
+
+      LEFT JOIN dbo.groups AS g
+        ON g.id = sm.group_id
+
+      LEFT JOIN dbo.score_transactions AS st
+        ON st.season_membership_id = sm.id
+
+      WHERE sm.status = 'ACTIVE'
+
+      ORDER BY
+        sm.id ASC,
+        st.created_at ASC,
+        st.id ASC;
+    `);
+
+  return result.recordset;
+}
+
 module.exports = {
+    findActiveMemberScoreTransactions,
   findActiveMembershipByMemberId,
   findActiveMembershipByUsername,
   findActiveGroupById,

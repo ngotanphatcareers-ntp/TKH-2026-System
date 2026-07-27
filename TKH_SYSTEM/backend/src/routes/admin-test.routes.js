@@ -13,6 +13,7 @@ const uploadExamQuestionsFile = require(
 );
 
 const {
+  getExamPresentationController,
   getAdminExamsController,
   createExamController,
   deleteExamController,
@@ -72,6 +73,17 @@ router.get(
   getAdminExamsController
 );
 
+/*
+=====================================================
+GET /api/admin/test/exams/:examId/presentation
+Get read-only TV / projector presentation state
+=====================================================
+*/
+
+router.get(
+  "/exams/:examId/presentation",
+  getExamPresentationController
+);
 
 
 /*
