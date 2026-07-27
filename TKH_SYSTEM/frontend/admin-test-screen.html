@@ -335,7 +335,10 @@
 
       const timerEl = document.getElementById("timer");
       const statusEl = document.getElementById("statusBadge");
-      const endMs = Date.parse(questionEndsAt);
+      const endMs =
+        parsePresentationDateTime(
+            questionEndsAt
+        )?.getTime();
 
       function update() {
         const isActive = String(liveState || "").toUpperCase() === "ACTIVE";
@@ -373,6 +376,62 @@
       update();
       countdownTimer = setInterval(update, 250);
     }
+
+    function parsePresentationDateTime(value) {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return value;
+  }
+
+  /*
+   * SQL Server đang trả giờ địa phương Việt Nam
+   * nhưng JSON có thể kèm ký tự Z.
+   * Xóa Z để trình duyệt đọc như giờ địa phương,
+   * giống logic parseSqlLocalDateTime trong app.js.
+   */
+  const normalizedValue =
+    String(value)
+      .replace("Z", "")
+      .replace(/\.\d{3,7}$/, "");
+
+  const match =
+    normalizedValue.match(
+      /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/
+    );
+
+  if (!match) {
+    const fallbackDate =
+      new Date(value);
+
+    return Number.isNaN(
+      fallbackDate.getTime()
+    )
+      ? null
+      : fallbackDate;
+  }
+
+  const [
+    ,
+    year,
+    month,
+    day,
+    hour,
+    minute,
+    second = "0"
+  ] = match;
+
+  return new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+    Number(second)
+  );
+}
 
     function renderPresentation(data) {
       lastPayload = data;

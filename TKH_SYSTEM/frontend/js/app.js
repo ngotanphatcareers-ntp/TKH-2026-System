@@ -3060,126 +3060,33 @@ async function loadAdminEncouragementStats() {
 
     const topReceiversList =
         document.getElementById(
-            "topReceiversList"
+            "topEncouragementReceivers"
         );
 
     const topSendersList =
         document.getElementById(
-            "topSendersList"
+            "topEncouragementSenders"
         );
 
     if (
         !totalElement ||
         !todayElement ||
-        !anonymousElement ||
-        !topReceiversList ||
-        !topSendersList
+        !anonymousElement
     ) {
         return;
     }
 
     const token =
-        localStorage.getItem(
-            "accessToken"
-        );
+        localStorage.getItem("accessToken");
 
     if (!token) {
-        window.location.href =
-            "index.html";
-
+        logoutDemo();
         return;
     }
 
     totalElement.innerText = "...";
     todayElement.innerText = "...";
     anonymousElement.innerText = "...";
-
-    topReceiversList.innerHTML = `
-        <p class="empty-note">
-            Đang tải dữ liệu...
-        </p>
-    `;
-
-    topSendersList.innerHTML = `
-        <p class="empty-note">
-            Đang tải dữ liệu...
-        </p>
-    `;
-
-    function escapeAdminEncouragementText(
-        value
-    ) {
-        return String(value ?? "")
-            .replaceAll("&", "&amp;")
-            .replaceAll("<", "&lt;")
-            .replaceAll(">", "&gt;")
-            .replaceAll('"', "&quot;")
-            .replaceAll("'", "&#039;");
-    }
-
-    function getRankingMemberName(item) {
-        return (
-            item.fullName ||
-            item.member?.fullName ||
-            item.name ||
-            "Không xác định"
-        );
-    }
-
-    function getRankingCount(item) {
-        return Number(
-            item.count ??
-            item.encouragementCount ??
-            item.sentCount ??
-            item.receivedCount ??
-            item.total ??
-            0
-        ) || 0;
-    }
-
-    function renderRankingList({
-        items,
-        listElement,
-        icon,
-        description
-    }) {
-        if (
-            !Array.isArray(items) ||
-            items.length === 0
-        ) {
-            listElement.innerHTML = `
-                <p class="empty-note">
-                    Chưa có dữ liệu khích lệ.
-                </p>
-            `;
-
-            return;
-        }
-
-        listElement.innerHTML =
-            items.map((item, index) => {
-                const fullName =
-                    escapeAdminEncouragementText(
-                        getRankingMemberName(item)
-                    );
-
-                const count =
-                    getRankingCount(item);
-
-                return `
-                    <div class="question-card">
-                        <h3>
-                            ${index + 1}. ${fullName}
-                        </h3>
-
-                        <p>
-                            ${icon} ${count}
-                            lời khích lệ ${description}
-                        </p>
-                    </div>
-                `;
-            }).join("");
-    }
 
     try {
         const response = await fetch(
@@ -3196,20 +3103,14 @@ async function loadAdminEncouragementStats() {
         const result =
             await response.json();
 
-        if (
-            response.status === 401 ||
-            response.status === 403
-        ) {
-            localStorage.removeItem(
-                "accessToken"
-            );
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
 
-            localStorage.removeItem(
-                "currentUser"
-            );
-
+        if (response.status === 403) {
             window.location.href =
-                "index.html";
+                "dashboard.html";
 
             return;
         }
@@ -3219,8 +3120,8 @@ async function loadAdminEncouragementStats() {
             result.success !== true
         ) {
             throw new Error(
-                result.message ||
-                result.error?.message ||
+                result?.error?.message ||
+                result?.message ||
                 "Không thể tải thống kê lời khích lệ."
             );
         }
@@ -3237,31 +3138,55 @@ async function loadAdminEncouragementStats() {
         anonymousElement.innerText =
             Number(summary.anonymous) || 0;
 
-        renderRankingList({
-            items:
-                result.topRecipients,
+        const topRecipients =
+            Array.isArray(
+                result.topRecipients
+            )
+                ? result.topRecipients
+                : [];
 
-            listElement:
-                topReceiversList,
+        const topSenders =
+            Array.isArray(
+                result.topSenders
+            )
+                ? result.topSenders
+                : [];
 
-            icon: "💌",
+        if (topReceiversList) {
+            topReceiversList.innerHTML =
+                topRecipients.length > 0
+                    ? topRecipients
+                        .map(item => `
+                            <li>
+                                ${escapeHtml(
+                                    item.member?.fullName ||
+                                    "Không xác định"
+                                )}
+                                —
+                                ${Number(item.count) || 0}
+                            </li>
+                        `)
+                        .join("")
+                    : "<li>Chưa có dữ liệu.</li>";
+        }
 
-            description:
-                "đã nhận"
-        });
-
-        renderRankingList({
-            items:
-                result.topSenders,
-
-            listElement:
-                topSendersList,
-
-            icon: "👏",
-
-            description:
-                "đã gửi"
-        });
+        if (topSendersList) {
+            topSendersList.innerHTML =
+                topSenders.length > 0
+                    ? topSenders
+                        .map(item => `
+                            <li>
+                                ${escapeHtml(
+                                    item.member?.fullName ||
+                                    "Không xác định"
+                                )}
+                                —
+                                ${Number(item.count) || 0}
+                            </li>
+                        `)
+                        .join("")
+                    : "<li>Chưa có dữ liệu.</li>";
+        }
     } catch (error) {
         console.error(
             "Load admin encouragement stats error:",
@@ -3272,19 +3197,17 @@ async function loadAdminEncouragementStats() {
         todayElement.innerText = "—";
         anonymousElement.innerText = "—";
 
-        const errorMessage = `
-            <p class="empty-note">
-                Không thể tải dữ liệu khích lệ.
-            </p>
-        `;
+        if (topReceiversList) {
+            topReceiversList.innerHTML =
+                "<li>Không thể tải dữ liệu.</li>";
+        }
 
-        topReceiversList.innerHTML =
-            errorMessage;
-
-        topSendersList.innerHTML =
-            errorMessage;
+        if (topSendersList) {
+            topSendersList.innerHTML =
+                "<li>Không thể tải dữ liệu.</li>";
+        }
     }
-}//hết//hết
+}//hết
 
 
 //hàm ghim/bỏ ghim lời khích lệ
@@ -7179,74 +7102,204 @@ async function loadAdminDashboardExtraStatsDemo() {
     }
 }
 
-function loadAdminEncouragementReviewDemo() {
-    const list = document.getElementById("adminEncouragementReviewList");
+async function loadAdminEncouragementReviewDemo() {
+    const list =
+        document.getElementById(
+            "adminEncouragementReviewList"
+        );
 
     if (!list) {
         return;
     }
 
-    const messages = getStoredEncouragementsDemo();
+    const token =
+        localStorage.getItem("accessToken");
 
-    if (messages.length === 0) {
-        list.innerHTML = `
-            <p class="empty-note">Chưa có lời khích lệ nào.</p>
-        `;
+    if (!token) {
+        logoutDemo();
         return;
     }
 
-    list.innerHTML = messages.map((item, index) => `
-        <div class="question-card">
-            <h3>${item.isAnonymous ? "🎭 Ẩn danh với người nhận" : "💌 Công khai"}</h3>
+    list.innerHTML = `
+        <p class="empty-note">
+            Đang tải lời khích lệ...
+        </p>
+    `;
 
-            <p>
-                <strong>Người gửi thật:</strong>
-                ${item.fromFullName} (${item.fromUsername})
-            </p>
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/admin/encouragements`,
+            {
+                method: "GET",
+                headers: {
+                    Authorization:
+                        `Bearer ${token}`
+                }
+            }
+        );
 
-            <p>
-                <strong>Người nhận:</strong>
-                ${item.toFullName} (${item.toUsername})
-            </p>
+        const result =
+            await response.json();
 
-            <p class="question-meta">
-                Thời gian gửi: ${item.createdAt}
-                · Trạng thái đọc: ${item.isRead ? "Đã đọc" : "Chưa đọc"}
-            </p>
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
 
-            <button
-                class="profile-btn"
-                onclick="toggleAdminEncouragementContentDemo(${index})"
+        if (response.status === 403) {
+            window.location.href =
+                "dashboard.html";
+
+            return;
+        }
+
+        if (
+            !response.ok ||
+            result.success !== true
+        ) {
+            throw new Error(
+                result?.error?.message ||
+                result?.message ||
+                "Không thể tải danh sách lời khích lệ."
+            );
+        }
+
+        const messages =
+            Array.isArray(
+                result.encouragements
+            )
+                ? result.encouragements
+                : [];
+
+        if (messages.length === 0) {
+            list.innerHTML = `
+                <p class="empty-note">
+                    Chưa có lời khích lệ nào.
+                </p>
+            `;
+
+            return;
+        }
+
+        list.innerHTML =
+            messages.map(item => {
+                const senderName =
+                    item.sender?.fullName ||
+                    "Không xác định";
+
+                const senderUsername =
+                    item.sender?.username ||
+                    "-";
+
+                const recipientName =
+                    item.recipient?.fullName ||
+                    "Không xác định";
+
+                const recipientUsername =
+                    item.recipient?.username ||
+                    "-";
+
+                const createdAt =
+                    item.createdAt
+                        ? new Date(
+                            item.createdAt
+                        ).toLocaleString(
+                            "vi-VN"
+                        )
+                        : "-";
+
+                return `
+                    <div class="question-card">
+                        <h3>
+                            ${
+                                item.isAnonymous
+                                    ? "🎭 Ẩn danh với người nhận"
+                                    : "💌 Công khai"
+                            }
+                        </h3>
+
+                        <p>
+                            <strong>Người gửi thật:</strong>
+                            ${escapeHtml(senderName)}
+                            (${escapeHtml(senderUsername)})
+                        </p>
+
+                        <p>
+                            <strong>Người nhận:</strong>
+                            ${escapeHtml(recipientName)}
+                            (${escapeHtml(recipientUsername)})
+                        </p>
+
+                        <p class="question-meta">
+                            Thời gian gửi:
+                            ${escapeHtml(createdAt)}
+                            · Trạng thái đọc:
+                            ${
+                                item.isRead
+                                    ? "Đã đọc"
+                                    : "Chưa đọc"
+                            }
+                            · Trạng thái:
+                            ${escapeHtml(item.status || "-")}
+                        </p>
+
+                        <button
+                            class="profile-btn"
+                            onclick="toggleAdminEncouragementContentDemo(${Number(item.id)})"
+                        >
+                            Xem nội dung
+                        </button>
+
+                        <div
+                            id="adminEncouragementContent_${Number(item.id)}"
+                            class="admin-encouragement-content"
+                            style="display: none;"
+                        >
+                            <p>
+                                <strong>Nội dung:</strong>
+                            </p>
+
+                            <p>
+                                ${escapeHtml(item.message)}
+                            </p>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+    } catch (error) {
+        console.error(
+            "Load admin encouragement review error:",
+            error
+        );
+
+        list.innerHTML = `
+            <p
+                class="empty-note"
+                style="color: red;"
             >
-                Xem nội dung
-            </button>
-
-            <div
-                id="adminEncouragementContent_${index}"
-                class="admin-encouragement-content"
-                style="display: none;"
-            >
-                <p><strong>Nội dung:</strong></p>
-                <p>${item.text}</p>
-            </div>
-        </div>
-    `).join("");
+                Không thể tải lời khích lệ.
+            </p>
+        `;
+    }
 }
 
-function toggleAdminEncouragementContentDemo(index) {
-    const content = document.getElementById(
-        "adminEncouragementContent_" + index
-    );
+function toggleAdminEncouragementContentDemo(
+    encouragementId
+) {
+    const content =
+        document.getElementById(
+            "adminEncouragementContent_" +
+            encouragementId
+        );
 
     if (!content) {
         return;
     }
 
-    if (content.style.display === "none") {
-        content.style.display = "block";
-    } else {
-        content.style.display = "none";
-    }
+    content.style.display =
+        content.style.display === "none"
+            ? "block"
+            : "none";
 }
 
 function downloadQuestionsByTypeDemo(questionType) {
