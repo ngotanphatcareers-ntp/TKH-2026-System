@@ -1,9 +1,110 @@
 require("dotenv").config();
 
+const http = require("http");
+const { Server } = require("socket.io");
+
 const app = require("./src/app");
+const authenticateExamSocket = require(
+  "./src/sockets/authenticate-exam-socket"
+);
+
+const registerExamSocketHandlers =
+  require(
+    "./src/sockets/register-exam-socket-handlers"
+  );
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`TKH 2026 Backend running on port ${PORT}`);
-});
+/*
+=====================================================
+HTTP Server
+=====================================================
+*/
+
+const httpServer =
+  http.createServer(app);
+
+/*
+=====================================================
+Socket.IO
+=====================================================
+*/
+
+const io = new Server(
+  httpServer,
+  {
+    cors: {
+      origin: true,
+      methods: [
+        "GET",
+        "POST",
+      ],
+      credentials: true,
+    },
+  }
+);
+
+/*
+=====================================================
+Exam Namespace
+=====================================================
+*/
+
+const examsNamespace =
+  io.of("/exams");
+
+  examsNamespace.use(
+    authenticateExamSocket
+);
+
+app.set(
+  "io",
+  io
+);
+
+app.set(
+  "examsNamespace",
+  examsNamespace
+);
+
+examsNamespace.on(
+  "connection",
+  socket => {
+    console.log(
+      `Exam socket connected: ${socket.id}`
+    );
+
+    registerExamSocketHandlers({
+      examsNamespace,
+      socket,
+    });
+
+    socket.on(
+      "disconnect",
+      reason => {
+        console.log(
+          `Exam socket disconnected: ${socket.id} (${reason})`
+        );
+      }
+    );
+  }
+);
+
+/*
+=====================================================
+Start Server
+=====================================================
+*/
+
+httpServer.listen(
+  PORT,
+  () => {
+    console.log(
+      `TKH 2026 Backend running on port ${PORT}`
+    );
+
+    console.log(
+      "Socket.IO namespace ready: /exams"
+    );
+  }
+);

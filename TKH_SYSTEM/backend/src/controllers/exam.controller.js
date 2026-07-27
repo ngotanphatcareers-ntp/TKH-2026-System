@@ -1,10 +1,13 @@
 const {
+    getExamRealtimeState,
   getExams,
   getAdminExams,
   createExam,
   deleteExam,
   joinWaitingRoom,
   importExamQuestionsFromExcel,
+  startExam,
+  finishExam,
   openExamWaitingRoom,
   closeExamWaitingRoom,
 } = require(
@@ -42,6 +45,7 @@ const STATUS_BY_CODE = {
 
   EXAM_NOT_EDITABLE: 409,
   EXAM_NOT_DRAFT: 409,
+  EXAM_NOT_IN_PROGRESS: 409,
   EXAM_HAS_ATTEMPTS: 409,
   EXAM_HAS_NO_QUESTIONS: 409,
   ANOTHER_EXAM_ACTIVE: 409,
@@ -55,6 +59,117 @@ function sendErrorResponse(res, result) {
       STATUS_BY_CODE[result.code] || 400
     )
     .json(result);
+}
+
+/*
+=====================================================
+Exam realtime event helpers
+=====================================================
+*/
+
+function getExamRoom(examId) {
+  return `exam:${examId}`;
+}
+
+
+function getExamAdminRoom(examId) {
+  return `exam:${examId}:admin`;
+}
+
+
+/*
+The database mutation has already succeeded when this
+helper is called. A Socket broadcast failure must not
+turn that successful API request into an HTTP error.
+*/
+
+async function emitExamRealtimeEvents(
+  req,
+  {
+    examId,
+    eventNames,
+  }
+) {
+  try {
+    const normalizedExamId =
+      Number(examId);
+
+    const examsNamespace =
+      req.app.get(
+        "examsNamespace"
+      );
+
+    if (
+      !examsNamespace ||
+      !Number.isInteger(
+        normalizedExamId
+      ) ||
+      normalizedExamId <= 0
+    ) {
+      return;
+    }
+
+    const stateResult =
+      await getExamRealtimeState({
+        examId:
+          normalizedExamId,
+
+        role: "ADMIN",
+      });
+
+    if (!stateResult.success) {
+      console.error(
+        "Get Exam realtime state for broadcast failed:",
+        stateResult
+      );
+
+      return;
+    }
+
+    const payload = {
+      examId:
+        normalizedExamId,
+
+      realtimeState:
+        stateResult.data
+          .realtimeState,
+    };
+
+    const normalizedEventNames =
+      Array.isArray(eventNames)
+        ? eventNames
+        : [eventNames];
+
+    for (
+      const eventName of
+      normalizedEventNames
+    ) {
+      if (!eventName) {
+        continue;
+      }
+
+      examsNamespace
+        .to(
+          getExamRoom(
+            normalizedExamId
+          )
+        )
+        .to(
+          getExamAdminRoom(
+            normalizedExamId
+          )
+        )
+        .emit(
+          eventName,
+          payload
+        );
+    }
+  } catch (error) {
+    console.error(
+      "Emit Exam realtime event error:",
+      error
+    );
+  }
 }
 
 
@@ -260,6 +375,18 @@ async function openExamWaitingRoomController(
       );
     }
 
+    await emitExamRealtimeEvents(
+      req,
+      {
+        examId:
+          req.params.examId,
+
+        eventNames: [
+          "exam:status",
+        ],
+      }
+    );
+
     return res
       .status(200)
       .json(result);
@@ -301,6 +428,18 @@ async function closeExamWaitingRoomController(
         result
       );
     }
+
+    await emitExamRealtimeEvents(
+      req,
+      {
+        examId:
+          req.params.examId,
+
+        eventNames: [
+          "exam:status",
+        ],
+      }
+    );
 
     return res
       .status(200)
@@ -403,14 +542,168 @@ async function deleteExamController(
   }
 }
 
+/*
+=====================================================
+Admin: Start Exam
+=====================================================
+*/
+
+async function startExamController(
+  req,
+  res,
+  next
+) {
+  try {
+    const result =
+      await startExam({
+        examId: req.params.examId,
+      });
+
+    if (!result.success) {
+      const errorResponses = {
+        INVALID_EXAM_ID: {
+          status: 400,
+          message:
+            "Exam ID không hợp lệ.",
+        },
+
+        ACTIVE_SEASON_NOT_FOUND: {
+          status: 404,
+          message:
+            "Không tìm thấy mùa Thánh Kinh Hè đang hoạt động.",
+        },
+
+        EXAM_NOT_FOUND: {
+          status: 404,
+          message:
+            "Không tìm thấy bài kiểm tra.",
+        },
+
+        EXAM_NOT_IN_ACTIVE_SEASON: {
+          status: 409,
+          message:
+            "Bài kiểm tra không thuộc mùa đang hoạt động.",
+        },
+
+        EXAM_NOT_WAITING_ROOM_OPEN: {
+          status: 409,
+          message:
+            "Phòng chờ của bài kiểm tra chưa mở hoặc bài đã bắt đầu.",
+        },
+
+        EXAM_HAS_NO_QUESTIONS: {
+          status: 409,
+          message:
+            "Bài kiểm tra chưa có câu hỏi.",
+        },
+
+        EXAM_WAITING_ROOM_EMPTY: {
+          status: 409,
+          message:
+            "Phòng chờ chưa có học viên.",
+        },
+      };
+
+      const errorResponse =
+        errorResponses[result.code] || {
+          status: 400,
+          message:
+            "Không thể bắt đầu bài kiểm tra.",
+        };
+
+      return res
+        .status(errorResponse.status)
+        .json({
+          success: false,
+
+          error: {
+            code: result.code,
+            message:
+              errorResponse.message,
+          },
+        });
+    }
+
+    await emitExamRealtimeEvents(
+      req,
+      {
+        examId:
+          req.params.examId,
+
+        eventNames: [
+          "exam:status",
+          "exam:started",
+        ],
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: result.data,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+
+/*
+=====================================================
+Admin: Finish Exam
+=====================================================
+*/
+
+async function finishExamController(
+  req,
+  res,
+  next
+) {
+  try {
+    const result =
+      await finishExam({
+        examId:
+          req.params.examId,
+      });
+
+    if (!result.success) {
+      return sendErrorResponse(
+        res,
+        result
+      );
+    }
+
+    await emitExamRealtimeEvents(
+      req,
+      {
+        examId:
+          req.params.examId,
+
+        eventNames: [
+          "exam:status",
+          "exam:finished",
+        ],
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: result.data,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 
 module.exports = {
-  closeExamWaitingRoomController,
-  openExamWaitingRoomController,
-  deleteExamController,
-  getExamsController,
-  getAdminExamsController,
-  createExamController,
-  joinWaitingRoomController,
-  importExamQuestionsFromExcelController,
+finishExamController,
+closeExamWaitingRoomController,
+startExamController,
+openExamWaitingRoomController,
+deleteExamController,
+getExamsController,
+getAdminExamsController,
+createExamController,
+joinWaitingRoomController,
+importExamQuestionsFromExcelController,
 };

@@ -9,7 +9,12 @@ const {
   createExamQuestion,
   openDraftExamWaitingRoomById,
   findActiveExamBySeasonId,
+  startWaitingRoomExamById,
+  finishInProgressExamById,
   closeOpenExamWaitingRoomById,
+  findExamRealtimeStateById,
+  createLateJoinAttempt,
+  updateWaitingRoomLastSeen,
 } = require(
   "../repositories/exam.repository"
 );
@@ -86,6 +91,122 @@ function mapWaitingRoomEntry(entry) {
 
     joinedAt: entry.joined_at,
     lastSeenAt: entry.last_seen_at,
+  };
+}
+
+
+function mapExamAttempt(attempt) {
+  if (!attempt) {
+    return null;
+  }
+
+  return {
+    id: attempt.id,
+    examId: attempt.exam_id,
+
+    seasonMembershipId:
+      attempt.season_membership_id,
+
+    attemptNo:
+      Number(attempt.attempt_no) || 0,
+
+    status: attempt.status,
+    startedAt: attempt.started_at,
+    submittedAt: attempt.submitted_at,
+
+    score:
+      attempt.score === null ||
+      attempt.score === undefined
+        ? null
+        : Number(attempt.score),
+
+    correctCount:
+      Number(attempt.correct_count) || 0,
+
+    totalQuestions:
+      Number(attempt.total_questions) || 0,
+
+    isLateJoin:
+      Boolean(attempt.is_late_join),
+
+    joinedQuestionIndex:
+      attempt.joined_question_index ===
+        null ||
+      attempt.joined_question_index ===
+        undefined
+        ? null
+        : Number(
+            attempt.joined_question_index
+          ),
+
+    createdAt: attempt.created_at,
+    updatedAt: attempt.updated_at,
+  };
+}
+
+
+function mapExamRealtimeState(state) {
+  if (!state) {
+    return null;
+  }
+
+  return {
+    examId: state.exam_id,
+    seasonId: state.season_id,
+    examName: state.exam_name,
+    examType: state.exam_type,
+    examStatus: state.exam_status,
+
+    timePerQuestion:
+      Number(state.time_per_question) || 0,
+
+    resultVisibility:
+      state.result_visibility,
+
+    currentQuestionId:
+      state.current_question_id === null ||
+      state.current_question_id === undefined
+        ? null
+        : Number(
+            state.current_question_id
+          ),
+
+    currentQuestionIndex:
+      state.current_question_index ===
+        null ||
+      state.current_question_index ===
+        undefined
+        ? null
+        : Number(
+            state.current_question_index
+          ),
+
+    questionStartedAt:
+      state.question_started_at,
+
+    questionEndsAt:
+      state.question_ends_at,
+
+    liveState:
+      state.live_state,
+
+    liveStateUpdatedAt:
+      state.live_state_updated_at,
+
+    totalQuestions:
+      Number(state.total_questions) || 0,
+
+    waitingRoomCount:
+      Number(state.waiting_room_count) || 0,
+
+    totalAttempts:
+      Number(state.total_attempts) || 0,
+
+    timerLocked:
+      Boolean(state.timer_locked),
+
+    serverTime:
+      state.server_time,
   };
 }
 
@@ -1070,9 +1191,764 @@ async function deleteExam({
   };
 }
 
+/*
+=====================================================
+Admin: Start Exam
+=====================================================
+*/
+
+async function startExam({
+  examId,
+}) {
+  const normalizedExamId =
+    Number(examId);
+
+  if (
+    !Number.isInteger(normalizedExamId) ||
+    normalizedExamId <= 0
+  ) {
+    return {
+      success: false,
+      code: "INVALID_EXAM_ID",
+    };
+  }
+
+  const activeSeason =
+    await findActiveSeason();
+
+  if (!activeSeason) {
+    return {
+      success: false,
+      code: "ACTIVE_SEASON_NOT_FOUND",
+    };
+  }
+
+  const exam =
+    await findExamById(
+      normalizedExamId
+    );
+
+  if (!exam) {
+    return {
+      success: false,
+      code: "EXAM_NOT_FOUND",
+    };
+  }
+
+  if (
+    Number(exam.season_id) !==
+    Number(activeSeason.id)
+  ) {
+    return {
+      success: false,
+      code: "EXAM_NOT_IN_ACTIVE_SEASON",
+    };
+  }
+
+  if (
+    String(exam.status).toUpperCase() !==
+    "WAITING_ROOM_OPEN"
+  ) {
+    return {
+      success: false,
+      code:
+        "EXAM_NOT_WAITING_ROOM_OPEN",
+    };
+  }
+
+  const result =
+    await startWaitingRoomExamById({
+      examId: normalizedExamId,
+      seasonId: activeSeason.id,
+    });
+
+  if (
+    result.status ===
+    "NOT_WAITING_ROOM_OPEN"
+  ) {
+    return {
+      success: false,
+      code:
+        "EXAM_NOT_WAITING_ROOM_OPEN",
+    };
+  }
+
+  if (
+    result.status ===
+    "NO_QUESTIONS"
+  ) {
+    return {
+      success: false,
+      code: "EXAM_HAS_NO_QUESTIONS",
+    };
+  }
+
+  if (
+    result.status ===
+    "WAITING_ROOM_EMPTY"
+  ) {
+    return {
+      success: false,
+      code: "EXAM_WAITING_ROOM_EMPTY",
+    };
+  }
+
+  return {
+    success: true,
+
+    data: {
+      exam: mapExam(
+        result.exam
+      ),
+
+      liveState: {
+        currentQuestionId:
+          result.liveState
+            .current_question_id,
+
+        currentQuestionIndex:
+          result.liveState
+            .current_question_index,
+
+        questionStartedAt:
+          result.liveState
+            .started_at,
+
+        questionEndsAt:
+          result.liveState
+            .question_ends_at,
+
+        attemptsCreated:
+          Number(
+            result.liveState
+              .attempts_created
+          ) || 0,
+
+        waitingRoomCount:
+          Number(
+            result.waitingRoomCount
+          ) || 0,
+      },
+    },
+  };
+}
+
+/*
+=====================================================
+Admin: Finish Exam
+=====================================================
+*/
+
+async function finishExam({
+  examId,
+}) {
+  const normalizedExamId =
+    Number(examId);
+
+  if (
+    !Number.isInteger(normalizedExamId) ||
+    normalizedExamId <= 0
+  ) {
+    return {
+      success: false,
+      code: "INVALID_EXAM_ID",
+    };
+  }
+
+  const activeSeason =
+    await findActiveSeason();
+
+  if (!activeSeason) {
+    return {
+      success: false,
+      code: "ACTIVE_SEASON_NOT_FOUND",
+    };
+  }
+
+  const exam =
+    await findExamById(
+      normalizedExamId
+    );
+
+  if (!exam) {
+    return {
+      success: false,
+      code: "EXAM_NOT_FOUND",
+    };
+  }
+
+  if (
+    Number(exam.season_id) !==
+    Number(activeSeason.id)
+  ) {
+    return {
+      success: false,
+      code: "EXAM_NOT_IN_ACTIVE_SEASON",
+    };
+  }
+
+  if (
+    String(exam.status).toUpperCase() !==
+    "IN_PROGRESS"
+  ) {
+    return {
+      success: false,
+      code: "EXAM_NOT_IN_PROGRESS",
+    };
+  }
+
+  const result =
+    await finishInProgressExamById({
+      examId: normalizedExamId,
+      seasonId: activeSeason.id,
+    });
+
+  if (
+    result.status ===
+    "EXAM_NOT_FOUND"
+  ) {
+    return {
+      success: false,
+      code: "EXAM_NOT_FOUND",
+    };
+  }
+
+  if (
+    result.status ===
+    "EXAM_NOT_IN_PROGRESS"
+  ) {
+    return {
+      success: false,
+      code: "EXAM_NOT_IN_PROGRESS",
+    };
+  }
+
+  return {
+    success: true,
+
+    data: {
+      exam:
+        mapExam(result.exam),
+
+      completedAt:
+        result.completedAt,
+
+      attemptsCompleted:
+        result.attemptsCompleted,
+
+      liveStateUpdated:
+        result.liveStateUpdated,
+    },
+  };
+}
+
+
+/*
+=====================================================
+Get authoritative Exam realtime state
+
+ADMIN can inspect the active-season Exam directly.
+Students must have an active-season membership.
+=====================================================
+*/
+
+async function getExamRealtimeState({
+  examId,
+  memberId,
+  role,
+}) {
+  const normalizedExamId =
+    Number(examId);
+
+  if (
+    !Number.isInteger(normalizedExamId) ||
+    normalizedExamId <= 0
+  ) {
+    return {
+      success: false,
+      code: "INVALID_EXAM_ID",
+    };
+  }
+
+  const normalizedRole =
+    typeof role === "string"
+      ? role.trim().toUpperCase()
+      : "";
+
+  let activeSeason;
+
+  if (normalizedRole === "ADMIN") {
+    activeSeason =
+      await findActiveSeason();
+
+    if (!activeSeason) {
+      return {
+        success: false,
+        code:
+          "ACTIVE_SEASON_NOT_FOUND",
+      };
+    }
+  } else {
+    const context =
+      await resolveActiveMembership(
+        memberId
+      );
+
+    if (!context.success) {
+      return context;
+    }
+
+    activeSeason =
+      context.activeSeason;
+  }
+
+  const exam =
+    await findExamById(
+      normalizedExamId
+    );
+
+  if (!exam) {
+    return {
+      success: false,
+      code: "EXAM_NOT_FOUND",
+    };
+  }
+
+  if (
+    Number(exam.season_id) !==
+    Number(activeSeason.id)
+  ) {
+    return {
+      success: false,
+      code:
+        "EXAM_NOT_IN_ACTIVE_SEASON",
+    };
+  }
+
+  if (
+    normalizedRole !== "ADMIN" &&
+    [
+      "DRAFT",
+      "CANCELLED",
+    ].includes(
+      String(exam.status).toUpperCase()
+    )
+  ) {
+    return {
+      success: false,
+      code: "EXAM_NOT_AVAILABLE",
+    };
+  }
+
+  const realtimeState =
+    await findExamRealtimeStateById(
+      normalizedExamId
+    );
+
+  if (!realtimeState) {
+    return {
+      success: false,
+      code: "EXAM_NOT_FOUND",
+    };
+  }
+
+  return {
+    success: true,
+
+    data: {
+      realtimeState:
+        mapExamRealtimeState(
+          realtimeState
+        ),
+    },
+  };
+}
+
+
+/*
+=====================================================
+Enter Exam realtime room
+
+WAITING_ROOM_OPEN:
+- Uses the existing idempotent waiting-room service.
+
+IN_PROGRESS:
+- Returns an existing attempt on reconnect.
+- Creates a late-join attempt when missing.
+- A new late join can only begin while the current
+  question is ACTIVE.
+=====================================================
+*/
+
+async function joinExamRealtime({
+  memberId,
+  examId,
+}) {
+  const normalizedExamId =
+    Number(examId);
+
+  if (
+    !Number.isInteger(normalizedExamId) ||
+    normalizedExamId <= 0
+  ) {
+    return {
+      success: false,
+      code: "INVALID_EXAM_ID",
+    };
+  }
+
+  const context =
+    await resolveActiveMembership(
+      memberId
+    );
+
+  if (!context.success) {
+    return context;
+  }
+
+  const exam =
+    await findExamById(
+      normalizedExamId
+    );
+
+  if (!exam) {
+    return {
+      success: false,
+      code: "EXAM_NOT_FOUND",
+    };
+  }
+
+  if (
+    Number(exam.season_id) !==
+    Number(context.activeSeason.id)
+  ) {
+    return {
+      success: false,
+      code:
+        "EXAM_NOT_IN_ACTIVE_SEASON",
+    };
+  }
+
+  const examStatus =
+    String(exam.status).toUpperCase();
+
+  /*
+  Waiting-room entry
+  */
+
+  if (
+    examStatus ===
+    "WAITING_ROOM_OPEN"
+  ) {
+    const waitingRoomResult =
+      await joinWaitingRoom({
+        memberId,
+        examId:
+          normalizedExamId,
+      });
+
+    if (!waitingRoomResult.success) {
+      return waitingRoomResult;
+    }
+
+    const realtimeState =
+      await findExamRealtimeStateById(
+        normalizedExamId
+      );
+
+    return {
+      success: true,
+
+      data: {
+        mode: "WAITING_ROOM",
+
+        alreadyJoined:
+          waitingRoomResult
+            .alreadyJoined,
+
+        lateJoinCreated: false,
+
+        waitingRoom:
+          waitingRoomResult
+            .waitingRoom,
+
+        attempt: null,
+
+        realtimeState:
+          mapExamRealtimeState(
+            realtimeState
+          ),
+      },
+    };
+  }
+
+  /*
+  Running Exam entry or reconnect
+  */
+
+  if (examStatus === "IN_PROGRESS") {
+    const lookupParams = {
+      examId:
+        normalizedExamId,
+
+      seasonMembershipId:
+        context.membership.id,
+    };
+
+    /*
+    An existing attempt means this is a reconnect.
+    It remains valid even if the current question
+    has already become LOCKED.
+    */
+
+    const existingAttempt =
+      await findLatestAttemptByExamAndMembership(
+        lookupParams
+      );
+
+    if (existingAttempt) {
+      const realtimeState =
+        await findExamRealtimeStateById(
+          normalizedExamId
+        );
+
+      return {
+        success: true,
+
+        data: {
+          mode: "IN_PROGRESS",
+          alreadyJoined: true,
+          lateJoinCreated: false,
+          waitingRoom: null,
+
+          attempt:
+            mapExamAttempt(
+              existingAttempt
+            ),
+
+          realtimeState:
+            mapExamRealtimeState(
+              realtimeState
+            ),
+        },
+      };
+    }
+
+    /*
+    Reconcile the timer before allowing a new
+    late-join attempt.
+    */
+
+    const realtimeStateBeforeJoin =
+      await findExamRealtimeStateById(
+        normalizedExamId
+      );
+
+    if (
+      !realtimeStateBeforeJoin ||
+      !realtimeStateBeforeJoin
+        .current_question_id
+    ) {
+      return {
+        success: false,
+        code:
+          "LIVE_STATE_NOT_FOUND",
+      };
+    }
+
+    if (
+      String(
+        realtimeStateBeforeJoin
+          .live_state
+      ).toUpperCase() !== "ACTIVE"
+    ) {
+      return {
+        success: false,
+        code:
+          "CURRENT_QUESTION_NOT_ACTIVE",
+      };
+    }
+
+    const lateJoinResult =
+      await createLateJoinAttempt({
+        examId:
+          normalizedExamId,
+
+        seasonId:
+          context.activeSeason.id,
+
+        seasonMembershipId:
+          context.membership.id,
+      });
+
+    if (
+      lateJoinResult.status ===
+      "EXAM_NOT_FOUND"
+    ) {
+      return {
+        success: false,
+        code: "EXAM_NOT_FOUND",
+      };
+    }
+
+    if (
+      lateJoinResult.status ===
+      "EXAM_NOT_IN_PROGRESS"
+    ) {
+      return {
+        success: false,
+        code: "EXAM_NOT_IN_PROGRESS",
+      };
+    }
+
+    if (
+      lateJoinResult.status ===
+      "LIVE_STATE_NOT_FOUND"
+    ) {
+      return {
+        success: false,
+        code:
+          "LIVE_STATE_NOT_FOUND",
+      };
+    }
+
+    const realtimeStateAfterJoin =
+      await findExamRealtimeStateById(
+        normalizedExamId
+      );
+
+    return {
+      success: true,
+
+      data: {
+        mode: "IN_PROGRESS",
+
+        alreadyJoined:
+          lateJoinResult.status ===
+          "EXISTING_ATTEMPT",
+
+        lateJoinCreated:
+          lateJoinResult.status ===
+          "CREATED",
+
+        waitingRoom: null,
+
+        attempt:
+          mapExamAttempt(
+            lateJoinResult.attempt
+          ),
+
+        realtimeState:
+          mapExamRealtimeState(
+            realtimeStateAfterJoin
+          ),
+      },
+    };
+  }
+
+  return {
+    success: false,
+    code: "EXAM_NOT_JOINABLE",
+  };
+}
+
+
+/*
+=====================================================
+Touch waiting-room presence
+
+The Socket handler will throttle database writes.
+This service performs only one requested update.
+=====================================================
+*/
+
+async function touchWaitingRoomPresence({
+  memberId,
+  examId,
+}) {
+  const normalizedExamId =
+    Number(examId);
+
+  if (
+    !Number.isInteger(normalizedExamId) ||
+    normalizedExamId <= 0
+  ) {
+    return {
+      success: false,
+      code: "INVALID_EXAM_ID",
+    };
+  }
+
+  const context =
+    await resolveActiveMembership(
+      memberId
+    );
+
+  if (!context.success) {
+    return context;
+  }
+
+  const exam =
+    await findExamById(
+      normalizedExamId
+    );
+
+  if (!exam) {
+    return {
+      success: false,
+      code: "EXAM_NOT_FOUND",
+    };
+  }
+
+  if (
+    Number(exam.season_id) !==
+    Number(context.activeSeason.id)
+  ) {
+    return {
+      success: false,
+      code:
+        "EXAM_NOT_IN_ACTIVE_SEASON",
+    };
+  }
+
+  const waitingRoomEntry =
+    await updateWaitingRoomLastSeen({
+      examId:
+        normalizedExamId,
+
+      seasonMembershipId:
+        context.membership.id,
+    });
+
+  if (!waitingRoomEntry) {
+    return {
+      success: false,
+      code:
+        "WAITING_ROOM_ENTRY_NOT_FOUND",
+    };
+  }
+
+  return {
+    success: true,
+
+    data: {
+      waitingRoom:
+        mapWaitingRoomEntry(
+          waitingRoomEntry
+        ),
+    },
+  };
+}
+
 
 module.exports = {
+  getExamRealtimeState,
+  joinExamRealtime,
+  touchWaitingRoomPresence,
+
+  finishExam,
   closeExamWaitingRoom,
+  startExam,
   openExamWaitingRoom,
   deleteExam,
   getExams,

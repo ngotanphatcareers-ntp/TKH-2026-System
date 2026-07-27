@@ -19,6 +19,8 @@ const {
   importExamQuestionsFromExcelController,
   openExamWaitingRoomController,
   closeExamWaitingRoomController,
+  startExamController,
+  finishExamController,
 } = require(
   "../controllers/exam.controller"
 );
@@ -106,6 +108,31 @@ PATCH /api/admin/test/exams/:examId/close-waiting-room
 router.patch(
   "/exams/:examId/close-waiting-room",
   closeExamWaitingRoomController
+);
+
+/*
+=====================================================
+PATCH /api/admin/test/exams/:examId/start
+Start Exam
+=====================================================
+*/
+
+router.patch(
+  "/exams/:examId/start",
+  startExamController
+);
+
+
+/*
+=====================================================
+PATCH /api/admin/test/exams/:examId/finish
+Finish Exam
+=====================================================
+*/
+
+router.patch(
+  "/exams/:examId/finish",
+  finishExamController
 );
 
 
