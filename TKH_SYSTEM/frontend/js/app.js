@@ -4339,6 +4339,138 @@ function filterMembersTable() {
     updateMemberSearchResult();
 }//hết
 
+
+function exportMembersExcel() {
+    if (
+        typeof XLSX === "undefined"
+    ) {
+        alert(
+            "Thư viện xuất Excel chưa được tải."
+        );
+
+        return;
+    }
+
+    const tableBody =
+        document.getElementById(
+            "adminMembersTableBody"
+        );
+
+    if (!tableBody) {
+        alert(
+            "Không tìm thấy bảng thành viên."
+        );
+
+        return;
+    }
+
+    const tableRows =
+        Array.from(
+            tableBody.querySelectorAll("tr")
+        );
+
+    const exportRows =
+        tableRows
+            .map(row => {
+                const cells =
+                    row.querySelectorAll("td");
+
+                /*
+                 * Bỏ qua:
+                 * - Dòng thông báo chưa có dữ liệu.
+                 * - Cột Mật khẩu.
+                 * - Cột Thao tác.
+                 */
+                if (cells.length < 7) {
+                    return null;
+                }
+
+                return {
+                    "Mã TKH":
+                        cells[0].innerText.trim(),
+
+                    "Họ và tên":
+                        cells[1].innerText.trim(),
+
+                    "Giới tính":
+                        cells[2].innerText.trim(),
+
+                    "Ngày sinh":
+                        cells[3].innerText.trim(),
+
+                    "Điện thoại":
+                        cells[4].innerText.trim(),
+
+                    "Nhóm nhỏ":
+                        cells[5].innerText.trim(),
+
+                    "Vai trò":
+                        cells[6].innerText.trim()
+                };
+            })
+            .filter(Boolean);
+
+    if (exportRows.length === 0) {
+        alert(
+            "Chưa có thành viên để xuất Excel."
+        );
+
+        return;
+    }
+
+    const worksheet =
+        XLSX.utils.json_to_sheet(
+            exportRows
+        );
+
+    /*
+     * Đặt độ rộng cột để file dễ đọc.
+     */
+    worksheet["!cols"] = [
+        { wch: 12 },
+        { wch: 30 },
+        { wch: 12 },
+        { wch: 14 },
+        { wch: 18 },
+        { wch: 20 },
+        { wch: 14 }
+    ];
+
+    /*
+     * Bật bộ lọc trên dòng tiêu đề.
+     */
+    worksheet["!autofilter"] = {
+        ref: `A1:G${exportRows.length + 1}`
+    };
+
+    const workbook =
+        XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        "Danh sách thành viên"
+    );
+
+    const today =
+        new Date();
+
+    const dateText = [
+        today.getFullYear(),
+        String(
+            today.getMonth() + 1
+        ).padStart(2, "0"),
+        String(
+            today.getDate()
+        ).padStart(2, "0")
+    ].join("-");
+
+    XLSX.writeFile(
+        workbook,
+        `TKH-2026-Danh-sach-thanh-vien-${dateText}.xlsx`
+    );
+}
+
 //hàm thống kê thành viên
 function updateMemberSearchResult() {
     const rows = document.querySelectorAll(
