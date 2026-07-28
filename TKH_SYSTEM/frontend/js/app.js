@@ -1,5 +1,5 @@
 const API_BASE_URL =
-    "https://out-circus-effect-intent.trycloudflare.com";
+    "https://artwork-concerts-guided-helicopter.trycloudflare.com";
 
 const demoUsers = [
     {
