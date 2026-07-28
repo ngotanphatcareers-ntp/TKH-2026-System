@@ -149,9 +149,65 @@ async function updatePassword(userId, passwordHash) {
 }
 
 
+async function resetPasswordByMemberId(memberId, passwordHash) {
+  const pool = await getPool();
+
+  const result = await pool
+    .request()
+    .input("memberId", sql.Int, memberId)
+    .input("passwordHash", sql.NVarChar(255), passwordHash)
+    .query(`
+      UPDATE dbo.users
+      SET
+        password_hash = @passwordHash,
+        must_change_password = 1,
+        password_changed_at = SYSDATETIME(),
+        updated_at = SYSDATETIME()
+      OUTPUT
+        INSERTED.id,
+        INSERTED.member_id,
+        INSERTED.username,
+        INSERTED.role,
+        INSERTED.must_change_password
+      WHERE member_id = @memberId
+        AND is_active = 1;
+    `);
+
+  return result.recordset[0] || null;
+}
+
+async function resetPasswordByMemberId(memberId, passwordHash) {
+  const pool = await getPool();
+
+  const result = await pool
+    .request()
+    .input("memberId", sql.Int, memberId)
+    .input("passwordHash", sql.NVarChar(255), passwordHash)
+    .query(`
+      UPDATE dbo.users
+      SET
+        password_hash = @passwordHash,
+        must_change_password = 1,
+        password_changed_at = SYSDATETIME(),
+        updated_at = SYSDATETIME()
+      OUTPUT
+        INSERTED.id,
+        INSERTED.member_id,
+        INSERTED.username,
+        INSERTED.role,
+        INSERTED.must_change_password
+      WHERE member_id = @memberId
+        AND is_active = 1
+        AND role = 'STUDENT';
+    `);
+
+  return result.recordset[0] || null;
+}
+
 module.exports = {
   findUserByUsername,
   findUserById,
   updateLastLogin,
   updatePassword,
+  resetPasswordByMemberId,
 };

@@ -6,6 +6,7 @@ const {
   findUserById,
   updateLastLogin,
   updatePassword,
+  resetPasswordByMemberId,
 } = require("../repositories/auth.repository");
 
 async function changePassword(userId, currentPassword, newPassword) {
@@ -69,37 +70,68 @@ async function getCurrentUser(userId) {
     tkhCode: user.tkh_code,
     seasonMembershipId: user.season_membership_id,
     season: user.season_id
-    ? {
-        id: user.season_id,
-        code: user.season_code,
-        name: user.season_name,
+      ? {
+          id: user.season_id,
+          code: user.season_code,
+          name: user.season_name,
         }
-    : null,
+      : null,
     group: user.group_id
-    ? {
-        id: user.group_id,
-        code: user.group_code,
-        name: user.group_name,
+      ? {
+          id: user.group_id,
+          code: user.group_code,
+          name: user.group_name,
         }
-    : null,
-    mustChangePassword: Boolean(user.must_change_password),
-    season: user.season_id
-    ? {
-        id: user.season_id,
-        code: user.season_code,
-        name: user.season_name,
-        }
-    : null,
-    group: user.group_id
-    ? {
-        id: user.group_id,
-        code: user.group_code,
-        name: user.group_name,
-        }
-    : null,
+      : null,
     mustChangePassword: Boolean(user.must_change_password),
   };
 }
+
+
+async function resetPassword(memberId) {
+  const numericMemberId = Number(memberId);
+
+  if (!Number.isInteger(numericMemberId) || numericMemberId <= 0) {
+    return {
+      success: false,
+      code: "INVALID_MEMBER_ID",
+    };
+  }
+
+  const temporaryPassword = "123456";
+
+  const passwordHash = await bcrypt.hash(
+    temporaryPassword,
+    12
+  );
+
+  const updatedUser = await resetPasswordByMemberId(
+    numericMemberId,
+    passwordHash
+  );
+
+  if (!updatedUser) {
+    return {
+      success: false,
+      code: "USER_NOT_FOUND",
+    };
+  }
+
+  return {
+    success: true,
+    temporaryPassword,
+    user: {
+      id: updatedUser.id,
+      memberId: updatedUser.member_id,
+      username: updatedUser.username,
+      role: updatedUser.role,
+      mustChangePassword: Boolean(
+        updatedUser.must_change_password
+      ),
+    },
+  };
+}
+
 
 function createAccessToken(user) {
   const secret = process.env.JWT_SECRET;
@@ -162,4 +194,5 @@ module.exports = {
   login,
   getCurrentUser,
   changePassword,
+  resetPassword,
 };

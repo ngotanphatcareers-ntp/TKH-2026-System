@@ -4157,14 +4157,32 @@ async function loadAdminMembersTableDemo() {
                         ${account ? "Đã thiết lập" : "Chưa có tài khoản"}
                     </td>
                     <td>
-                        <button
-                            class="profile-btn"
-                            disabled
-                            title="API Reset mật khẩu sẽ được bổ sung sau"
-                        >
-                            Reset
-                        </button>
-                    </td>
+    ${
+        account
+            ? `
+                <button
+                    class="profile-btn"
+                    onclick="resetStudentPasswordDemo(
+                        ${Number(member.id)},
+                        '${escapeHtml(fullName)}',
+                        this
+                    )"
+                    title="Reset mật khẩu về 123456"
+                >
+                    Reset
+                </button>
+            `
+            : `
+                <button
+                    class="profile-btn"
+                    disabled
+                    title="Học viên chưa có tài khoản"
+                >
+                    Reset
+                </button>
+            `
+    }
+</td>
                 </tr>
             `;
         }).join("");
@@ -8610,18 +8628,117 @@ async function loadGroupScoreHistoryDemo() {
     }
 }
 
-function resetStudentPasswordDemo(username) {
+async function resetStudentPasswordDemo(
+    memberId,
+    fullName,
+    buttonElement
+) {
+    const numericMemberId = Number(memberId);
+
+    if (
+        !Number.isInteger(numericMemberId) ||
+        numericMemberId <= 0
+    ) {
+        alert("Mã thành viên không hợp lệ.");
+        return;
+    }
+
     const confirmReset = confirm(
-        "Bạn có chắc muốn reset mật khẩu của học viên này về 123456 không?"
+        `Bạn có chắc muốn reset mật khẩu của:\n\n` +
+        `${fullName}\n\n` +
+        `về mật khẩu mặc định 123456 không?`
     );
 
     if (!confirmReset) {
         return;
     }
 
-    localStorage.removeItem("password_" + username);
+    const token =
+        localStorage.getItem("accessToken");
 
-    alert("Đã reset mật khẩu về mặc định: 123456");
+    if (!token) {
+        logoutDemo();
+        return;
+    }
+
+    const originalText =
+        buttonElement?.innerText || "Reset";
+
+    try {
+        if (buttonElement) {
+            buttonElement.disabled = true;
+            buttonElement.innerText =
+                "Đang reset...";
+        }
+
+        const response = await fetch(
+            `${API_BASE_URL}/api/auth/members/${numericMemberId}/reset-password`,
+            {
+                method: "PUT",
+                headers: {
+                    Authorization:
+                        `Bearer ${token}`
+                }
+            }
+        );
+
+        let result = null;
+
+        try {
+            result = await response.json();
+        } catch (error) {
+            result = null;
+        }
+
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
+
+        if (response.status === 403) {
+            alert(
+                "Bạn không có quyền reset mật khẩu."
+            );
+            return;
+        }
+
+        if (
+            !response.ok ||
+            result?.success !== true
+        ) {
+            throw new Error(
+                result?.error?.message ||
+                "Không thể reset mật khẩu."
+            );
+        }
+
+        const temporaryPassword =
+            result.data?.temporaryPassword ||
+            "123456";
+
+        alert(
+            `Đã reset mật khẩu thành công.\n\n` +
+            `Học viên: ${fullName}\n` +
+            `Mật khẩu mặc định: ${temporaryPassword}\n\n` +
+            `Học viên sẽ được yêu cầu đổi mật khẩu khi đăng nhập.`
+        );
+    } catch (error) {
+        console.error(
+            "Reset student password error:",
+            error
+        );
+
+        alert(
+            error.message ||
+            "Không thể kết nối đến Backend."
+        );
+    } finally {
+        if (buttonElement) {
+            buttonElement.disabled = false;
+            buttonElement.innerText =
+                originalText;
+        }
+    }
 }
 
 function loadAdminScoreSummaryDemo() {

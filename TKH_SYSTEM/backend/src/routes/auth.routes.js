@@ -3,6 +3,7 @@ const { body, validationResult } = require("express-validator");
 
 const authController = require("../controllers/auth.controller");
 const authenticateToken = require("../middleware/authenticate-token");
+const requireRole = require("../middleware/require-role");
 
 const router = express.Router();
 
@@ -58,5 +59,13 @@ router.put(
   validateRequest,
   authController.changePassword
 );
+
+router.put(
+  "/members/:memberId/reset-password",
+  authenticateToken,
+  requireRole("ADMIN"),
+  authController.resetPassword
+);
+
 
 module.exports = router;

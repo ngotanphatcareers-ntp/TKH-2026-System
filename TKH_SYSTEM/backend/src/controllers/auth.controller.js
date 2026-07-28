@@ -90,8 +90,45 @@ async function changePassword(req, res, next) {
   }
 }
 
+
+async function resetPassword(req, res, next) {
+  try {
+    const { memberId } = req.params;
+
+    const result = await authService.resetPassword(memberId);
+
+    if (!result.success) {
+      const statusCode =
+        result.code === "USER_NOT_FOUND" ? 404 : 400;
+
+      return res.status(statusCode).json({
+        success: false,
+        error: {
+          code: result.code,
+          message:
+            result.code === "USER_NOT_FOUND"
+              ? "Không tìm thấy tài khoản học viên."
+              : "Mã học viên không hợp lệ.",
+        },
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        message: "Reset mật khẩu thành công.",
+        temporaryPassword: result.temporaryPassword,
+        user: result.user,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   login,
   me,
   changePassword,
+  resetPassword,
 };
