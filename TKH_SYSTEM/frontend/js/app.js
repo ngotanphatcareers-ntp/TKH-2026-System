@@ -1296,30 +1296,47 @@ function getProfileUsernameFromUrl() {
     return "";
 }
 
-function loadProfileDemo() {
-    const profileNameEl = document.getElementById("profileName");
+async function loadProfileDemo() {
+    const profileNameEl =
+        document.getElementById("profileName");
 
     if (!profileNameEl) {
         return;
     }
 
-    const currentUser = getCurrentUserDemo();
-    const profileUsername = getProfileUsernameFromUrl();
-    const profileUser = findStudentByUsernameDemo(profileUsername) || currentUser;
+    const profileGroupEl =
+        document.getElementById("profileGroup");
 
-    const profileGroupEl = document.getElementById("profileGroup");
-    const profileAvatarEl = document.getElementById("profileAvatar");
-    const profileFullNameEl = document.getElementById("profileFullName");
-    const profileUsernameEl = document.getElementById("profileUsername");
-    const sendBox = document.getElementById("encouragementSendBox");
+    const profileAvatarEl =
+        document.getElementById("profileAvatar");
 
-    if (!profileUser) {
-        profileNameEl.innerText = "Không tìm thấy thành viên";
+    const profileFullNameEl =
+        document.getElementById("profileFullName");
 
-        if (profileGroupEl) profileGroupEl.innerText = "";
-        if (profileAvatarEl) profileAvatarEl.innerText = "?";
-        if (profileFullNameEl) profileFullNameEl.innerText = "Không tìm thấy thành viên";
-        if (profileUsernameEl) profileUsernameEl.innerText = "";
+    const profileUsernameEl =
+        document.getElementById("profileUsername");
+
+    const sendBox =
+        document.getElementById(
+            "encouragementSendBox"
+        );
+
+    const currentUser =
+        getCurrentUserDemo();
+
+    const token =
+        localStorage.getItem("accessToken");
+
+    const profileUsername =
+        getProfileUsernameFromUrl();
+
+    if (
+        !currentUser ||
+        !token ||
+        !profileUsername
+    ) {
+        profileNameEl.innerText =
+            "Không tìm thấy thành viên";
 
         if (sendBox) {
             sendBox.style.display = "none";
@@ -1328,31 +1345,175 @@ function loadProfileDemo() {
         return;
     }
 
-    profileNameEl.innerText = "Hồ sơ: " + profileUser.fullName;
+    profileNameEl.innerText =
+        "Đang tải hồ sơ thành viên...";
 
-    if (profileGroupEl) {
-        profileGroupEl.innerText = "Nhóm: " + profileUser.groupName;
+    if (sendBox) {
+        sendBox.style.display = "none";
     }
 
-    if (profileAvatarEl) {
-        profileAvatarEl.innerText = getStudentAvatarInitialDemo(profileUser);
-    }
+    try {
+        let profileUser = null;
 
-    if (profileFullNameEl) {
-        profileFullNameEl.innerText = profileUser.fullName;
-    }
-
-    if (profileUsernameEl) {
-        profileUsernameEl.innerText =
-            profileUser.username + " · Nhóm " + profileUser.groupName;
-    }
-
-    if (sendBox && currentUser) {
         const isMyProfile =
-            currentUser.username.toLowerCase() ===
-            profileUser.username.toLowerCase();
+            String(currentUser.username)
+                .toLowerCase() ===
+            String(profileUsername)
+                .toLowerCase();
 
-        sendBox.style.display = isMyProfile ? "none" : "block";
+        /*
+         * Nếu mở chính hộp thư của mình,
+         * có thể dùng luôn currentUser.
+         */
+        if (isMyProfile) {
+            profileUser = currentUser;
+        } else {
+            /*
+             * Nếu mở hộp thư người khác,
+             * lấy thông tin người nhận từ Backend.
+             */
+            const response = await fetch(
+                `${API_BASE_URL}/api/encouragements/recipients`,
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization:
+                            `Bearer ${token}`
+                    }
+                }
+            );
+
+            const result =
+                await response.json();
+
+            if (response.status === 401) {
+                logoutDemo();
+                return;
+            }
+
+            if (
+                !response.ok ||
+                result.success !== true
+            ) {
+                throw new Error(
+                    result?.error?.message ||
+                    result?.message ||
+                    "Không thể tải thông tin thành viên."
+                );
+            }
+
+            const recipients =
+                Array.isArray(result.recipients)
+                    ? result.recipients
+                    : [];
+
+            profileUser =
+                recipients.find(item =>
+                    item.username &&
+                    String(item.username)
+                        .toLowerCase() ===
+                    String(profileUsername)
+                        .toLowerCase()
+                ) || null;
+        }
+
+        if (!profileUser) {
+            profileNameEl.innerText =
+                "Không tìm thấy thành viên";
+
+            if (profileGroupEl) {
+                profileGroupEl.innerText = "";
+            }
+
+            if (profileAvatarEl) {
+                profileAvatarEl.innerText = "?";
+            }
+
+            if (profileFullNameEl) {
+                profileFullNameEl.innerText =
+                    "Không tìm thấy thành viên";
+            }
+
+            if (profileUsernameEl) {
+                profileUsernameEl.innerText = "";
+            }
+
+            if (sendBox) {
+                sendBox.style.display = "none";
+            }
+
+            return;
+        }
+
+        const fullName =
+            profileUser.fullName ||
+            profileUser.username ||
+            "Thành viên";
+
+        const groupName =
+            profileUser.group?.name ||
+            profileUser.groupName ||
+            "Chưa phân nhóm";
+
+        profileNameEl.innerText =
+            "Hồ sơ: " + fullName;
+
+        if (profileGroupEl) {
+            profileGroupEl.innerText =
+                "Nhóm: " + groupName;
+        }
+
+        if (profileAvatarEl) {
+            profileAvatarEl.innerText =
+                String(fullName)
+                    .trim()
+                    .charAt(0)
+                    .toUpperCase();
+        }
+
+        if (profileFullNameEl) {
+            profileFullNameEl.innerText =
+                fullName;
+        }
+
+        if (profileUsernameEl) {
+            profileUsernameEl.innerText =
+                profileUser.username +
+                " · Nhóm " +
+                groupName;
+        }
+
+        /*
+         * Hộp gửi chỉ hiện khi:
+         * - Đang xem người khác.
+         * - Người đăng nhập là học viên.
+         */
+        if (sendBox) {
+            const canSend =
+                !isMyProfile &&
+                currentUser.role === "student";
+
+            sendBox.style.display =
+                canSend ? "block" : "none";
+        }
+    } catch (error) {
+        console.error(
+            "Load profile error:",
+            error
+        );
+
+        profileNameEl.innerText =
+            "Không thể tải hồ sơ thành viên";
+
+        if (profileGroupEl) {
+            profileGroupEl.innerText =
+                error.message ||
+                "Vui lòng thử lại.";
+        }
+
+        if (sendBox) {
+            sendBox.style.display = "none";
+        }
     }
 }
 
