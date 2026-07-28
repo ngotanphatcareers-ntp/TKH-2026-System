@@ -1,5 +1,5 @@
 const API_BASE_URL =
-    "https://suits-raising-defeat-appears.trycloudflare.com";
+    "https://out-circus-effect-intent.trycloudflare.com";
 
 const demoUsers = [
     {
