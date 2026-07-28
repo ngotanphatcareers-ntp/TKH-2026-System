@@ -1748,62 +1748,7 @@ async function loadAttendanceHistoryDemo() {
     }
 }//hết
 
-const studyMaterialsDemo = [
-    {
-        session: "Buổi 1",
-        title: "Đức tin đặt nền trên Lời Chúa",
-        bibleVerse: "Thi Thiên 119:105",
-        verseText: "Lời Chúa là ngọn đèn cho chân con, ánh sáng cho đường lối con.",
-        note: "Tài liệu ôn tập dành cho buổi học đầu tiên.",
-        files: [
-            {
-                icon: "📄",
-                name: "Bài học Buổi 1",
-                type: "PDF",
-                size: "2.4 MB",
-                url: "#"
-            },
-            {
-                icon: "🖼️",
-                name: "Slide Buổi 1",
-                type: "PowerPoint",
-                size: "5.1 MB",
-                url: "#"
-            }
-        ]
-    },
-    {
-        session: "Buổi 2",
-        title: "Sống vâng phục Chúa mỗi ngày",
-        bibleVerse: "Giô-suê 1:9",
-        verseText: "Hãy mạnh dạn và can đảm; đừng run sợ, đừng kinh khiếp.",
-        note: "Bao gồm câu gốc và tài liệu ôn tập nhóm nhỏ.",
-        files: [
-            {
-                icon: "📄",
-                name: "Phiếu học tập Buổi 2",
-                type: "PDF",
-                size: "1.8 MB",
-                url: "#"
-            },
-            {
-                icon: "🎵",
-                name: "Audio câu gốc",
-                type: "MP3",
-                size: "3.6 MB",
-                url: "#"
-            }
-        ]
-    },
-    {
-        session: "Buổi 3",
-        title: "Làm chứng về Chúa bằng đời sống",
-        bibleVerse: "Ma-thi-ơ 5:16",
-        verseText: "Ánh sáng các con hãy soi trước mặt người ta...",
-        note: "Tài liệu sẽ được BTC cập nhật sau.",
-        files: []
-    }
-];
+const studyMaterialsDemo = [];
 
 
 function getStoredStudyMaterialsDemo() {
