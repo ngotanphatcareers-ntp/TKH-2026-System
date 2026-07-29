@@ -29,6 +29,12 @@ const adminEncouragementRoutes = require(
 const adminTestRoutes = require("./routes/admin-test.routes");
 const examRoutes = require("./routes/exam.routes");
 
+const documentRoutes = require("./routes/document.routes");
+
+const adminDocumentRoutes = require(
+  "./routes/admin-document.routes"
+);
+
 const app = express();
 
 app.use(helmet());
@@ -48,6 +54,16 @@ app.use(
 app.use(
   "/api/admin/encouragements",
   adminEncouragementRoutes
+);
+
+app.use(
+  "/api/documents",
+  documentRoutes
+);
+
+app.use(
+  "/api/admin/documents",
+  adminDocumentRoutes
 );
 
 app.use("/api/seasons", seasonRoutes);
