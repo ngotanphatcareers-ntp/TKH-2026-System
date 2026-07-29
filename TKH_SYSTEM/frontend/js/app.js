@@ -9164,6 +9164,7 @@ function getBibleChallengeHistoryApi(forceRefresh = false) {
 function resetBibleChallengeApiCache() {
     bcCurrentApiPromise = null;
     bcHistoryApiPromise = null;
+    bcEligibleMembersApi = [];
 }
 
 async function refreshBibleChallengeApiUi() {
@@ -9280,7 +9281,26 @@ async function loadBibleChallengeDemo() {
                 data-group-name="${escapeBibleChallengeHtml(group.name)}"
             >
                 <div class="bc-avatar">
-                    ${escapeBibleChallengeHtml(group.name.charAt(0))}
+                    ${
+                        group.logoPath
+                            ? `
+                                <img
+                                    src="${escapeBibleChallengeHtml(group.logoPath)}"
+                                    alt="Logo nhóm ${escapeBibleChallengeHtml(group.name)}"
+                                    class="bc-group-logo-image"
+                                    onerror="
+                                        this.onerror = null;
+                                        this.parentElement.innerHTML =
+                                            '${escapeBibleChallengeHtml(
+                                                group.name.charAt(0)
+                                            )}';
+                                    "
+                                >
+                            `
+                            : escapeBibleChallengeHtml(
+                                group.name.charAt(0)
+                            )
+                    }
                 </div>
 
                 <div>
@@ -9381,6 +9401,80 @@ function bcRenderMemberPanelStatusDemo(currentData) {
     return false;
 }
 
+function bcRenderEligibleMembersDemo(
+    members,
+    selectedSeasonMembershipId = null
+) {
+    const normalizedMembers =
+        Array.isArray(members)
+            ? members.filter(member =>
+                member?.seasonMembershipId
+            )
+            : [];
+
+    if (normalizedMembers.length === 0) {
+        return `
+            <p class="empty-note">
+                Không có học viên đủ điều kiện trong nhóm này.
+            </p>
+        `;
+    }
+
+    return normalizedMembers
+        .map(member => {
+            const isSelected =
+                Number(member.seasonMembershipId) ===
+                Number(selectedSeasonMembershipId);
+
+            const avatarUrl =
+                getMemberAvatarUrlDemo({
+                    ...member,
+                    tkhCode:
+                        member.tkhCode ||
+                        member.username
+                });
+
+            return `
+                <div
+                    class="bc-card ${
+                        isSelected
+                            ? "selected"
+                            : ""
+                    }"
+                    data-membership-id="${Number(
+                        member.seasonMembershipId
+                    )}"
+                >
+                    <img
+                        class="bc-avatar bc-member-avatar-image"
+                        src="${avatarUrl}"
+                        alt="Avatar của ${escapeBibleChallengeHtml(
+                            member.fullName || "Học viên"
+                        )}"
+                        onerror="
+                            this.onerror = null;
+                            this.src =
+                                'assets/images/members/default-avatar.jpg';
+                        "
+                    >
+
+                    <div>
+                        ${escapeBibleChallengeHtml(
+                            member.fullName ||
+                            "Không xác định"
+                        )}
+                    </div>
+
+                    <small>
+                        ${escapeBibleChallengeHtml(
+                            member.tkhCode || ""
+                        )}
+                    </small>
+                </div>
+            `;
+        })
+        .join("");
+}
 
 async function bcOpenGroupDemo(groupName) {
     if (!bcSelectedGroupApi?.id) {
@@ -9436,20 +9530,10 @@ async function bcOpenGroupDemo(groupName) {
             );
 
         if (!statusHandled) {
-            memberGrid.innerHTML = `
-                <div class="bc-card">
-                    <div class="bc-avatar">🎯</div>
-
-                    <div>
-                        Sẵn sàng random học viên
-                    </div>
-
-                    <small>
-                        Nhấn Random Member để backend chọn một học viên
-                        đã điểm danh và chưa hoàn thành Bible Challenge.
-                    </small>
-                </div>
-            `;
+            memberGrid.innerHTML =
+                bcRenderEligibleMembersDemo(
+                    bcEligibleMembersApi
+                );
         }
     } catch (error) {
         console.error(
@@ -9543,91 +9627,68 @@ async function bcRandomMemberDemo() {
 
         bcSelectedMemberApi = selectedMember;
 
-        const cardCount = Math.min(
-            Math.max(
-                Number(data.eligibleMemberCount || 1),
-                4
-            ),
-            10
-        );
+        let availableMembers =
+            Array.isArray(bcEligibleMembersApi)
+                ? [...bcEligibleMembersApi]
+                : [];
 
-        const winnerIndex =
-            Math.floor(Math.random() * cardCount);
+        const selectedExists =
+            availableMembers.some(member =>
+                Number(
+                    member.seasonMembershipId
+                ) === Number(
+                    selectedMember.seasonMembershipId
+                )
+            );
+
+        if (!selectedExists) {
+            availableMembers.push(
+                selectedMember
+            );
+        }
+
+        if (availableMembers.length === 0) {
+            availableMembers = [
+                selectedMember
+            ];
+        }
 
         bcAvailableMembersDemo =
-            Array.from(
-                { length: cardCount },
-                (_, index) => {
-                    if (index === winnerIndex) {
-                        return selectedMember;
-                    }
+            availableMembers;
 
-                    return {
-                        fullName: "Đang chọn...",
-                        tkhCode: "",
-                        placeholder: true
-                    };
-                }
+        const winnerIndex =
+            bcAvailableMembersDemo.findIndex(
+                member =>
+                    Number(
+                        member.seasonMembershipId
+                    ) === Number(
+                        selectedMember.seasonMembershipId
+                    )
             );
 
         memberGrid.innerHTML =
-            bcAvailableMembersDemo
-                .map(member => `
-                    <div class="bc-card">
-                        ${
-                            member.placeholder
-                                ? `
-                                    <div class="bc-avatar">
-                                        ?
-                                    </div>
-                                `
-                                : `
-                                    <img
-                                        class="bc-avatar bc-member-avatar-image"
-                                        src="${getMemberAvatarUrlDemo({
-                                            ...member,
-                                            tkhCode:
-                                                member.tkhCode ||
-                                                member.username
-                                        })}"
-                                        alt="Avatar của ${escapeBibleChallengeHtml(
-                                            member.fullName || "Học viên"
-                                        )}"
-                                        onerror="
-                                            this.onerror = null;
-                                            this.src =
-                                                'assets/images/members/default-avatar.jpg';
-                                        "
-                                    >
-                                `
-                        }
-
-                        <div>
-                            ${
-                                member.placeholder
-                                    ? "Đang chọn..."
-                                    : escapeBibleChallengeHtml(
-                                        member.fullName
-                                    )
-                            }
-                        </div>
-
-                        <small>
-                            ${
-                                member.placeholder
-                                    ? "Bible Challenge"
-                                    : escapeBibleChallengeHtml(
-                                        member.tkhCode || ""
-                                    )
-                            }
-                        </small>
-                    </div>
-                `)
-                .join("");
+            bcRenderEligibleMembersDemo(
+                bcAvailableMembersDemo
+            );
 
         const cards = Array.from(
             memberGrid.querySelectorAll(".bc-card")
         );
+
+        if (cards.length === 1) {
+            cards[0].classList.add(
+                "selected"
+            );
+
+            bcMemberRollingDemo = false;
+            bcWriteInProgress = false;
+
+            bcShowWinnerDemo(
+                winnerIndex
+            );
+
+            return;
+        }
 
         bcSpinToWinnerDemo(
             cards,
@@ -9636,10 +9697,12 @@ async function bcRandomMemberDemo() {
                 bcMemberRollingDemo = false;
                 bcWriteInProgress = false;
 
-                bcShowWinnerDemo(winnerIndex);
+                bcShowWinnerDemo(
+                    winnerIndex
+                );
             },
-            80,
-            30
+            60,
+            45
         );
     } catch (error) {
         console.error(
@@ -9783,7 +9846,6 @@ async function bcSubmitResultDemo(resultCode) {
 
     const allowedResults = [
         "FULL",
-        "PARTIAL",
         "FAILED",
         "SKIPPED"
     ];
@@ -9819,17 +9881,52 @@ async function bcSubmitResultDemo(resultCode) {
             bcSelectedMemberApi.fullName ||
             "học viên";
 
-        const appliedPoints =
-            Number(data.appliedPoints || 0);
+        const selectedGroupName =
+            data.group?.name ||
+            bcSelectedGroupApi?.name ||
+            "nhóm được chọn";
 
-        let message =
-            `Đã ghi nhận kết quả cho ${memberName}. ` +
-            `Cộng ${appliedPoints} điểm.`;
+        const rewardSummary =
+            data.rewardSummary || {};
 
-        if (data.reachedMaximum) {
+        const rewardedGroupCount =
+            Number(
+                rewardSummary.rewardedGroupCount
+            ) || 0;
+
+        const rewardedMemberCount =
+            Number(
+                rewardSummary.rewardedMemberCount
+            ) || 0;
+
+        const cappedMemberCount =
+            Number(
+                rewardSummary.cappedMemberCount
+            ) || 0;
+
+        let message = "";
+
+        if (result === "FULL") {
+            message =
+                `Đã ghi nhận ${memberName} trả lời đúng.\n\n` +
+                `Nhóm ${selectedGroupName} được cộng điểm cho ` +
+                `${rewardedMemberCount} thành viên.`;
+        } else if (result === "FAILED") {
+            message =
+                `Đã ghi nhận ${memberName} trả lời sai.\n\n` +
+                `Nhóm ${selectedGroupName} nhận 0 điểm.\n` +
+                `${rewardedGroupCount} nhóm còn lại được cộng điểm cho ` +
+                `${rewardedMemberCount} thành viên.`;
+        } else {
+            message =
+                `Đã ghi nhận bỏ qua lượt của ${memberName}.\n\n` +
+                `Không nhóm nào được cộng điểm.`;
+        }
+
+        if (cappedMemberCount > 0) {
             message +=
-                ` Học viên đã đạt giới hạn ` +
-                `${data.maximumPoints} điểm Bible Challenge.`;
+                `\n\nCó ${cappedMemberCount} thành viên đã chạm ` +
+                `giới hạn ${Number(data.maximumPoints) || 60} điểm Bible Challenge.`;
         }
 
         alert(message);
@@ -9912,6 +10009,11 @@ async function bcRandomGroupDemo() {
 
         const selectedGroup = data.group;
 
+        const selectedGroupMembers =
+            Array.isArray(data.eligibleMembers)
+                ? data.eligibleMembers
+                : [];
+
         if (!selectedGroup?.id) {
             throw new Error(
                 "Backend không trả về nhóm được chọn."
@@ -9920,6 +10022,9 @@ async function bcRandomGroupDemo() {
 
         bcSelectedGroupApi = selectedGroup;
         bcSelectedMemberApi = null;
+
+        bcEligibleMembersApi =
+            selectedGroupMembers;
 
         const winnerIndex =
             groupCards.findIndex(card =>
@@ -9951,9 +10056,22 @@ async function bcRandomGroupDemo() {
                     try {
                         await refreshBibleChallengeApiUi();
 
-                        bcOpenGroupDemo(
-                            selectedGroup.name,
-                            true
+                        /*
+                        * refreshBibleChallengeApiUi có thể làm mới cache,
+                        * nên khôi phục lại nhóm và danh sách thành viên
+                        * vừa nhận từ API draw-group.
+                        */
+                        bcSelectedGroupApi =
+                            selectedGroup;
+
+                        bcSelectedMemberApi =
+                            null;
+
+                        bcEligibleMembersApi =
+                            selectedGroupMembers;
+
+                        await bcOpenGroupDemo(
+                            selectedGroup.name
                         );
                     } catch (error) {
                         console.error(
@@ -9992,48 +10110,117 @@ async function bcRandomGroupDemo() {
     }
 }
 
-function bcSpinToWinnerDemo(cards, winnerIndex, finishCallback, minSteps = 50, startSpeed = 30) {
-    let currentIndex = 0;
-    let step = 0;
-    let speed = startSpeed;
+function bcSpinToWinnerDemo(
+    cards,
+    winnerIndex,
+    finishCallback,
+    minSteps = 60,
+    startSpeed = 45
+) {
+    if (
+        !Array.isArray(cards) ||
+        cards.length === 0 ||
+        winnerIndex < 0 ||
+        winnerIndex >= cards.length
+    ) {
+        finishCallback();
+        return;
+    }
 
-    const distance = (winnerIndex - currentIndex + cards.length) % cards.length;
-    const targetSteps = minSteps + distance;
+    let currentIndex =
+        Math.floor(
+            Math.random() * cards.length
+        );
+    let step = 0;
+
+    const distance =
+        (
+            winnerIndex -
+            currentIndex +
+            cards.length
+        ) % cards.length;
+
+    /*
+     * Đảm bảo quay ít nhất minSteps,
+     * đồng thời kết thúc đúng winnerIndex.
+     */
+    const extraSteps =
+        (
+            distance -
+            (minSteps % cards.length) +
+            cards.length
+        ) % cards.length;
+
+    const targetSteps =
+        minSteps + extraSteps;
 
     function spin() {
-        cards.forEach(card => card.classList.remove("selected"));
+        cards.forEach(card =>
+            card.classList.remove("selected")
+        );
 
-        cards[currentIndex].classList.add("selected");
+        cards[currentIndex].classList.add(
+            "selected"
+        );
 
         if (step >= targetSteps) {
-            cards.forEach(card => card.classList.remove("selected"));
-            cards[winnerIndex].classList.add("selected");
+            cards.forEach(card =>
+                card.classList.remove("selected")
+            );
+
+            cards[winnerIndex].classList.add(
+                "selected"
+            );
 
             finishCallback();
             return;
         }
 
-        step++;
+        step += 1;
 
-        currentIndex = (currentIndex + 1) % cards.length;
+        currentIndex =
+            (currentIndex + 1) %
+            cards.length;
 
-        const progress = step / targetSteps;
+        const progress =
+            step / targetSteps;
 
-        if (progress < 0.35) {
-            speed += 1;
-        } else if (progress < 0.65) {
-            speed += 4;
-        } else if (progress < 0.85) {
-            speed += 18;
+        let delay;
+
+        if (progress < 0.60) {
+            /*
+             * 60% đầu quay nhanh.
+             */
+            delay = startSpeed;
         } else {
-            speed += 45;
+            /*
+             * 40% cuối giảm tốc mượt.
+             *
+             * slowProgress chạy từ 0 đến 1.
+             * Bình phương giúp càng gần cuối
+             * càng chậm rõ rệt.
+             */
+            const slowProgress =
+                (progress - 0.60) / 0.40;
+
+            delay =
+                startSpeed +
+                Math.pow(
+                    slowProgress,
+                    2
+                ) * 420;
         }
 
-        setTimeout(spin, speed);
+        setTimeout(
+            spin,
+            Math.round(delay)
+        );
     }
 
     spin();
 }
+
+let bcEligibleMembersApi = [];
 
 let bcGroupRollingDemo = false;
 let bcMemberRollingDemo = false;

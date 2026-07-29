@@ -229,6 +229,12 @@ async function drawGroup(
         group:
           result.group,
 
+        eligibleMembers:
+          result.eligibleMembers,
+
+        eligibleMemberCount:
+          result.eligibleMemberCount,
+
         selection:
           result.selection,
 
@@ -368,6 +374,9 @@ async function submitResult(
 
         scoreTransaction:
           result.scoreTransaction,
+
+        rewardSummary:
+          result.rewardSummary,
 
         message:
           "Ghi nhận kết quả Bible Challenge thành công.",

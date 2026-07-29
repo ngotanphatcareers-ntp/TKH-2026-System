@@ -17,6 +17,7 @@ const {
   findLatestRoundSelection,
   findGroupById,
   findEligibleMembersByGroup,
+  findRewardMemberships,
   findMembershipForChallenge,
   createHistoryRecord,
   findHistoryBySession,
@@ -35,15 +36,13 @@ const {
 
 const RESULT_POINTS = Object.freeze({
   FULL: 10,
-  PARTIAL: 5,
   FAILED: 0,
   SKIPPED: 0,
 });
 
 const RESULT_LABELS = Object.freeze({
-  FULL: "Hoàn thành",
-  PARTIAL: "Hoàn thành một phần",
-  FAILED: "Chưa hoàn thành",
+  FULL: "Trả lời đúng",
+  FAILED: "Trả lời sai",
   SKIPPED: "Bỏ qua",
 });
 
@@ -532,6 +531,15 @@ async function drawGroup({
     };
   }
 
+
+  const selectedGroupMembers =
+    await findEligibleMembersByGroup({
+      seasonId,
+      sessionId,
+      groupId:
+        Number(selectedGroup.id),
+    });
+
   try {
     const selection =
       await createRoundSelection({
@@ -556,6 +564,14 @@ async function drawGroup({
 
       group:
         mapGroup(selectedGroup),
+
+      eligibleMembers:
+        selectedGroupMembers.map(
+          mapMember
+        ),
+
+      eligibleMemberCount:
+        selectedGroupMembers.length,
 
       selection: {
         id: Number(selection.id),
@@ -829,37 +845,63 @@ async function submitResult({
     };
   }
 
+  /*
+   * FULL:
+   * Cộng 10 cho toàn bộ thành viên
+   * thuộc nhóm vừa được random.
+   *
+   * FAILED:
+   * Nhóm vừa được random không bị trừ.
+   * Cộng 10 cho toàn bộ thành viên
+   * thuộc các nhóm còn lại.
+   *
+   * SKIPPED:
+   * Không cộng điểm cho nhóm nào.
+   */
+  let rewardMode = null;
+
+  if (normalizedResult === "FULL") {
+    rewardMode = "SELECTED_GROUP";
+  }
+
+  if (normalizedResult === "FAILED") {
+    rewardMode = "OTHER_GROUPS";
+  }
+
   const requestedPoints =
-    RESULT_POINTS[
-      normalizedResult
-    ];
+    normalizedResult === "SKIPPED"
+      ? 0
+      : 10;
 
-  const existingPoints =
-    await calculateExistingBibleChallengePoints(
-      normalizedMembershipId
-    );
 
-  const remainingPoints =
-    Math.max(
-      MAX_BIBLE_CHALLENGE_POINTS -
-        existingPoints,
-      0
-    );
+  const selectedGroupAwardedPoints =
+    normalizedResult === "FULL"
+      ? 10
+      : 0;
 
-    const appliedPoints =
-      Math.min(
-        requestedPoints,
-        remainingPoints
-      );
+  const pool = await getPool();
 
-    const pool = await getPool();
+  const transaction =
+    new sql.Transaction(pool);
 
-    const transaction =
-      new sql.Transaction(pool);
+  await transaction.begin();
 
-    await transaction.begin();
+  try {
+    const rewardMemberships =
+      rewardMode
+        ? await findRewardMemberships({
+            seasonId,
+            selectedGroupId:
+              normalizedGroupId,
+            rewardMode,
+            transaction,
+          })
+        : [];
 
-    try {
+    /*
+     * History chỉ ghi nhận học viên đại diện
+     * được random và kết quả đúng/sai/bỏ qua.
+     */
     const history =
       await createHistoryRecord({
         seasonId,
@@ -871,7 +913,7 @@ async function submitResult({
         result:
           normalizedResult,
         awardedPoints:
-          appliedPoints,
+          selectedGroupAwardedPoints,
         source:
           "RANDOMIZER",
         createdByUserId:
@@ -879,40 +921,162 @@ async function submitResult({
         transaction,
       });
 
-    const scoreTransaction =
-      await createScoreTransaction({
-        seasonMembershipId:
-          normalizedMembershipId,
+    const scoreTransactions = [];
 
-        scoreCategory:
-          "LEARNING",
+    let rewardedMemberCount = 0;
+    let cappedMemberCount = 0;
+    let totalAppliedPoints = 0;
 
-        scoreType:
-          "BIBLE_CHALLENGE",
+    const rewardedGroupMap =
+      new Map();
 
-        requestedPoints,
+    for (
+      const rewardMembership
+      of rewardMemberships
+    ) {
+      const rewardMembershipId =
+        Number(
+          rewardMembership
+            .season_membership_id
+        );
 
-        appliedPoints,
+      const existingPoints =
+        Number(
+          rewardMembership
+            .existing_bible_challenge_points
+        ) || 0;
 
-        sourceType:
-          "BIBLE_CHALLENGE",
+      const remainingPoints =
+        Math.max(
+          MAX_BIBLE_CHALLENGE_POINTS -
+            existingPoints,
+          0
+        );
 
-        sourceId:
-          Number(history.id),
+      const appliedPoints =
+        Math.min(
+          requestedPoints,
+          remainingPoints
+        );
 
-        sourceKey:
-          `BIBLE_CHALLENGE_HISTORY_${history.id}`,
+      const rewardGroupId =
+        Number(
+          rewardMembership.group_id
+        );
 
-        description:
-          `Bible Challenge - ${session.name} - ${RESULT_LABELS[normalizedResult]}`,
+      if (
+        !rewardedGroupMap.has(
+          rewardGroupId
+        )
+      ) {
+        rewardedGroupMap.set(
+          rewardGroupId,
+          {
+            id: rewardGroupId,
+            code:
+              rewardMembership
+                .group_code,
+            name:
+              rewardMembership
+                .group_name,
+            rewardedMemberCount: 0,
+            cappedMemberCount: 0,
+            totalAppliedPoints: 0,
+          }
+        );
+      }
 
-        createdByUserId:
-          normalizedAdminUserId,
-        transaction,
-      });
-      await transaction.commit();
+      const groupSummary =
+        rewardedGroupMap.get(
+          rewardGroupId
+        );
 
-      return {
+      /*
+       * Người đã đủ 60 điểm không tạo thêm
+       * giao dịch 0 điểm.
+       */
+      if (appliedPoints <= 0) {
+        cappedMemberCount += 1;
+        groupSummary.cappedMemberCount += 1;
+        continue;
+      }
+
+      const scoreTransaction =
+        await createScoreTransaction({
+          seasonMembershipId:
+            rewardMembershipId,
+
+          scoreCategory:
+            "LEARNING",
+
+          scoreType:
+            "BIBLE_CHALLENGE",
+
+          requestedPoints,
+
+          appliedPoints,
+
+          sourceType:
+            "BIBLE_CHALLENGE",
+
+          sourceId:
+            Number(history.id),
+
+          sourceKey:
+            `BIBLE_CHALLENGE_HISTORY_${history.id}_MEMBERSHIP_${rewardMembershipId}`,
+
+          description:
+            normalizedResult === "FULL"
+              ? (
+                  `Bible Challenge - ${session.name} - ` +
+                  `Nhóm ${membership.group_name} trả lời đúng`
+                )
+              : (
+                  `Bible Challenge - ${session.name} - ` +
+                  `Nhóm ${membership.group_name} trả lời sai, ` +
+                  `nhóm khác được cộng điểm`
+                ),
+
+          createdByUserId:
+            normalizedAdminUserId,
+
+          transaction,
+        });
+
+      scoreTransactions.push(
+        scoreTransaction
+      );
+
+      rewardedMemberCount += 1;
+      totalAppliedPoints +=
+        appliedPoints;
+
+      groupSummary
+        .rewardedMemberCount += 1;
+
+      groupSummary
+        .totalAppliedPoints +=
+          appliedPoints;
+
+      if (
+        existingPoints +
+          appliedPoints >=
+        MAX_BIBLE_CHALLENGE_POINTS
+      ) {
+        cappedMemberCount += 1;
+        groupSummary
+          .cappedMemberCount += 1;
+      }
+    }
+
+    await transaction.commit();
+
+    const rewardedGroups =
+      Array.from(
+        rewardedGroupMap.values()
+      );
+
+    return {
       success: true,
 
       session:
@@ -931,23 +1095,26 @@ async function submitResult({
           normalizedResult
         ],
 
+      /*
+       * Giữ các trường này để frontend cũ
+       * chưa bị lỗi trước khi sửa ở bước sau.
+       */
       requestedPoints,
-      appliedPoints,
+
+      appliedPoints:
+        selectedGroupAwardedPoints,
 
       reachedMaximum:
-        existingPoints +
-          appliedPoints >=
-        MAX_BIBLE_CHALLENGE_POINTS,
+        cappedMemberCount > 0,
 
       maximumPoints:
         MAX_BIBLE_CHALLENGE_POINTS,
 
       existingPointsBefore:
-        existingPoints,
+        null,
 
       totalPointsAfter:
-        existingPoints +
-        appliedPoints,
+        null,
 
       group: {
         id:
@@ -959,11 +1126,12 @@ async function submitResult({
         name:
           membership.group_name,
         logoPath:
-          membership.group_logo_path,
+          membership
+            .group_logo_path,
       },
 
       member:
-      mapMember(membership),
+        mapMember(membership),
 
       history: {
         id:
@@ -972,15 +1140,33 @@ async function submitResult({
           history.created_at,
       },
 
-      scoreTransaction,
-    };
-    } catch (error) {
-      if (transaction._aborted !== true) {
-        await transaction.rollback();
-      }
+      /*
+       * Trường cũ: giữ giao dịch đầu tiên
+       * để controller/frontend không lỗi.
+       */
+      scoreTransaction:
+        scoreTransactions[0] ||
+        null,
 
-      if (
-        error.number === 2601 ||
+      rewardSummary: {
+        rewardMode,
+        rewardedGroupCount:
+          rewardedGroups.length,
+        rewardedMemberCount,
+        cappedMemberCount,
+        totalAppliedPoints,
+        rewardedGroups,
+      },
+    };
+  } catch (error) {
+    if (
+      transaction._aborted !== true
+    ) {
+      await transaction.rollback();
+    }
+
+    if (
+      error.number === 2601 ||
       error.number === 2627
     ) {
       return {

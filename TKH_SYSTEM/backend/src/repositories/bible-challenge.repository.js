@@ -476,6 +476,109 @@ async function findMembershipForChallenge({
 }
 
 
+async function findRewardMemberships({
+  seasonId,
+  selectedGroupId,
+  rewardMode,
+  transaction = null,
+}) {
+  const request = transaction
+    ? new sql.Request(transaction)
+    : (await getPool()).request();
+
+  const result = await request
+    .input(
+      "seasonId",
+      sql.Int,
+      seasonId
+    )
+    .input(
+      "selectedGroupId",
+      sql.Int,
+      selectedGroupId
+    )
+    .input(
+      "rewardMode",
+      sql.VarChar(30),
+      rewardMode
+    )
+    .query(`
+      SELECT
+        sm.id AS season_membership_id,
+        sm.season_id,
+        sm.member_id,
+        sm.group_id,
+
+        m.tkh_code,
+        m.full_name,
+
+        g.code AS group_code,
+        g.name AS group_name,
+
+        COALESCE(
+          SUM(
+            CASE
+              WHEN st.status = 'ACTIVE'
+               AND st.score_type = 'BIBLE_CHALLENGE'
+              THEN st.applied_points
+              ELSE 0
+            END
+          ),
+          0
+        ) AS existing_bible_challenge_points
+
+      FROM dbo.season_memberships AS sm
+
+      INNER JOIN dbo.members AS m
+        ON m.id = sm.member_id
+       AND m.status = 'ACTIVE'
+
+      INNER JOIN dbo.groups AS g
+        ON g.id = sm.group_id
+       AND g.season_id = sm.season_id
+       AND g.is_active = 1
+
+      LEFT JOIN dbo.score_transactions AS st
+        ON st.season_membership_id = sm.id
+
+      WHERE sm.season_id = @seasonId
+        AND sm.status = 'ACTIVE'
+
+        AND
+        (
+          (
+            @rewardMode = 'SELECTED_GROUP'
+            AND sm.group_id = @selectedGroupId
+          )
+
+          OR
+
+          (
+            @rewardMode = 'OTHER_GROUPS'
+            AND sm.group_id <> @selectedGroupId
+          )
+        )
+
+      GROUP BY
+        sm.id,
+        sm.season_id,
+        sm.member_id,
+        sm.group_id,
+        m.tkh_code,
+        m.full_name,
+        g.code,
+        g.name
+
+      ORDER BY
+        g.name ASC,
+        m.full_name ASC,
+        sm.id ASC;
+    `);
+
+  return result.recordset;
+}
+
+
 async function createHistoryRecord({
   seasonId,
   sessionId,
@@ -737,6 +840,7 @@ module.exports = {
   findGroupById,
   findEligibleMembersByGroup,
   findMembershipForChallenge,
+  findRewardMemberships,
   createHistoryRecord,
   findHistoryBySession,
   findRoundHistoryBySession,
