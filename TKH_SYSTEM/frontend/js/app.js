@@ -1,5 +1,5 @@
 const API_BASE_URL =
-    "https://initiatives-mtv-customers-exhaust.trycloudflare.com";
+    "https://coast-addressing-gem-thin.trycloudflare.com";
 
 const demoUsers = [
     {
