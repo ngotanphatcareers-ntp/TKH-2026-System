@@ -1784,22 +1784,207 @@ async function loadAttendanceHistoryDemo() {
     }
 }//hết
 
-const studyMaterialsDemo = [];
 
 
-function getStoredStudyMaterialsDemo() {
-    const storedMaterials =
-        JSON.parse(localStorage.getItem("studyMaterialsDemo")) || [];
+/*
+ * =========================================================
+ * DOCUMENT API HELPERS
+ * =========================================================
+ */
 
-    if (storedMaterials.length > 0) {
-        return storedMaterials;
+let studyMaterialsApiCache = [];
+let editingMaterialId = null;
+
+
+/*
+ * Backend hiện lưu mỗi tài liệu thành một dòng trong bảng documents.
+ *
+ * Các thông tin riêng của giao diện cũ như:
+ * - Buổi học
+ * - Câu gốc
+ * - Nội dung câu gốc
+ * - Ghi chú
+ * - Tên file
+ *
+ * được gom vào trường description dưới dạng JSON.
+ */
+function parseStudyMaterialDescriptionDemo(description) {
+    if (!description) {
+        return {};
     }
 
-    return studyMaterialsDemo;
+    try {
+        const parsed = JSON.parse(description);
+
+        if (
+            parsed &&
+            typeof parsed === "object"
+        ) {
+            return parsed;
+        }
+    } catch (error) {
+        /*
+         * Nếu dữ liệu cũ chỉ là chữ bình thường
+         * thì dùng chữ đó làm ghi chú.
+         */
+    }
+
+    return {
+        note: String(description)
+    };
 }
 
-function saveStoredStudyMaterialsDemo(materials) {
-    localStorage.setItem("studyMaterialsDemo", JSON.stringify(materials));
+
+/*
+ * Chuyển dữ liệu Document từ Backend
+ * về cấu trúc mà giao diện Kho tài liệu đang sử dụng.
+ */
+function mapDocumentToStudyMaterialDemo(documentItem) {
+    const metadata =
+        parseStudyMaterialDescriptionDemo(
+            documentItem.description
+        );
+
+    return {
+        id: Number(documentItem.id),
+
+        session:
+            metadata.session ||
+            "Tài liệu học tập",
+
+        title:
+            documentItem.title ||
+            "Tài liệu",
+
+        bibleVerse:
+            metadata.bibleVerse ||
+            "",
+
+        verseText:
+            metadata.verseText ||
+            "",
+
+        note:
+            metadata.note ||
+            "",
+
+        displayOrder:
+            Number(
+                documentItem.displayOrder
+            ) || 0,
+
+        isPublished:
+            Boolean(
+                documentItem.isPublished
+            ),
+
+        files: [
+            {
+                icon:
+                    getMaterialIconDemo(
+                        documentItem.fileType
+                    ),
+
+                name:
+                    metadata.fileName ||
+                    documentItem.title ||
+                    "Tài liệu",
+
+                type:
+                    documentItem.fileType ||
+                    "Link",
+
+                url:
+                    documentItem.fileUrl ||
+                    ""
+            }
+        ]
+    };
+}
+
+
+/*
+ * Hàm dùng chung để gọi các API Document.
+ */
+async function documentApiRequestDemo(
+    path,
+    options = {}
+) {
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
+
+    if (!token) {
+        logoutDemo();
+
+        throw new Error(
+            "Phiên đăng nhập không tồn tại."
+        );
+    }
+
+    const response = await fetch(
+        `${API_BASE_URL}${path}`,
+        {
+            ...options,
+
+            headers: {
+                Authorization:
+                    `Bearer ${token}`,
+
+                ...(
+                    options.body
+                        ? {
+                            "Content-Type":
+                                "application/json"
+                        }
+                        : {}
+                ),
+
+                ...(options.headers || {})
+            }
+        }
+    );
+
+    let result = null;
+
+    try {
+        result =
+            await response.json();
+    } catch (error) {
+        result = null;
+    }
+
+    if (response.status === 401) {
+        logoutDemo();
+
+        throw new Error(
+            "Phiên đăng nhập đã hết hạn."
+        );
+    }
+
+    if (response.status === 403) {
+        throw new Error(
+            "Bạn không có quyền thực hiện thao tác này."
+        );
+    }
+
+    if (
+        !response.ok ||
+        result?.success !== true
+    ) {
+        const validationMessage =
+            result?.error?.details?.[0]?.msg;
+
+        throw new Error(
+            validationMessage ||
+            result?.error?.message ||
+            result?.message ||
+            "Không thể xử lý tài liệu."
+        );
+    }
+
+    return result;
 }
 
 
@@ -3563,60 +3748,152 @@ async function loadTodayEncouragementPreview() {
 }
 
 
-function loadStudyMaterialsDemo() {
-    const list = document.getElementById("studyMaterialsList");
+async function loadStudyMaterialsDemo() {
+    const list =
+        document.getElementById(
+            "studyMaterialsList"
+        );
 
     if (!list) {
         return;
     }
 
-    const materials = getStoredStudyMaterialsDemo();
+    list.innerHTML = `
+        <p class="empty-note">
+            Đang tải tài liệu học tập...
+        </p>
+    `;
 
-    if (materials.length === 0) {
-        list.innerHTML = `
-            <p class="empty-note">Chưa có tài liệu học tập nào.</p>
-        `;
-        return;
-    }
+    try {
+        const result =
+            await documentApiRequestDemo(
+                "/api/documents"
+            );
 
-    list.innerHTML = materials.map(item => `
-        <div class="material-session-card">
-            <div class="material-session-header">
-                <span class="material-session-badge">${item.session}</span>
-                <div>
-                    <h2>${item.title}</h2>
-                    <p>${item.note}</p>
-                </div>
-            </div>
+        const documents =
+            Array.isArray(result.documents)
+                ? result.documents
+                : [];
 
-            <div class="memory-verse-box">
-                <p class="memory-verse-label">📖 Câu gốc</p>
-                <h3>${item.bibleVerse}</h3>
-                <p>“${item.verseText}”</p>
-            </div>
+        const materials =
+            documents.map(
+                mapDocumentToStudyMaterialDemo
+            );
 
-            <div class="material-files-list">
-                ${
-                    item.files.length === 0
-                    ? `<p class="empty-note">Tài liệu của buổi này sẽ được cập nhật sau.</p>`
-                    : item.files.map(file => `
-                        <div class="material-file-card">
-                            <div class="material-file-icon">${file.icon}</div>
+        if (materials.length === 0) {
+            list.innerHTML = `
+                <p class="empty-note">
+                    Chưa có tài liệu học tập nào.
+                </p>
+            `;
 
-                            <div class="material-file-info">
-                                <h3>${file.name}</h3>
-                                <p>${file.type}</p>
-                            </div>
+            return;
+        }
 
-                            <a class="material-open-btn" href="${file.url}" target="_blank">
-                                ${getMaterialOpenButtonTextDemo(file.type)}
-                            </a>
+        list.innerHTML =
+            materials.map(item => `
+                <div class="material-session-card">
+                    <div class="material-session-header">
+                        <span class="material-session-badge">
+                            ${escapeHtml(item.session)}
+                        </span>
+
+                        <div>
+                            <h2>
+                                ${escapeHtml(item.title)}
+                            </h2>
+
+                            <p>
+                                ${escapeHtml(item.note)}
+                            </p>
                         </div>
-                    `).join("")
-                }
-            </div>
-        </div>
-    `).join("");
+                    </div>
+
+                    ${
+                        item.bibleVerse ||
+                        item.verseText
+                            ? `
+                                <div class="memory-verse-box">
+                                    <p class="memory-verse-label">
+                                        📖 Câu gốc
+                                    </p>
+
+                                    <h3>
+                                        ${escapeHtml(
+                                            item.bibleVerse
+                                        )}
+                                    </h3>
+
+                                    <p>
+                                        “${escapeHtml(
+                                            item.verseText
+                                        )}”
+                                    </p>
+                                </div>
+                            `
+                            : ""
+                    }
+
+                    <div class="material-files-list">
+                        ${
+                            item.files.map(file => `
+                                <div class="material-file-card">
+                                    <div class="material-file-icon">
+                                        ${file.icon}
+                                    </div>
+
+                                    <div class="material-file-info">
+                                        <h3>
+                                            ${escapeHtml(
+                                                file.name
+                                            )}
+                                        </h3>
+
+                                        <p>
+                                            ${escapeHtml(
+                                                file.type
+                                            )}
+                                        </p>
+                                    </div>
+
+                                    <a
+                                        class="material-open-btn"
+                                        href="${escapeHtml(
+                                            file.url
+                                        )}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        ${
+                                            getMaterialOpenButtonTextDemo(
+                                                file.type
+                                            )
+                                        }
+                                    </a>
+                                </div>
+                            `).join("")
+                        }
+                    </div>
+                </div>
+            `).join("");
+    } catch (error) {
+        console.error(
+            "Load study materials error:",
+            error
+        );
+
+        list.innerHTML = `
+            <p
+                class="empty-note"
+                style="color: red;"
+            >
+                ${escapeHtml(
+                    error.message ||
+                    "Không thể tải tài liệu học tập."
+                )}
+            </p>
+        `;
+    }
 }
 
 
@@ -3676,216 +3953,515 @@ function getMaterialOpenButtonTextDemo(fileType) {
     return "Mở Link";
 }
 
-let editingMaterialIndex = null;
+
 
 //hàm thêm tài liệu
-function addStudyMaterialDemo() {
-    const session = document.getElementById("materialSession").value.trim();
-    const title = document.getElementById("materialTitle").value.trim();
-    const bibleVerse = document.getElementById("materialBibleVerse").value.trim();
-    const verseText = document.getElementById("materialVerseText").value.trim();
-    const note = document.getElementById("materialNote").value.trim();
+async function addStudyMaterialDemo() {
+    const session =
+        document.getElementById(
+            "materialSession"
+        )?.value.trim();
 
-    const fileName = document.getElementById("materialFileName").value.trim();
-    const fileType = document.getElementById("materialFileType").value;
-    
-    const fileUrl = document.getElementById("materialFileUrl").value.trim();
+    const title =
+        document.getElementById(
+            "materialTitle"
+        )?.value.trim();
 
-    const message = document.getElementById("materialMessage");
+    const bibleVerse =
+        document.getElementById(
+            "materialBibleVerse"
+        )?.value.trim();
 
-    if (!session || !title || !bibleVerse || !verseText || !note) {
+    const verseText =
+        document.getElementById(
+            "materialVerseText"
+        )?.value.trim();
+
+    const note =
+        document.getElementById(
+            "materialNote"
+        )?.value.trim();
+
+    const fileName =
+        document.getElementById(
+            "materialFileName"
+        )?.value.trim();
+
+    const fileType =
+        document.getElementById(
+            "materialFileType"
+        )?.value;
+
+    const fileUrl =
+        document.getElementById(
+            "materialFileUrl"
+        )?.value.trim();
+
+    const message =
+        document.getElementById(
+            "materialMessage"
+        );
+
+    if (
+        !session ||
+        !title ||
+        !bibleVerse ||
+        !verseText ||
+        !note
+    ) {
         message.style.color = "red";
-        message.innerText = "Vui lòng nhập đầy đủ thông tin buổi học.";
+        message.innerText =
+            "Vui lòng nhập đầy đủ thông tin buổi học.";
+
         return;
     }
 
-    if (!fileName || !fileType || !fileUrl) {
-    message.style.color = "red";
-    message.innerText = "Vui lòng nhập đầy đủ thông tin tài liệu.";
-    return;
+    if (
+        !fileName ||
+        !fileType ||
+        !fileUrl
+    ) {
+        message.style.color = "red";
+        message.innerText =
+            "Vui lòng nhập đầy đủ thông tin tài liệu.";
+
+        return;
     }
 
-    const materials = getStoredStudyMaterialsDemo();
+    const description = JSON.stringify({
+        session,
+        bibleVerse,
+        verseText,
+        note,
+        fileName
+    });
 
-const existingSession = materials.find(
-    item => item.session.toLowerCase() === session.toLowerCase()
-);
+    message.style.color = "#555";
 
-const newFile = {
-    icon: getMaterialIconDemo(fileType),
-    name: fileName,
-    type: fileType,
-    url: fileUrl,
-    updatedAt: new Date().toLocaleString("vi-VN")
-};
+    message.innerText =
+        editingMaterialId
+            ? "Đang cập nhật tài liệu..."
+            : "Đang thêm tài liệu...";
 
-if (editingMaterialIndex !== null) {
-    materials[editingMaterialIndex] = {
-        session: session,
-        title: title,
-        bibleVerse: bibleVerse,
-        verseText: verseText,
-        note: note,
-        files: [newFile],
-        updatedAt: new Date().toLocaleString("vi-VN")
-    };
+    try {
+        const isEditing =
+            Number.isInteger(
+                Number(editingMaterialId)
+            ) &&
+            Number(editingMaterialId) > 0;
 
-    saveStoredStudyMaterialsDemo(materials);
+        const apiPath =
+            isEditing
+                ? `/api/admin/documents/${editingMaterialId}`
+                : "/api/admin/documents";
 
-    message.style.color = "green";
-    message.innerText = "Đã cập nhật tài liệu học tập thành công!";
+        const method =
+            isEditing
+                ? "PUT"
+                : "POST";
 
-    resetStudyMaterialFormDemo();
-    loadAdminStudyMaterialsDemo();
-    loadStudyMaterialsDemo();
+        await documentApiRequestDemo(
+            apiPath,
+            {
+                method,
 
-    return;
-}
+                body: JSON.stringify({
+                    title,
+                    description,
+                    fileUrl,
+                    fileType,
+                    displayOrder: 0,
+                    isPublished: true
+                })
+            }
+        );
 
-    
+        message.style.color = "green";
 
-    if (existingSession) {
-        existingSession.files.push(newFile);
-        existingSession.note = note;
-        existingSession.title = title;
-        existingSession.bibleVerse = bibleVerse;
-        existingSession.verseText = verseText;
-    } else {
-        materials.push({
-            session: session,
-            title: title,
-            bibleVerse: bibleVerse,
-            verseText: verseText,
-            note: note,
-            files: [newFile]
-        });
+        message.innerText =
+            isEditing
+                ? "Đã cập nhật tài liệu học tập thành công!"
+                : "Đã thêm tài liệu học tập thành công!";
+
+        resetStudyMaterialFormDemo();
+
+        await loadAdminStudyMaterialsDemo();
+    } catch (error) {
+        console.error(
+            "Save study material error:",
+            error
+        );
+
+        message.style.color = "red";
+
+        message.innerText =
+            error.message ||
+            "Không thể lưu tài liệu học tập.";
     }
-
-    saveStoredStudyMaterialsDemo(materials);
-
-    message.style.color = "green";
-    message.innerText = "Đã thêm tài liệu học tập thành công!";
-
-    resetStudyMaterialFormDemo();
-
-    loadAdminStudyMaterialsDemo();
 }//hết
 
 
 //hiển thị danh sách admin
-function loadAdminStudyMaterialsDemo() {
-    const list = document.getElementById("adminStudyMaterialsList");
+async function loadAdminStudyMaterialsDemo() {
+    const list =
+        document.getElementById(
+            "adminStudyMaterialsList"
+        );
 
     if (!list) {
         return;
     }
 
-    const materials = getStoredStudyMaterialsDemo();
+    list.innerHTML = `
+        <p class="empty-note">
+            Đang tải danh sách tài liệu...
+        </p>
+    `;
 
-    if (materials.length === 0) {
-        list.innerHTML = `<p class="empty-note">Chưa có tài liệu học tập nào.</p>`;
-        return;
-    }
+    try {
+        const result =
+            await documentApiRequestDemo(
+                "/api/admin/documents"
+            );
 
-    list.innerHTML = materials.map((item, index) => `
-        <div class="material-session-card">
-            <div class="material-session-header">
-                <span class="material-session-badge">${item.session}</span>
-                <div>
-                    <h2>${item.title}</h2>
-                    <p>${item.note}</p>
-                    <p class="question-meta">
-                        ${item.files.length} file tài liệu
-                    </p>
-                </div>
-            </div>
+        const documents =
+            Array.isArray(result.documents)
+                ? result.documents
+                : [];
 
-            <div class="material-files-list">
-                ${
-                    item.files.length === 0
-                    ? `<p class="empty-note">Chưa có file nào.</p>`
-                    : item.files.map(file => `
-                        <div class="material-file-card">
-                            <div class="material-file-icon">${file.icon}</div>
-                            <div class="material-file-info">
-                                <h3>${file.name}</h3>
-                                <p>${file.type}</p>
+        studyMaterialsApiCache =
+            documents.map(
+                mapDocumentToStudyMaterialDemo
+            );
+
+        if (
+            studyMaterialsApiCache.length === 0
+        ) {
+            list.innerHTML = `
+                <p class="empty-note">
+                    Chưa có tài liệu học tập nào.
+                </p>
+            `;
+
+            return;
+        }
+
+        list.innerHTML =
+            studyMaterialsApiCache.map(
+                item => {
+                    const file =
+                        item.files?.[0] || {};
+
+                    return `
+                        <div class="admin-material-card">
+                            <div class="admin-material-info">
+                                <p class="material-session-badge">
+                                    ${escapeHtml(
+                                        item.session
+                                    )}
+                                </p>
+
+                                <h3>
+                                    ${escapeHtml(
+                                        item.title
+                                    )}
+                                </h3>
+
+                                ${
+                                    item.bibleVerse
+                                        ? `
+                                            <p>
+                                                <strong>
+                                                    Câu gốc:
+                                                </strong>
+
+                                                ${escapeHtml(
+                                                    item.bibleVerse
+                                                )}
+                                            </p>
+                                        `
+                                        : ""
+                                }
+
+                                ${
+                                    item.verseText
+                                        ? `
+                                            <p>
+                                                ${escapeHtml(
+                                                    item.verseText
+                                                )}
+                                            </p>
+                                        `
+                                        : ""
+                                }
+
+                                ${
+                                    item.note
+                                        ? `
+                                            <p>
+                                                <strong>
+                                                    Ghi chú:
+                                                </strong>
+
+                                                ${escapeHtml(
+                                                    item.note
+                                                )}
+                                            </p>
+                                        `
+                                        : ""
+                                }
+
+                                <p>
+                                    <strong>
+                                        Tài liệu:
+                                    </strong>
+
+                                    ${escapeHtml(
+                                        file.name || ""
+                                    )}
+                                </p>
+
+                                <p>
+                                    <strong>
+                                        Loại:
+                                    </strong>
+
+                                    ${escapeHtml(
+                                        file.type || ""
+                                    )}
+                                </p>
+
+                                <p>
+                                    <strong>
+                                        Trạng thái:
+                                    </strong>
+
+                                    ${
+                                        item.isPublished
+                                            ? "Đang hiển thị"
+                                            : "Đang ẩn"
+                                    }
+                                </p>
+
+                                ${
+                                    file.url
+                                        ? `
+                                            <a
+                                                href="${escapeHtml(
+                                                    file.url
+                                                )}"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                Mở tài liệu
+                                            </a>
+                                        `
+                                        : ""
+                                }
                             </div>
-                            <a class="material-open-btn" href="${file.url}" target="_blank">
-                                ${getMaterialOpenButtonTextDemo(file.type)}
-                            </a>
+
+                            <div class="admin-material-actions">
+                                <button
+                                    type="button"
+                                    onclick="editStudyMaterialDemo(${item.id})"
+                                >
+                                    Sửa
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="danger-btn"
+                                    onclick="deleteStudyMaterialDemo(${item.id})"
+                                >
+                                    Xóa
+                                </button>
+                            </div>
                         </div>
-                    `).join("")
+                    `;
                 }
-            </div>
+            ).join("");
+    } catch (error) {
+        console.error(
+            "Load admin study materials error:",
+            error
+        );
 
-            <div class="admin-material-actions">
-                <button class="edit-material-btn" onclick="editStudyMaterialDemo(${index})">
-                    ✏️ Sửa
-                </button>
+        studyMaterialsApiCache = [];
 
-                <button class="delete-material-btn" onclick="deleteStudyMaterialDemo(${index})">
-                    🗑️ Xóa buổi học này
-                </button>
-            </div>
-        </div>
-    `).join("");
+        list.innerHTML = `
+            <p
+                class="empty-note"
+                style="color: red;"
+            >
+                ${escapeHtml(
+                    error.message ||
+                    "Không thể tải danh sách tài liệu."
+                )}
+            </p>
+        `;
+    }
 }//hết
 
 //hàm xóa tài liệu
-function deleteStudyMaterialDemo(index) {
-    const confirmDelete = confirm(
-        "Bạn có chắc muốn xóa toàn bộ tài liệu của buổi học này không?"
-    );
+async function deleteStudyMaterialDemo(
+    materialId
+) {
+    const item =
+        studyMaterialsApiCache.find(
+            material =>
+                Number(material.id) ===
+                Number(materialId)
+        );
 
-    if (!confirmDelete) {
+    if (!item) {
+        alert(
+            "Không tìm thấy tài liệu cần xóa."
+        );
+
         return;
     }
 
-    const materials = getStoredStudyMaterialsDemo();
+    const confirmed =
+        confirm(
+            `Bạn có chắc muốn xóa tài liệu "${item.title}" không?`
+        );
 
-    materials.splice(index, 1);
+    if (!confirmed) {
+        return;
+    }
 
-    saveStoredStudyMaterialsDemo(materials);
+    try {
+        await documentApiRequestDemo(
+            `/api/admin/documents/${materialId}`,
+            {
+                method: "DELETE"
+            }
+        );
 
-    loadAdminStudyMaterialsDemo();
-    loadStudyMaterialsDemo();
+        if (
+            Number(editingMaterialId) ===
+            Number(materialId)
+        ) {
+            resetStudyMaterialFormDemo();
+        }
+
+        await loadAdminStudyMaterialsDemo();
+
+        alert(
+            "Đã xóa tài liệu học tập thành công."
+        );
+    } catch (error) {
+        console.error(
+            "Delete study material error:",
+            error
+        );
+
+        alert(
+            error.message ||
+            "Không thể xóa tài liệu học tập."
+        );
+    }
 }//hết
 
 
 //hàm edit
-function editStudyMaterialDemo(index) {
-    const materials = getStoredStudyMaterialsDemo();
-    const material = materials[index];
+function editStudyMaterialDemo(materialId) {
+    const item =
+        studyMaterialsApiCache.find(
+            material =>
+                Number(material.id) ===
+                Number(materialId)
+        );
 
-    if (!material) {
+    if (!item) {
+        alert(
+            "Không tìm thấy tài liệu cần chỉnh sửa."
+        );
+
         return;
     }
 
-    const firstFile = material.files && material.files.length > 0
-        ? material.files[0]
-        : null;
+    const file =
+        item.files?.[0] || {};
 
-    editingMaterialIndex = index;
+    editingMaterialId =
+        Number(item.id);
 
-    document.getElementById("materialSession").value = material.session;
-    document.getElementById("materialTitle").value = material.title;
-    document.getElementById("materialBibleVerse").value = material.bibleVerse;
-    document.getElementById("materialVerseText").value = material.verseText;
-    document.getElementById("materialNote").value = material.note;
+    document.getElementById(
+        "materialSession"
+    ).value =
+        item.session || "";
 
-    if (firstFile) {
-        document.getElementById("materialFileName").value = firstFile.name;
-        document.getElementById("materialFileType").value = firstFile.type;
-        document.getElementById("materialFileUrl").value = firstFile.url;
+    document.getElementById(
+        "materialTitle"
+    ).value =
+        item.title || "";
+
+    document.getElementById(
+        "materialBibleVerse"
+    ).value =
+        item.bibleVerse || "";
+
+    document.getElementById(
+        "materialVerseText"
+    ).value =
+        item.verseText || "";
+
+    document.getElementById(
+        "materialNote"
+    ).value =
+        item.note || "";
+
+    document.getElementById(
+        "materialFileName"
+    ).value =
+        file.name || "";
+
+    document.getElementById(
+        "materialFileType"
+    ).value =
+        file.type || "Link";
+
+    document.getElementById(
+        "materialFileUrl"
+    ).value =
+        file.url || "";
+
+    const message =
+        document.getElementById(
+            "materialMessage"
+        );
+
+    if (message) {
+        message.style.color = "#555";
+
+        message.innerText =
+            "Đang chỉnh sửa tài liệu. Hãy cập nhật thông tin rồi bấm lưu.";
     }
 
-    document.getElementById("materialSubmitButton").innerText = "Lưu thay đổi";
-    document.getElementById("cancelEditMaterialButton").style.display = "inline-block";
+    const submitButton =
+        document.querySelector(
+            '[onclick="addStudyMaterialDemo()"]'
+        );
 
-    const message = document.getElementById("materialMessage");
-    message.style.color = "#2563eb";
-    message.innerText = "Bạn đang chỉnh sửa tài liệu. Sau khi sửa xong, bấm Lưu thay đổi.";
+    if (submitButton) {
+        submitButton.innerText =
+            "Cập nhật tài liệu";
+    }
+
+    const cancelButton =
+        document.getElementById(
+            "cancelEditMaterialBtn"
+        );
+
+    if (cancelButton) {
+        cancelButton.style.display =
+            "inline-block";
+    }
+
+    document.getElementById(
+        "materialSession"
+    )?.focus();
 
     window.scrollTo({
         top: 0,
@@ -3895,35 +4471,71 @@ function editStudyMaterialDemo(index) {
 
 //hàm reset chỉnh sửa
 function resetStudyMaterialFormDemo() {
-    editingMaterialIndex = null;
+    editingMaterialId = null;
 
-    document.getElementById("materialSession").value = "";
-    document.getElementById("materialTitle").value = "";
-    document.getElementById("materialBibleVerse").value = "";
-    document.getElementById("materialVerseText").value = "";
-    document.getElementById("materialNote").value = "";
-    document.getElementById("materialFileName").value = "";
-    document.getElementById("materialFileType").value = "PDF";
-    document.getElementById("materialFileUrl").value = "";
+    const fieldIds = [
+        "materialSession",
+        "materialTitle",
+        "materialBibleVerse",
+        "materialVerseText",
+        "materialNote",
+        "materialFileName",
+        "materialFileUrl"
+    ];
 
-    const submitButton = document.getElementById("materialSubmitButton");
-    const cancelButton = document.getElementById("cancelEditMaterialButton");
+    fieldIds.forEach(fieldId => {
+        const field =
+            document.getElementById(
+                fieldId
+            );
 
-    if (submitButton) {
-        submitButton.innerText = "Thêm tài liệu";
+        if (field) {
+            field.value = "";
+        }
+    });
+
+    const fileType =
+        document.getElementById(
+            "materialFileType"
+        );
+
+    if (fileType) {
+        fileType.value = "Link";
     }
 
+    const message =
+        document.getElementById(
+            "materialMessage"
+        );
+
+    if (message) {
+        message.innerText = "";
+        message.style.color = "";
+    }
+
+    const submitButton =
+        document.querySelector(
+            '[onclick="addStudyMaterialDemo()"]'
+        );
+
+    if (submitButton) {
+        submitButton.innerText =
+            "Thêm tài liệu";
+    }
+
+    const cancelButton =
+        document.getElementById(
+            "cancelEditMaterialBtn"
+        );
+
     if (cancelButton) {
-        cancelButton.style.display = "none";
+        cancelButton.style.display =
+            "none";
     }
 }
 
 function cancelEditStudyMaterialDemo() {
     resetStudyMaterialFormDemo();
-
-    const message = document.getElementById("materialMessage");
-    message.style.color = "#6b7280";
-    message.innerText = "Đã hủy chỉnh sửa.";
 }//hết
 
 function getShortNameFromFullName(fullName) {
