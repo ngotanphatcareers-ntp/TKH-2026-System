@@ -1,5 +1,5 @@
 const API_BASE_URL =
-    "https://coast-addressing-gem-thin.trycloudflare.com";
+    "https://patch-gnu-cambridge-categories.trycloudflare.com";
 
 const demoUsers = [
     {
