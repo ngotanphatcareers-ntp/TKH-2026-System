@@ -4695,6 +4695,60 @@ function setMemberAvatarDemo(
     };
 }
 
+/* =====================================================
+   GROUP LOGO HELPERS
+   ===================================================== */
+
+const GROUP_LOGO_FILE_MAP_DEMO = {
+    "Ca-lép": "Ca-lép.jpg",
+    "E-xơ-ra": "E-xơ-ra.jpg",
+    "Giê-rê-mi": "Giê-rê-mi.jpg",
+    "Giô-na-than": "Giô-na-than.jpg",
+    "Ma-ri": "Ma-ri.jpg",
+    "Nê-hê-mi": "Nê-hê-mi.jpg",
+    "Sa-ra": "Sa-ra.jpg",
+    "Ti-mô-thê": "Ti-mô-thê.jpg"
+};
+
+function getGroupLogoUrlDemo(group) {
+    const groupName =
+        typeof group === "string"
+            ? group
+            : (
+                group?.name ||
+                group?.groupName ||
+                group?.group_name ||
+                ""
+            );
+
+    const normalizedName =
+        String(groupName).trim();
+
+    const fileName =
+        GROUP_LOGO_FILE_MAP_DEMO[normalizedName];
+
+    if (!fileName) {
+        return "assets/images/groups/default-group.jpg";
+    }
+
+    return `assets/images/groups/${encodeURIComponent(fileName)}`;
+}
+
+function setGroupLogoDemo(imageElement, group) {
+    if (!imageElement) {
+        return;
+    }
+
+    imageElement.onerror = function () {
+        this.onerror = null;
+        this.src =
+            "assets/images/groups/default-group.jpg";
+    };
+
+    imageElement.src =
+        getGroupLogoUrlDemo(group);
+}
+
 async function loadRecipientsFromApi() {
     const list = document.getElementById(
         "studentDirectoryList"
@@ -9520,17 +9574,33 @@ async function bcRandomMemberDemo() {
             bcAvailableMembersDemo
                 .map(member => `
                     <div class="bc-card">
-                        <div class="bc-avatar">
-                            ${
-                                member.placeholder
-                                    ? "?"
-                                    : escapeBibleChallengeHtml(
-                                        String(
-                                            member.fullName || "?"
-                                        ).trim().charAt(0)
-                                    )
-                            }
-                        </div>
+                        ${
+                            member.placeholder
+                                ? `
+                                    <div class="bc-avatar">
+                                        ?
+                                    </div>
+                                `
+                                : `
+                                    <img
+                                        class="bc-avatar bc-member-avatar-image"
+                                        src="${getMemberAvatarUrlDemo({
+                                            ...member,
+                                            tkhCode:
+                                                member.tkhCode ||
+                                                member.username
+                                        })}"
+                                        alt="Avatar của ${escapeBibleChallengeHtml(
+                                            member.fullName || "Học viên"
+                                        )}"
+                                        onerror="
+                                            this.onerror = null;
+                                            this.src =
+                                                'assets/images/members/default-avatar.jpg';
+                                        "
+                                    >
+                                `
+                        }
 
                         <div>
                             ${
@@ -9617,11 +9687,28 @@ function bcShowWinnerDemo(index) {
     const name =
         document.getElementById("bcWinnerName");
 
-    avatar.innerText =
-        String(winner.fullName || "?")
-            .trim()
-            .charAt(0)
-            .toUpperCase();
+    const winnerAvatarUrl =
+        getMemberAvatarUrlDemo({
+            ...winner,
+            tkhCode:
+                winner.tkhCode ||
+                winner.username
+        });
+
+    avatar.innerHTML = `
+        <img
+            class="bc-winner-avatar-image"
+            src="${winnerAvatarUrl}"
+            alt="Avatar của ${escapeBibleChallengeHtml(
+                winner.fullName || "Học viên"
+            )}"
+            onerror="
+                this.onerror = null;
+                this.src =
+                    'assets/images/members/default-avatar.jpg';
+            "
+        >
+    `;
 
     name.innerText =
         winner.fullName || "Không xác định";
