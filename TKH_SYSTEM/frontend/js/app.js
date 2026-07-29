@@ -1,5 +1,5 @@
 const API_BASE_URL =
-    "https://patch-gnu-cambridge-categories.trycloudflare.com";
+    "https://nearly-presence-track-techno.trycloudflare.com";
 
 const demoUsers = [
     {
