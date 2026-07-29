@@ -1205,18 +1205,45 @@ function loadDashboardUser() {
     }
 
     if (welcomeName) {
-        const displayName =
-            currentUser.fullName ||
-            currentUser.username ||
-            "Học viên";
+    const displayName =
+        currentUser.fullName ||
+        currentUser.username ||
+        "Học viên";
 
-        const tkhCode = currentUser.tkhCode
-            ? ` (${currentUser.tkhCode})`
-            : "";
+    const tkhCode =
+        currentUser.tkhCode ||
+        currentUser.username ||
+        "";
 
-        welcomeName.innerText =
-            `Xin chào, ${displayName}${tkhCode}`;
-    }
+    welcomeName.innerText =
+        `Xin chào, ${displayName}` +
+        (tkhCode ? ` (${tkhCode})` : "");
+
+    const dashboardAvatar =
+    document.getElementById(
+        "dashboardUserAvatar"
+    );
+
+if (dashboardAvatar) {
+    setMemberAvatarDemo(
+        dashboardAvatar,
+        {
+            ...currentUser,
+            fullName: displayName,
+            tkhCode
+        }
+    );
+}
+
+    setMemberAvatarDemo(
+        dashboardAvatar,
+        {
+            ...currentUser,
+            fullName: displayName,
+            tkhCode
+        }
+    );
+}
 
     if (welcomeGroup) {
         const groupName =
@@ -1426,7 +1453,11 @@ async function loadProfileDemo() {
             }
 
             if (profileAvatarEl) {
-                profileAvatarEl.innerText = "?";
+                profileAvatarEl.src =
+                    "assets/images/members/default-avatar.jpg";
+
+                profileAvatarEl.alt =
+                    "Không tìm thấy avatar";
             }
 
             if (profileFullNameEl) {
@@ -1464,11 +1495,16 @@ async function loadProfileDemo() {
         }
 
         if (profileAvatarEl) {
-            profileAvatarEl.innerText =
-                String(fullName)
-                    .trim()
-                    .charAt(0)
-                    .toUpperCase();
+            setMemberAvatarDemo(
+                profileAvatarEl,
+                {
+                    ...profileUser,
+                    fullName,
+                    tkhCode:
+                        profileUser.tkhCode ||
+                        profileUser.username
+                }
+            );
         }
 
         if (profileFullNameEl) {
@@ -4572,6 +4608,93 @@ function getStudentAvatarInitialDemo(student) {
     return shortName.charAt(0).toUpperCase();
 }
 
+function normalizeAvatarFileNameDemo(fullName) {
+    return String(fullName || "")
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/đ/g, "d")
+        .replace(/Đ/g, "D")
+        .replace(/[^a-zA-Z0-9]/g, "")
+        .toLowerCase();
+}
+
+
+function getMemberAvatarUrlDemo(member) {
+    const tkhCode = String(
+        member?.tkhCode ||
+        member?.username ||
+        ""
+    )
+        .trim()
+        .toLowerCase();
+
+    /*
+     * Hai trường hợp trùng tên Nguyễn Thanh Vân
+     * dùng mã TKH làm tên file.
+     */
+    const avatarByTkhCode = [
+        "tkh043",
+        "tkh165"
+    ];
+
+    if (
+        tkhCode &&
+        avatarByTkhCode.includes(tkhCode)
+    ) {
+        return (
+            "assets/images/members/" +
+            tkhCode +
+            ".jpg"
+        );
+    }
+
+    const normalizedFullName =
+        normalizeAvatarFileNameDemo(
+            member?.fullName
+        );
+
+    if (!normalizedFullName) {
+        return (
+            "assets/images/members/" +
+            "default-avatar.jpg"
+        );
+    }
+
+    return (
+        "assets/images/members/" +
+        normalizedFullName +
+        ".jpg"
+    );
+}
+
+
+function setMemberAvatarDemo(
+    imageElement,
+    member
+) {
+    if (!imageElement) {
+        return;
+    }
+
+    imageElement.src =
+        getMemberAvatarUrlDemo(member);
+
+    imageElement.alt =
+        "Avatar của " +
+        (
+            member?.fullName ||
+            "thành viên"
+        );
+
+    imageElement.onerror = function() {
+        this.onerror = null;
+        this.src =
+            "assets/images/members/" +
+            "default-avatar.jpg";
+    };
+}
+
 async function loadRecipientsFromApi() {
     const list = document.getElementById(
         "studentDirectoryList"
@@ -4657,9 +4780,21 @@ async function loadRecipientsFromApi() {
                     class="student-card"
                     data-name="${student.fullName.toLowerCase()} ${student.username.toLowerCase()} ${groupName.toLowerCase()}"
                 >
-                    <div class="student-avatar">
-                        ${getStudentAvatarInitialDemo(student)}
-                    </div>
+                    <img
+                    class="student-avatar student-avatar-image"
+                    src="${getMemberAvatarUrlDemo({
+                        ...student,
+                        tkhCode:
+                            student.tkhCode ||
+                            student.username
+                    })}"
+                    alt="Avatar của ${escapeHtml(student.fullName)}"
+                    onerror="
+                        this.onerror = null;
+                        this.src =
+                            'assets/images/members/default-avatar.jpg';
+                    "
+                >
 
                     <h3>${student.fullName}</h3>
 

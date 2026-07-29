@@ -2310,3 +2310,182 @@ Admin Exam actions
     cursor: not-allowed;
     opacity: 0.75;
 }
+
+
+/* =====================================================
+   MEMBER PROFILE AVATAR
+   ===================================================== */
+
+.member-profile-summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+
+    margin-bottom: 28px;
+    padding: 22px;
+
+    border-radius: 18px;
+    background: linear-gradient(
+        135deg,
+        #eff6ff,
+        #f8fafc
+    );
+
+    border: 1px solid #dbeafe;
+    text-align: left;
+}
+
+.member-profile-avatar {
+    width: 110px;
+    height: 110px;
+
+    border-radius: 50%;
+    object-fit: cover;
+    object-position: center;
+
+    border: 4px solid #ffffff;
+
+    box-shadow:
+        0 8px 20px rgba(15, 23, 42, 0.15);
+
+    background: #e5e7eb;
+    flex-shrink: 0;
+}
+
+.member-profile-info {
+    min-width: 0;
+}
+
+.member-profile-info h2 {
+    margin: 0 0 8px;
+
+    color: #111827;
+    font-size: 26px;
+    line-height: 1.3;
+}
+
+.member-profile-info p {
+    margin: 0;
+
+    color: #6b7280;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+    .member-profile-summary {
+        flex-direction: column;
+        gap: 14px;
+
+        padding: 20px 16px;
+        text-align: center;
+    }
+
+    .member-profile-avatar {
+        width: 104px;
+        height: 104px;
+    }
+
+    .member-profile-info h2 {
+        font-size: 22px;
+    }
+
+    .member-profile-info p {
+        font-size: 14px;
+    }
+}
+
+/* =====================================================
+   STUDENT DIRECTORY AVATAR
+   ===================================================== */
+
+.student-avatar-image {
+    display: block;
+    object-fit: cover;
+    object-position: center;
+
+    border: 3px solid #ffffff;
+
+    box-shadow:
+        0 5px 14px rgba(15, 23, 42, 0.16);
+
+    background: #e5e7eb;
+}
+
+
+/* =====================================================
+   DASHBOARD USER AVATAR
+   ===================================================== */
+
+.dashboard-user-avatar {
+    width: 78px;
+    height: 78px;
+
+    display: block;
+    object-fit: cover;
+    object-position: center;
+
+    border-radius: 50%;
+    border: 4px solid #ffffff;
+
+    margin-bottom: 14px;
+
+    background: #e5e7eb;
+
+    box-shadow:
+        0 7px 18px rgba(15, 23, 42, 0.16);
+}
+
+@media (max-width: 768px) {
+    .dashboard-user-avatar {
+        width: 70px;
+        height: 70px;
+        margin-bottom: 12px;
+    }
+}
+
+.dashboard-welcome-bar {
+    justify-content: flex-start;
+    gap: 18px;
+}
+
+.dashboard-welcome-text {
+    min-width: 0;
+}
+
+.dashboard-user-avatar {
+    width: 82px;
+    height: 82px;
+    margin: 0;
+    flex-shrink: 0;
+
+    display: block;
+    object-fit: cover;
+    object-position: center;
+
+    border-radius: 50%;
+    border: 4px solid #ffffff;
+
+    background: #e5e7eb;
+
+    box-shadow:
+        0 7px 18px rgba(15, 23, 42, 0.16);
+}
+
+@media (max-width: 768px) {
+    .dashboard-welcome-bar {
+        flex-direction: row;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .dashboard-user-avatar {
+        width: 68px;
+        height: 68px;
+    }
+
+    .dashboard-welcome-text h1 {
+        font-size: 22px;
+    }
+}
