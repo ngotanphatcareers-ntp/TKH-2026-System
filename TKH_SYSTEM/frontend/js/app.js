@@ -9736,6 +9736,8 @@ function bcShowWinnerDemo(index) {
         return;
     }
 
+    bcPlayWinnerSound();
+
     bcSelectedMemberApi = winner;
 
     const backdrop =
@@ -10155,6 +10157,7 @@ function bcSpinToWinnerDemo(
         minSteps + extraSteps;
 
     function spin() {
+
         cards.forEach(card =>
             card.classList.remove("selected")
         );
@@ -10162,6 +10165,8 @@ function bcSpinToWinnerDemo(
         cards[currentIndex].classList.add(
             "selected"
         );
+
+        bcPlayTickSound();
 
         if (step >= targetSteps) {
             cards.forEach(card =>
@@ -10220,6 +10225,68 @@ function bcSpinToWinnerDemo(
     spin();
 }
 
+const bcTickSound =
+    new Audio("assets/sounds/tick.mp3");
+
+const bcWinnerSound =
+    new Audio("assets/sounds/winner.mp3");
+
+bcTickSound.preload = "auto";
+bcWinnerSound.preload = "auto";
+
+function bcPlayTickSound() {
+    try {
+        /*
+         * Clone âm thanh để các tiếng tick ngắn
+         * có thể phát liên tiếp khi vòng quay nhanh.
+         */
+        const sound =
+            bcTickSound.cloneNode();
+
+        sound.volume = 0.8;
+
+        const playPromise =
+            sound.play();
+
+        if (
+            playPromise &&
+            typeof playPromise.catch ===
+                "function"
+        ) {
+            playPromise.catch(() => {});
+        }
+    } catch (error) {
+        console.warn(
+            "Bible Challenge tick sound error:",
+            error
+        );
+    }
+}
+
+function bcPlayWinnerSound() {
+    try {
+        bcWinnerSound.pause();
+        bcWinnerSound.currentTime = 0;
+        bcWinnerSound.volume = 1;
+
+        const playPromise =
+            bcWinnerSound.play();
+
+        if (
+            playPromise &&
+            typeof playPromise.catch ===
+                "function"
+        ) {
+            playPromise.catch(() => {});
+        }
+    } catch (error) {
+        console.warn(
+            "Bible Challenge winner sound error:",
+            error
+        );
+    }
+}
+
 let bcEligibleMembersApi = [];
 
 let bcGroupRollingDemo = false;
@@ -10230,13 +10297,52 @@ let bcMemberRollingDemo = false;
 
 
 function bcShowGroupWinnerDemo(groupName) {
-    const backdrop = document.getElementById("bcWinnerBackdrop");
-    const overlay = document.getElementById("bcWinnerOverlay");
-    const avatar = document.getElementById("bcWinnerAvatar");
-    const name = document.getElementById("bcWinnerName");
+    const backdrop =
+        document.getElementById(
+            "bcWinnerBackdrop"
+        );
 
-    avatar.innerText = "🏆";
-    name.innerText = "Nhóm " + groupName;
+    const overlay =
+        document.getElementById(
+            "bcWinnerOverlay"
+        );
+
+    const avatar =
+        document.getElementById(
+            "bcWinnerAvatar"
+        );
+
+    const name =
+        document.getElementById(
+            "bcWinnerName"
+        );
+
+    const selectedGroup =
+        bcSelectedGroupApi;
+
+    const logoPath =
+        selectedGroup?.logoPath || "";
+
+    if (logoPath) {
+        avatar.innerHTML = `
+            <img
+                class="bc-winner-avatar-image bc-winner-group-logo"
+                src="${escapeBibleChallengeHtml(logoPath)}"
+                alt="Logo nhóm ${escapeBibleChallengeHtml(groupName)}"
+            >
+        `;
+    } else {
+        /*
+         * Chỉ dùng cúp dự phòng nếu nhóm
+         * chưa có logoPath.
+         */
+        avatar.innerText = "🏆";
+    }
+
+    name.innerText =
+        "Nhóm " + groupName;
+
+    bcPlayWinnerSound();
 
     backdrop.classList.remove("hidden");
     overlay.classList.remove("hidden");
