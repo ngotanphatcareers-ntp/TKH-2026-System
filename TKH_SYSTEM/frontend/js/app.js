@@ -1,5 +1,5 @@
 const API_BASE_URL =
-    "https://artwork-concerts-guided-helicopter.trycloudflare.com";
+    "https://initiatives-mtv-customers-exhaust.trycloudflare.com";
 
 const demoUsers = [
     {
