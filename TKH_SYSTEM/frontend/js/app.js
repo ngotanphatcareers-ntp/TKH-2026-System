@@ -1,5 +1,5 @@
 const API_BASE_URL =
-    "https://nearly-presence-track-techno.trycloudflare.com";
+    "https://blast-humans-giants-ware.trycloudflare.com";
 
 const demoUsers = [
     {
