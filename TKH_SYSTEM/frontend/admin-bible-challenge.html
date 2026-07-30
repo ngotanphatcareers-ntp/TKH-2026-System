@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TKH 2026 - Bible Challenge</title>
 
-    <link rel="stylesheet" href="css/style.css?v=141">
+    <link rel="stylesheet" href="css/style.css?v=142">
 </head>
 
 <body class="app-page">
@@ -51,6 +51,16 @@
 </aside>
 
 <main class="main-content">
+
+<button
+    id="bcPresentationToggle"
+    class="bc-presentation-toggle"
+    type="button"
+    onclick="toggleBibleChallengePresentation()"
+    aria-pressed="false"
+>
+    ◀ Ẩn menu
+</button>
 
 <div class="topbar">
 
@@ -282,6 +292,33 @@ Random học viên trả bài Kinh Thánh theo buổi học.
         </div>
     </div>
 </div>
+<script>
+function setBibleChallengePresentation(enabled) {
+    document.body.classList.toggle("bc-presentation-mode", enabled);
+
+    const button = document.getElementById("bcPresentationToggle");
+    if (!button) return;
+
+    button.setAttribute("aria-pressed", String(enabled));
+    button.textContent = enabled ? "☰ Hiện menu" : "◀ Ẩn menu";
+
+    sessionStorage.setItem(
+        "bcPresentationMode",
+        enabled ? "1" : "0"
+    );
+}
+
+function toggleBibleChallengePresentation() {
+    const enabled = !document.body.classList.contains("bc-presentation-mode");
+    setBibleChallengePresentation(enabled);
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    const savedMode = sessionStorage.getItem("bcPresentationMode") === "1";
+    setBibleChallengePresentation(savedMode);
+});
+</script>
+
 <script src="js/app.js?v=144"></script>
 
 </body>
