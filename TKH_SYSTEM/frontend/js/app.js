@@ -6985,68 +6985,92 @@ function getDeviceIdDemo() {
 }
 
 function loadDeviceWarningDemo() {
-    const warningList = document.getElementById("deviceWarningList");
+    const warningList =
+        document.getElementById("deviceWarningList");
 
     if (!warningList) {
         return;
     }
 
-    const attendanceHistory =
-        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
-
-    const deviceMap = {};
-
-    attendanceHistory.forEach(item => {
-        if (!item.deviceId) {
-            return;
-        }
-
-        if (!deviceMap[item.deviceId]) {
-            deviceMap[item.deviceId] = [];
-        }
-
-        const existedUser = deviceMap[item.deviceId].find(
-            user => user.username === item.username
-        );
-
-        if (!existedUser) {
-            deviceMap[item.deviceId].push({
-                username: item.username,
-                fullName: item.fullName,
-                groupName: item.groupName
-            });
-        }
-    });
-
-    const suspiciousDevices = Object.entries(deviceMap)
-        .filter(([deviceId, users]) => users.length >= 2);
+    const suspiciousDevices =
+        Array.isArray(
+            adminAttendanceDeviceWarningsApiCache
+        )
+            ? adminAttendanceDeviceWarningsApiCache
+            : [];
 
     if (suspiciousDevices.length === 0) {
         warningList.innerHTML = `
-            <p class="empty-note">Chưa phát hiện thiết bị điểm danh nhiều tài khoản.</p>
+            <p class="empty-note">
+                Chưa phát hiện thiết bị điểm danh nhiều tài khoản.
+            </p>
         `;
+
         return;
     }
 
-    warningList.innerHTML = suspiciousDevices.map(([deviceId, users]) => `
-        <div class="question-card warning-card">
-            <h3>⚠️ Thiết bị có ${users.length} tài khoản điểm danh</h3>
-            <p class="question-meta">Mã thiết bị: ${deviceId}</p>
+    warningList.innerHTML =
+        suspiciousDevices.map(warning => {
+            const deviceId =
+                warning.deviceId ||
+                "Không xác định";
 
-            ${users.map(user => `
-                <p>
-                    <strong>${user.fullName}</strong>
-                    (${user.username}) · Nhóm ${user.groupName}
-                </p>
-            `).join("")}
-        </div>
-    `).join("");
+            const accountCount =
+                Number(warning.accountCount) || 0;
+
+            const members =
+                Array.isArray(warning.members)
+                    ? warning.members
+                    : [];
+
+            return `
+                <div class="question-card warning-card">
+                    <h3>
+                        ⚠️ Thiết bị có ${accountCount}
+                        tài khoản điểm danh
+                    </h3>
+
+                    <p class="question-meta">
+                        Mã thiết bị:
+                        ${escapeHtml(deviceId)}
+                    </p>
+
+                    ${
+                        members.map(member => `
+                            <p>
+                                <strong>
+                                    ${escapeHtml(
+                                        member.fullName ||
+                                        "Không xác định"
+                                    )}
+                                </strong>
+
+                                ${
+                                    member.seasonMembershipId
+                                        ? `(Membership ${Number(
+                                            member.seasonMembershipId
+                                        )})`
+                                        : ""
+                                }
+
+                                · Nhóm
+                                ${escapeHtml(
+                                    member.groupName ||
+                                    "Chưa phân nhóm"
+                                )}
+                            </p>
+                        `).join("")
+                    }
+                </div>
+            `;
+        }).join("");
 }
 
 
 let adminAttendanceRosterApiCache = [];
 let adminAttendanceSummaryApiCache = null;
 let adminAttendanceCurrentSessionApi = null;
+let adminAttendanceDeviceWarningsApiCache = [];
 
 
 
@@ -7109,6 +7133,9 @@ async function loadAdminAttendanceTableDemo() {
             adminAttendanceRosterApiCache = [];
             adminAttendanceSummaryApiCache = null;
             adminAttendanceCurrentSessionApi = null;
+            adminAttendanceDeviceWarningsApiCache = [];
+
+            loadDeviceWarningDemo();
 
             loadAdminAttendanceStatsDemo();
             loadAttendanceGroupFilterDemo();
@@ -7124,6 +7151,13 @@ async function loadAdminAttendanceTableDemo() {
 
         adminAttendanceCurrentSessionApi =
             result.data.currentSession || null;
+
+            adminAttendanceDeviceWarningsApiCache =
+                Array.isArray(result.data.deviceWarnings)
+                    ? result.data.deviceWarnings
+                    : [];
+
+            loadDeviceWarningDemo();
 
         if (adminAttendanceRosterApiCache.length === 0) {
             tableBody.innerHTML = `
@@ -7463,37 +7497,12 @@ function exportAttendanceExcelDemo() {
         ]
     ];
 
-    const attendanceHistory =
-        JSON.parse(localStorage.getItem("attendanceHistory")) || [];
-
-    const deviceMap = {};
-
-    attendanceHistory.forEach(item => {
-        if (!item.deviceId || !item.username) {
-            return;
-        }
-
-        if (!deviceMap[item.deviceId]) {
-            deviceMap[item.deviceId] = [];
-        }
-
-        const existedUser = deviceMap[item.deviceId].some(
-            user =>
-                String(user.username).toLowerCase() ===
-                String(item.username).toLowerCase()
-        );
-
-        if (!existedUser) {
-            deviceMap[item.deviceId].push({
-                username: item.username || "",
-                fullName: item.fullName || "",
-                groupName: item.groupName || ""
-            });
-        }
-    });
-
-    const suspiciousDevices = Object.entries(deviceMap)
-        .filter(([, users]) => users.length >= 2);
+    const suspiciousDevices =
+    Array.isArray(
+        adminAttendanceDeviceWarningsApiCache
+    )
+        ? adminAttendanceDeviceWarningsApiCache
+        : [];
 
     if (suspiciousDevices.length === 0) {
         warningRows.push([
@@ -7504,13 +7513,21 @@ function exportAttendanceExcelDemo() {
             "Không có cảnh báo thiết bị"
         ]);
     } else {
-        suspiciousDevices.forEach(([deviceId, users]) => {
-            users.forEach(user => {
+        suspiciousDevices.forEach(warning => {
+            const deviceId =
+                warning.deviceId || "";
+
+            const members =
+                Array.isArray(warning.members)
+                    ? warning.members
+                    : [];
+
+            members.forEach(member => {
                 warningRows.push([
                     deviceId,
-                    user.username,
-                    user.fullName,
-                    user.groupName,
+                    member.seasonMembershipId || "",
+                    member.fullName || "",
+                    member.groupName || "",
                     "Thiết bị này đã được sử dụng để điểm danh từ 2 tài khoản trở lên"
                 ]);
             });
