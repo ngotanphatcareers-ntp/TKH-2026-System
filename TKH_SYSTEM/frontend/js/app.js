@@ -2567,6 +2567,8 @@ async function loadMyQuestionsDemo() {
     }
 }
 
+let adminQuestionsApiCache = [];
+
 async function loadAdminQuestionsDemo() {
     const list =
         document.getElementById("adminQuestionList");
@@ -2628,6 +2630,8 @@ async function loadAdminQuestionsDemo() {
             Array.isArray(result.questions)
                 ? result.questions
                 : [];
+
+        adminQuestionsApiCache = questions;
 
         if (questions.length === 0) {
             list.innerHTML =
@@ -2737,6 +2741,8 @@ async function loadAdminQuestionsDemo() {
             "Load admin questions error:",
             error
         );
+
+        adminQuestionsApiCache = [];
 
         list.innerHTML =
             `<p class="empty-note">
@@ -8245,25 +8251,55 @@ function toggleAdminEncouragementContentDemo(
 }
 
 function downloadQuestionsByTypeDemo(questionType) {
-    const questions = getStoredQuestionsDemo().filter(
-        item => item.questionType === questionType
-    );
+    const normalizedVisibility =
+        String(questionType || "")
+            .trim()
+            .toUpperCase();
+
+    if (
+        normalizedVisibility !== "PUBLIC" &&
+        normalizedVisibility !== "PRIVATE"
+    ) {
+        alert("Loại câu hỏi không hợp lệ.");
+        return;
+    }
+
+    const questions =
+        Array.isArray(adminQuestionsApiCache)
+            ? adminQuestionsApiCache.filter(
+                item =>
+                    String(item.visibility || "")
+                        .toUpperCase() ===
+                    normalizedVisibility
+            )
+            : [];
 
     if (questions.length === 0) {
-        alert("Chưa có câu hỏi thuộc loại này để tải xuống.");
+        alert(
+            normalizedVisibility === "PRIVATE"
+                ? "Chưa có câu hỏi riêng tư để tải xuống."
+                : "Chưa có câu hỏi công khai để tải xuống."
+        );
+
         return;
     }
 
     const typeLabel =
-        questionType === "private"
+        normalizedVisibility === "PRIVATE"
             ? "Cau-hoi-rieng-tu"
             : "Cau-hoi-cong-khai";
+
+    const typeDisplay =
+        normalizedVisibility === "PRIVATE"
+            ? "Riêng tư"
+            : "Công khai";
 
     const header = [
         "Buổi học",
         "Loại câu hỏi",
         "Học viên",
         "Mã TKH",
+        "Tài khoản",
         "Nhóm",
         "Nội dung câu hỏi",
         "Trạng thái",
@@ -8272,43 +8308,99 @@ function downloadQuestionsByTypeDemo(questionType) {
         "Thời gian phản hồi"
     ];
 
-    const rows = questions.map(item => [
-        item.session || "",
-        item.typeLabel || "",
-        item.userFullName || "",
-        item.username || "",
-        item.groupName || "",
-        item.text || "",
-        item.status || "",
-        item.adminReply || "",
-        item.createdAt || "",
-        item.answeredAt || ""
-    ]);
+    const rows = questions.map(item => {
+        const createdAt =
+            item.createdAt
+                ? new Date(
+                    item.createdAt
+                ).toLocaleString("vi-VN")
+                : "";
+
+        const respondedAt =
+            item.respondedAt
+                ? new Date(
+                    item.respondedAt
+                ).toLocaleString("vi-VN")
+                : "";
+
+        const statusLabel =
+            item.status === "ANSWERED"
+                ? "Đã trả lời"
+                : item.status === "CLOSED"
+                    ? "Đã đóng"
+                    : item.status === "HIDDEN"
+                        ? "Đã ẩn"
+                        : "Đang chờ phản hồi";
+
+        return [
+            item.session?.name || "",
+            typeDisplay,
+            item.member?.fullName || "",
+            item.member?.tkhCode || "",
+            item.member?.username || "",
+            item.group?.name || "",
+            item.questionText || "",
+            statusLabel,
+            item.adminResponse || "",
+            createdAt,
+            respondedAt
+        ];
+    });
 
     const csvContent = [
         header,
         ...rows
-    ].map(row =>
-        row.map(value =>
-            `"${String(value).replace(/"/g, '""')}"`
-        ).join(",")
-    ).join("\n");
+    ]
+        .map(row =>
+            row
+                .map(value =>
+                    `"${String(value ?? "")
+                        .replace(/"/g, '""')}"`
+                )
+                .join(",")
+        )
+        .join("\r\n");
 
     const blob = new Blob(
         ["\uFEFF" + csvContent],
         {
-            type: "text/csv;charset=utf-8;"
+            type:
+                "text/csv;charset=utf-8;"
         }
     );
 
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
+    const url =
+        URL.createObjectURL(blob);
+
+    const link =
+        document.createElement("a");
 
     link.href = url;
-    link.download = typeLabel + ".csv";
+
+    link.download =
+        `${typeLabel}-${getCurrentDateForFileDemo()}.csv`;
+
+    document.body.appendChild(link);
+
     link.click();
 
+    document.body.removeChild(link);
+
     URL.revokeObjectURL(url);
+}
+
+function getCurrentDateForFileDemo() {
+    const now = new Date();
+
+    return [
+        now.getFullYear(),
+        String(
+            now.getMonth() + 1
+        ).padStart(2, "0"),
+        String(
+            now.getDate()
+        ).padStart(2, "0")
+    ].join("-");
 }
 
 async function loadAdminGroupsDemo() {
