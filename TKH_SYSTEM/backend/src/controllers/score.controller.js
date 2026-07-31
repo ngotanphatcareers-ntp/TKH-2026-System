@@ -458,6 +458,42 @@ async function createAdminIndividualScore(
             "Loại điểm không hợp lệ hoặc không được phép nhập thủ công.",
         },
 
+        MANUAL_SCORE_TYPE_NOT_ALLOWED: {
+        status: 400,
+        message:
+            "Hiện chỉ hỗ trợ cộng thủ công điểm danh và điểm phát biểu.",
+        },
+
+        INVALID_ATTENDANCE_ADJUSTMENT_POINTS: {
+        status: 400,
+        message:
+            "Điều chỉnh điểm danh chỉ được chọn +3, +5, -3 hoặc -5 điểm.",
+        },
+
+        ATTENDANCE_SCORE_BELOW_ZERO: {
+        status: 400,
+        message:
+            "Không thể trừ vì tổng điểm danh của học viên sẽ nhỏ hơn 0.",
+        },
+
+        ATTENDANCE_SCORE_LIMIT_EXCEEDED: {
+        status: 400,
+        message:
+            "Không thể cộng vì tổng điểm danh sẽ vượt quá 110 điểm.",
+        },
+
+        INVALID_PARTICIPATION_POINTS: {
+        status: 400,
+        message:
+            "Mỗi lần phát biểu chỉ được cộng đúng 2 điểm.",
+        },
+
+        PARTICIPATION_SCORE_LIMIT_EXCEEDED: {
+        status: 400,
+        message:
+            "Không thể cộng vì tổng điểm phát biểu sẽ vượt quá 50 điểm.",
+        },
+
         INVALID_POINTS: {
           status: 400,
           message:
@@ -515,8 +551,26 @@ async function createAdminIndividualScore(
               mappedError.message,
 
             details: {
-              maximumLength:
+            maximumLength:
                 result.maximumLength ?? null,
+
+            currentPoints:
+                result.currentPoints ?? null,
+            
+            minimumPoints:
+                result.minimumPoints ?? null,
+
+            maximumPoints:
+                result.maximumPoints ?? null,
+
+            remainingPoints:
+                result.remainingPoints ?? null,
+
+            allowedPoints:
+                result.allowedPoints ?? null,
+
+            requiredPoints:
+                result.requiredPoints ?? null,
             },
           },
         });
@@ -537,8 +591,37 @@ async function createAdminIndividualScore(
   }
 }
 
+async function getAdminScoreHistory(
+  req,
+  res,
+  next
+) {
+  try {
+    const result =
+      await scoreService
+        .getAdminScoreHistory({
+          limit:
+            req.query.limit,
+        });
+
+    return res.status(200).json({
+      success: true,
+
+      data: {
+        summary:
+          result.summary,
+
+        transactions:
+          result.transactions,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
 
 module.exports = {
+    getAdminScoreHistory,
   getMemberScoreSummary,
   getMyScores,
   getMyGroupScores,

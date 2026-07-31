@@ -2,8 +2,13 @@ const {
   randomUUID,
 } = require("node:crypto");
 
+const scoreConfig = require(
+  "../config/score.config"
+);
+
 
 const {
+    findAdminScoreHistory,
   findActiveMembershipByMemberId,
   findActiveMembershipByUsername,
   findActiveGroupById,
@@ -75,6 +80,45 @@ function getSourceTypeLabel(sourceType) {
   return (
     SOURCE_TYPE_LABELS[sourceType] ||
     sourceType ||
+    "Không xác định"
+  );
+}
+
+function getScoreTypeLabel(
+  scoreType
+) {
+  const labels = {
+    ATTENDANCE:
+      "Điểm danh",
+
+    ATTENDANCE_ADJUSTMENT:
+      "Điểm danh thủ công",
+
+    PRE_TEST:
+      "Pre-test",
+
+    BIBLE_CHALLENGE:
+      "Bible Challenge",
+
+    PARTICIPATION:
+      "Phát biểu",
+
+    FINAL_TEST:
+      "Final Test",
+
+    DISCIPLINE_CLEANING:
+      "Trực nhật",
+
+    DISCIPLINE_COMPLIANCE:
+      "Tuân thủ",
+
+    DISCIPLINE_SPIRIT:
+      "Tinh thần",
+  };
+
+  return (
+    labels[scoreType] ||
+    scoreType ||
     "Không xác định"
   );
 }
@@ -364,6 +408,29 @@ async function getMemberScoreSummary(memberId) {
   };
 }
 
+function sumActiveScoreByTypes(
+  transactions,
+  scoreTypes
+) {
+  return transactions
+    .filter(transaction =>
+      transaction.status ===
+        scoreConfig.transactionStatuses.active &&
+      scoreTypes.includes(
+        transaction.scoreType
+      )
+    )
+    .reduce(
+      (total, transaction) =>
+        total +
+        (
+          Number(
+            transaction.appliedPoints
+          ) || 0
+        ),
+      0
+    );
+}
 
 async function createAdminScoreTransaction({
   username,
@@ -463,13 +530,187 @@ async function createAdminScoreTransaction({
         };
         }
 
+        const existingTransactions =
+            await findScoreTransactionsBySeasonMembershipId(
+                membership.season_membership_id
+            );
+
+            /*
+            * Giai đoạn 1 chỉ cho phép Admin cộng:
+            * - Điểm danh bù: +3 hoặc +5
+            * - Phát biểu: +2
+            */
+            if (
+            normalizedScoreType !==
+                "ATTENDANCE_ADJUSTMENT" &&
+            normalizedScoreType !==
+                "PARTICIPATION"
+            ) {
+            return {
+                success: false,
+                code:
+                "MANUAL_SCORE_TYPE_NOT_ALLOWED",
+            };
+            }
+
+
+            /*
+            * Điểm danh thủ công.
+            */
+            if (
+            normalizedScoreType ===
+            "ATTENDANCE_ADJUSTMENT"
+            ) {
+            const allowedAttendanceAdjustmentPoints =
+                [-5, -3, 3, 5];
+
+                if (
+                !allowedAttendanceAdjustmentPoints.includes(
+                    normalizedRequestedPoints
+                )
+                ) {
+                return {
+                    success: false,
+                    code:
+                    "INVALID_ATTENDANCE_ADJUSTMENT_POINTS",
+
+                    allowedPoints:
+                    allowedAttendanceAdjustmentPoints,
+                };
+                }
+
+            const currentAttendancePoints =
+                sumActiveScoreByTypes(
+                existingTransactions,
+                [
+                    "ATTENDANCE",
+                    "ATTENDANCE_ADJUSTMENT"
+                ]
+                );
+
+            const maximumAttendancePoints =
+                scoreConfig.attendance.maxRawScore;
+
+            const remainingPoints =
+                Math.max(
+                maximumAttendancePoints -
+                    currentAttendancePoints,
+                0
+                );
+
+            const attendancePointsAfterAdjustment =
+                currentAttendancePoints +
+                normalizedRequestedPoints;
+
+                if (
+                attendancePointsAfterAdjustment >
+                maximumAttendancePoints
+                ) {
+                return {
+                    success: false,
+                    code:
+                    "ATTENDANCE_SCORE_LIMIT_EXCEEDED",
+
+                    currentPoints:
+                    currentAttendancePoints,
+
+                    maximumPoints:
+                    maximumAttendancePoints,
+
+                    remainingPoints,
+                };
+                }
+
+                if (
+                attendancePointsAfterAdjustment < 0
+                ) {
+                return {
+                    success: false,
+                    code:
+                    "ATTENDANCE_SCORE_BELOW_ZERO",
+
+                    currentPoints:
+                    currentAttendancePoints,
+
+                    minimumPoints: 0,
+                };
+                }
+            /*
+            * Đóng khối ATTENDANCE_ADJUSTMENT.
+            */
+            }    
+
+            /*
+            * Điểm phát biểu.
+            */
+            if (
+            normalizedScoreType ===
+            "PARTICIPATION"
+            ) {
+            if (
+                normalizedRequestedPoints !==
+                scoreConfig.learning
+                .participation
+                .pointsPerParticipation
+            ) {
+                return {
+                success: false,
+                code:
+                    "INVALID_PARTICIPATION_POINTS",
+
+                requiredPoints:
+                    scoreConfig.learning
+                    .participation
+                    .pointsPerParticipation,
+                };
+            }
+
+            const currentParticipationPoints =
+                sumActiveScoreByTypes(
+                existingTransactions,
+                ["PARTICIPATION"]
+                );
+
+            const maximumParticipationPoints =
+                scoreConfig.learning
+                .participation
+                .maxScore;
+
+            const remainingPoints =
+                Math.max(
+                maximumParticipationPoints -
+                    currentParticipationPoints,
+                0
+                );
+
+            if (
+                currentParticipationPoints +
+                normalizedRequestedPoints >
+                maximumParticipationPoints
+            ) {
+                return {
+                success: false,
+                code:
+                    "PARTICIPATION_SCORE_LIMIT_EXCEEDED",
+
+                currentPoints:
+                    currentParticipationPoints,
+
+                maximumPoints:
+                    maximumParticipationPoints,
+
+                remainingPoints,
+                };
+            }
+            }
+
         const appliedPoints =
         Math.round(
             normalizedRequestedPoints * 100
         ) / 100;
 
         const sourceKey =
-        `MANUAL:${randomUUID()}`;
+            `${normalizedScoreType}:MANUAL:${randomUUID()}`;
 
         const transaction =
         await createScoreTransaction({
@@ -1401,8 +1642,155 @@ async function createAdminIndividualScore({
   };
 }
 
+async function getAdminScoreHistory({
+  limit = 100,
+} = {}) {
+  const normalizedLimit =
+    Number(limit);
+
+  const safeLimit =
+    Number.isInteger(normalizedLimit)
+      ? Math.min(
+          Math.max(normalizedLimit, 1),
+          500
+        )
+      : 100;
+
+  const result =
+    await findAdminScoreHistory(
+      safeLimit
+    );
+
+  const transactions =
+    result.transactions.map(item => ({
+      id:
+        Number(item.id),
+
+      seasonMembershipId:
+        Number(
+          item.seasonMembershipId
+        ),
+
+      scoreCategory:
+        item.scoreCategory,
+
+      scoreType:
+        item.scoreType,
+
+      scoreTypeLabel:
+        getScoreTypeLabel(
+          item.scoreType
+        ),
+
+      requestedPoints:
+        Number(
+          item.requestedPoints
+        ) || 0,
+
+      appliedPoints:
+        Number(
+          item.appliedPoints
+        ) || 0,
+
+      sourceType:
+        item.sourceType,
+
+      sourceTypeLabel:
+        getSourceTypeLabel(
+          item.sourceType
+        ),
+
+      sourceId:
+        item.sourceId !== null &&
+        item.sourceId !== undefined
+          ? Number(item.sourceId)
+          : null,
+
+      sourceKey:
+        item.sourceKey || null,
+
+      description:
+        item.description || "",
+
+      status:
+        item.status,
+
+      createdBy:
+        item.createdByUserId
+          ? {
+              id:
+                Number(
+                  item.createdByUserId
+                ),
+
+              username:
+                item.createdByUsername ||
+                null,
+            }
+          : null,
+
+      createdAt:
+        item.createdAt,
+
+      member: {
+        id:
+          Number(item.memberId),
+
+        seasonMembershipId:
+          Number(
+            item.seasonMembershipId
+          ),
+
+        tkhCode:
+          item.tkhCode || null,
+
+        username:
+          item.username || null,
+
+        fullName:
+          item.fullName ||
+          "Không xác định",
+      },
+
+      group:
+        item.groupId
+          ? {
+              id:
+                Number(item.groupId),
+
+              code:
+                item.groupCode ||
+                null,
+
+              name:
+                item.groupName ||
+                "Chưa phân nhóm",
+            }
+          : null,
+    }));
+
+  return {
+    success: true,
+
+    summary: {
+      totalRecords:
+        Number(
+          result.summary.totalRecords
+        ) || 0,
+
+      totalAppliedPoints:
+        Number(
+          result.summary
+            .totalAppliedPoints
+        ) || 0,
+    },
+
+    transactions,
+  };
+}
 
 module.exports = {
+  getAdminScoreHistory,
   getMemberScoreSummary,
   createAdminScoreTransaction,
 

@@ -46,6 +46,12 @@ router.get(
   scoreController.getIndividualRankings
 );
 
+router.get(
+  "/admin/history",
+  authenticateToken,
+  requireRole("ADMIN"),
+  scoreController.getAdminScoreHistory
+);
 
 router.post(
   "/admin/individual",

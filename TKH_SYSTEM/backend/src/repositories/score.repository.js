@@ -830,7 +830,158 @@ async function findActiveMemberScoreTransactions() {
   return result.recordset;
 }
 
+async function findAdminScoreHistory(
+  limit = 100
+) {
+  const pool = await getPool();
+
+  const normalizedLimit =
+    Number.isInteger(Number(limit))
+      ? Math.min(
+          Math.max(Number(limit), 1),
+          500
+        )
+      : 100;
+
+  const result = await pool
+    .request()
+    .input(
+      "limit",
+      sql.Int,
+      normalizedLimit
+    )
+    .query(`
+      /*
+       * Chỉ lấy giao dịch của mùa đang hoạt động.
+       * Danh sách trả về gồm cả ACTIVE và REVERSED
+       * để Admin có thể theo dõi lịch sử.
+       */
+      SELECT TOP (@limit)
+        st.id,
+
+        st.season_membership_id
+          AS seasonMembershipId,
+
+        st.score_category
+          AS scoreCategory,
+
+        st.score_type
+          AS scoreType,
+
+        st.requested_points
+          AS requestedPoints,
+
+        st.applied_points
+          AS appliedPoints,
+
+        st.source_type
+          AS sourceType,
+
+        st.source_id
+          AS sourceId,
+
+        st.source_key
+          AS sourceKey,
+
+        st.description,
+        st.status,
+
+        st.created_by_user_id
+          AS createdByUserId,
+
+        creator.username
+          AS createdByUsername,
+
+        st.created_at
+          AS createdAt,
+
+        m.id
+          AS memberId,
+
+        m.tkh_code
+          AS tkhCode,
+
+        m.full_name
+          AS fullName,
+
+        member_user.username,
+
+        g.id
+          AS groupId,
+
+        g.code
+          AS groupCode,
+
+        g.name
+          AS groupName
+
+      FROM dbo.score_transactions AS st
+
+      INNER JOIN dbo.season_memberships AS sm
+        ON sm.id =
+           st.season_membership_id
+
+      INNER JOIN dbo.seasons AS s
+        ON s.id = sm.season_id
+        AND s.status = 'ACTIVE'
+
+      INNER JOIN dbo.members AS m
+        ON m.id = sm.member_id
+
+      LEFT JOIN dbo.users AS member_user
+        ON member_user.member_id = m.id
+        AND member_user.is_active = 1
+
+      LEFT JOIN dbo.groups AS g
+        ON g.id = sm.group_id
+
+      LEFT JOIN dbo.users AS creator
+        ON creator.id =
+           st.created_by_user_id
+
+      ORDER BY
+        st.created_at DESC,
+        st.id DESC;
+
+
+      /*
+       * Thống kê chỉ tính giao dịch ACTIVE.
+       */
+      SELECT
+        COUNT(*) AS totalRecords,
+
+        COALESCE(
+          SUM(st.applied_points),
+          0
+        ) AS totalAppliedPoints
+
+      FROM dbo.score_transactions AS st
+
+      INNER JOIN dbo.season_memberships AS sm
+        ON sm.id =
+           st.season_membership_id
+
+      INNER JOIN dbo.seasons AS s
+        ON s.id = sm.season_id
+        AND s.status = 'ACTIVE'
+
+      WHERE st.status = 'ACTIVE';
+    `);
+
+  return {
+    transactions:
+      result.recordsets[0] || [],
+
+    summary:
+      result.recordsets[1]?.[0] || {
+        totalRecords: 0,
+        totalAppliedPoints: 0,
+      },
+  };
+}
+
 module.exports = {
+    findAdminScoreHistory,
     findActiveMemberScoreTransactions,
   findActiveMembershipByMemberId,
   findActiveMembershipByUsername,

@@ -854,57 +854,295 @@ async function changePasswordDemo() {
 //////hết
 
 
-function addScoreDemo() {
-    const username = document.getElementById("scoreUser").value;
-    const scoreType = document.getElementById("scoreType").value;
-    const scoreValue = document.getElementById("scoreValue").value.trim();
-    const scoreReason = document.getElementById("scoreReason").value.trim();
-    const message = document.getElementById("scoreMessage");
+async function addScoreDemo() {
+    const username =
+        document
+            .getElementById("scoreUser")
+            ?.value
+            .trim();
 
-    if (!username || !scoreValue || !scoreReason) {
+    const scoreType =
+        document
+            .getElementById("scoreType")
+            ?.value
+            .trim();
+
+    const scoreValue =
+        Number(
+            document
+                .getElementById("scoreValue")
+                ?.value
+        );
+
+    const scoreReason =
+        document
+            .getElementById("scoreReason")
+            ?.value
+            .trim();
+
+    const message =
+        document.getElementById(
+            "scoreMessage"
+        );
+
+    const submitButton =
+        document.querySelector(
+            '[onclick="addScoreDemo()"]'
+        );
+
+    if (!username) {
         message.style.color = "red";
-        message.innerText = "Vui lòng chọn học viên, nhập điểm và lý do.";
+        message.innerText =
+            "Vui lòng chọn học viên.";
         return;
     }
 
-    if (Number(scoreValue) === 0) {
+    if (!scoreType) {
         message.style.color = "red";
-        message.innerText = "Số điểm không được bằng 0.";
+        message.innerText =
+            "Vui lòng chọn loại điểm.";
         return;
     }
 
-    const student = findStudentByUsernameDemo(username);
-
-    if (!student) {
+    if (
+        !Number.isFinite(scoreValue) ||
+        scoreValue === 0
+    ) {
         message.style.color = "red";
-        message.innerText = "Không tìm thấy học viên.";
+        message.innerText =
+            "Vui lòng chọn số điểm hợp lệ.";
         return;
     }
 
-    const scores = getStoredScoresDemo();
+    if (!scoreReason) {
+        message.style.color = "red";
+        message.innerText =
+            "Vui lòng nhập lý do cộng điểm.";
+        return;
+    }
 
-    scores.unshift({
-        id: Date.now(),
-        username: student.username,
-        fullName: student.fullName,
-        groupName: student.groupName,
-        scoreType: scoreType,
-        scoreTypeLabel: getScoreTypeLabelDemo(scoreType),
-        scoreValue: Number(scoreValue),
-        reason: scoreReason,
-        createdAt: new Date().toLocaleString("vi-VN")
-    });
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
 
-    saveStoredScoresDemo(scores);
+    if (!token) {
+        logoutDemo();
+        return;
+    }
 
-    document.getElementById("scoreValue").value = "";
-    document.getElementById("scoreReason").value = "";
+    message.style.color = "#555";
+    message.innerText =
+        "Đang lưu điểm...";
 
-    message.style.color = "green";
-    message.innerText = "Đã lưu điểm thành công cho " + student.fullName + ".";
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.innerText =
+            "Đang lưu...";
+    }
 
-    loadAdminScoreHistoryDemo();
-    loadAdminScoreSummaryDemo();
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/scores/admin/individual`,
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json",
+
+                    Authorization:
+                        `Bearer ${token}`
+                },
+
+                body: JSON.stringify({
+                    username,
+                    scoreType,
+                    points:
+                        scoreValue,
+                    description:
+                        scoreReason
+                })
+            }
+        );
+
+        let result = null;
+
+        try {
+            result =
+                await response.json();
+        } catch (error) {
+            result = null;
+        }
+
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
+
+        if (response.status === 403) {
+            message.style.color = "red";
+            message.innerText =
+                "Bạn không có quyền cộng điểm.";
+            return;
+        }
+
+        if (
+            !response.ok ||
+            result?.success !== true
+        ) {
+            const details =
+                result?.error?.details;
+
+            let errorMessage =
+                result?.error?.message ||
+                "Không thể cộng điểm.";
+
+            if (
+                details?.remainingPoints !==
+                    null &&
+                details?.remainingPoints !==
+                    undefined
+            ) {
+                errorMessage +=
+                    ` Học viên chỉ còn có thể nhận ${details.remainingPoints} điểm ở hạng mục này.`;
+            }
+
+            throw new Error(
+                errorMessage
+            );
+        }
+
+        const transaction =
+            result.data?.transaction;
+
+        const memberName =
+            transaction?.member?.fullName ||
+            username;
+
+        const scoreDisplay =
+            scoreValue > 0
+                ? `+${scoreValue}`
+                : String(scoreValue);
+
+        const actionLabel =
+            scoreValue > 0
+                ? "Đã cộng"
+                : "Đã trừ";
+
+        message.style.color = "green";
+
+        message.innerText =
+            `${actionLabel} ${scoreDisplay} điểm cho ${memberName}.`;
+
+        document.getElementById(
+            "scoreReason"
+        ).value = "";
+
+        /*
+        * Xóa cache xếp hạng vì điểm mới có thể
+        * làm thay đổi điểm và thứ hạng nhóm.
+        */
+        groupRankingApiCache = null;
+
+        adminScoreHistoryApiPromise = null;
+
+        await Promise.all([
+        loadAdminScoreHistoryDemo(true),
+        loadAdminScoreSummaryDemo(true)
+        ]);
+
+    } catch (error) {
+        console.error(
+            "Create manual score error:",
+            error
+        );
+
+        message.style.color = "red";
+
+        message.innerText =
+            error.message ||
+            "Không thể kết nối đến Backend.";
+    } finally {
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.innerText =
+                "Lưu điểm";
+        }
+    }
+}
+
+function updateManualScoreFormDemo() {
+    const scoreType =
+        document.getElementById(
+            "scoreType"
+        );
+
+    const scoreValue =
+        document.getElementById(
+            "scoreValue"
+        );
+
+    if (!scoreType || !scoreValue) {
+        return;
+    }
+
+    const selectedType =
+        scoreType.value;
+
+    if (
+        selectedType ===
+        "ATTENDANCE_ADJUSTMENT"
+    ) {
+        scoreValue.disabled = false;
+
+        scoreValue.innerHTML = `
+            <option value="">
+                Chọn số điểm
+            </option>
+
+            <option value="3">
+                +3 điểm — Bù điểm danh
+            </option>
+
+            <option value="5">
+                +5 điểm — Bù điểm danh
+            </option>
+
+            <option value="-3">
+                -3 điểm — Thu hồi điểm gian lận
+            </option>
+
+            <option value="-5">
+                -5 điểm — Thu hồi điểm gian lận
+            </option>
+        `;
+
+        return;
+    }
+
+    if (
+        selectedType ===
+        "PARTICIPATION"
+    ) {
+        scoreValue.disabled = false;
+
+        scoreValue.innerHTML = `
+            <option value="2">
+                +2 điểm
+            </option>
+        `;
+
+        return;
+    }
+
+    scoreValue.disabled = true;
+
+    scoreValue.innerHTML = `
+        <option value="">
+            Hãy chọn loại điểm trước
+        </option>
+    `;
 }
 
 //quản lý buổi học
@@ -5724,32 +5962,151 @@ function saveStoredScoresDemo(scores) {
     localStorage.setItem("studentScoresDemo", JSON.stringify(scores));
 }
 
-function loadScoreStudentOptionsDemo() {
-    const select = document.getElementById("scoreUser");
+async function loadScoreStudentOptionsDemo() {
+    const select =
+        document.getElementById(
+            "scoreUser"
+        );
 
     if (!select) {
         return;
     }
 
-    const students = getImportedStudentsDemo();
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
 
-    if (students.length === 0) {
-        select.innerHTML = `
-            <option value="">Chưa có học viên. Vui lòng import Excel trước.</option>
-        `;
+    if (!token) {
+        logoutDemo();
         return;
     }
 
     select.innerHTML = `
-        <option value="">Chọn học viên</option>
-        ${
-            students.map(student => `
-                <option value="${student.username}">
-                    ${student.fullName} - ${student.groupName} (${student.username})
-                </option>
-            `).join("")
-        }
+        <option value="">
+            Đang tải danh sách học viên...
+        </option>
     `;
+
+    select.disabled = true;
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/admin/members`,
+            {
+                method: "GET",
+
+                headers: {
+                    Authorization:
+                        `Bearer ${token}`
+                }
+            }
+        );
+
+        const result =
+            await response.json();
+
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
+
+        if (
+            !response.ok ||
+            result.success !== true
+        ) {
+            throw new Error(
+                result?.error?.message ||
+                "Không thể tải danh sách học viên."
+            );
+        }
+
+        const members =
+            Array.isArray(
+                result.data?.members
+            )
+                ? result.data.members
+                : [];
+
+        const availableMembers =
+            members.filter(item =>
+                item.account?.username
+            );
+
+        if (
+            availableMembers.length === 0
+        ) {
+            select.innerHTML = `
+                <option value="">
+                    Chưa có học viên hợp lệ
+                </option>
+            `;
+
+            return;
+        }
+
+        select.innerHTML = `
+            <option value="">
+                Chọn học viên
+            </option>
+
+            ${
+                availableMembers
+                    .map(item => {
+                        const member =
+                            item.member || {};
+
+                        const groupName =
+                            item.group?.name ||
+                            "Chưa phân nhóm";
+
+                        const username =
+                            item.account
+                                .username;
+
+                        const tkhCode =
+                            member.tkhCode ||
+                            username;
+
+                        return `
+                            <option
+                                value="${escapeHtml(
+                                    username
+                                )}"
+                            >
+                                ${escapeHtml(
+                                    tkhCode
+                                )}
+                                -
+                                ${escapeHtml(
+                                    member.fullName ||
+                                    username
+                                )}
+                                -
+                                ${escapeHtml(
+                                    groupName
+                                )}
+                            </option>
+                        `;
+                    })
+                    .join("")
+            }
+        `;
+
+        select.disabled = false;
+
+    } catch (error) {
+        console.error(
+            "Load score member options error:",
+            error
+        );
+
+        select.innerHTML = `
+            <option value="">
+                Không thể tải danh sách học viên
+            </option>
+        `;
+    }
 }
 
 
@@ -5778,34 +6135,258 @@ function getScoreTypeLabelDemo(scoreType) {
     return "Thủ công";
 }
 
-function loadAdminScoreHistoryDemo() {
-    const tableBody = document.getElementById("adminScoreHistoryBody");
+async function getAdminScoreHistoryApiData(
+  forceRefresh = false
+) {
+  if (
+    forceRefresh ||
+    !adminScoreHistoryApiPromise
+  ) {
+    adminScoreHistoryApiPromise =
+      (async () => {
+        const token =
+          localStorage.getItem(
+            "accessToken"
+          );
 
-    if (!tableBody) {
-        return;
+        if (!token) {
+          logoutDemo();
+          return null;
+        }
+
+        const response = await fetch(
+          `${API_BASE_URL}/api/scores/admin/history?limit=100`,
+          {
+            method: "GET",
+
+            headers: {
+              Authorization:
+                `Bearer ${token}`
+            }
+          }
+        );
+
+        let result = null;
+
+        try {
+          result =
+            await response.json();
+        } catch (error) {
+          result = null;
+        }
+
+        if (response.status === 401) {
+          logoutDemo();
+          return null;
+        }
+
+        if (response.status === 403) {
+          throw new Error(
+            "Bạn không có quyền xem lịch sử điểm."
+          );
+        }
+
+        if (
+          !response.ok ||
+          result?.success !== true
+        ) {
+          throw new Error(
+            result?.error?.message ||
+            "Không thể tải lịch sử điểm."
+          );
+        }
+
+        adminScoreHistoryApiCache =
+          Array.isArray(
+            result.data?.transactions
+          )
+            ? result.data.transactions
+            : [];
+
+        adminScoreSummaryApiCache =
+          result.data?.summary || {
+            totalRecords: 0,
+            totalAppliedPoints: 0
+          };
+
+        return result.data;
+      })()
+      .catch(error => {
+        adminScoreHistoryApiPromise =
+          null;
+
+        throw error;
+      });
+  }
+
+  return adminScoreHistoryApiPromise;
+}
+
+async function loadAdminScoreHistoryDemo(
+  forceRefresh = false
+) {
+  const tableBody =
+    document.getElementById(
+      "adminScoreHistoryBody"
+    );
+
+  if (!tableBody) {
+    return;
+  }
+
+  tableBody.innerHTML = `
+    <tr>
+      <td colspan="6">
+        Đang tải lịch sử điểm...
+      </td>
+    </tr>
+  `;
+
+  try {
+    const data =
+      await getAdminScoreHistoryApiData(
+        forceRefresh
+      );
+
+    if (!data) {
+      return;
     }
 
-    const scores = getStoredScoresDemo();
+    const transactions =
+      Array.isArray(
+        data.transactions
+      )
+        ? data.transactions
+        : [];
 
-    if (scores.length === 0) {
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="6">Chưa có lịch sử điểm.</td>
-            </tr>
-        `;
-        return;
-    }
-
-    tableBody.innerHTML = scores.map(item => `
+    if (transactions.length === 0) {
+      tableBody.innerHTML = `
         <tr>
-            <td>${item.createdAt}</td>
-            <td>${item.fullName}</td>
-            <td>${item.groupName}</td>
-            <td>${item.scoreTypeLabel}</td>
-            <td>${item.scoreValue > 0 ? "+" : ""}${item.scoreValue}</td>
-            <td>${item.reason}</td>
+          <td colspan="6">
+            Chưa có lịch sử điểm.
+          </td>
         </tr>
-    `).join("");
+      `;
+
+      return;
+    }
+
+    tableBody.innerHTML =
+      transactions.map(item => {
+        const createdDate =
+          parseSqlLocalDateTime(
+            item.createdAt
+          );
+
+        const createdAtText =
+          createdDate
+            ? createdDate
+                .toLocaleString(
+                  "vi-VN"
+                )
+            : "—";
+
+        const appliedPoints =
+          Number(
+            item.appliedPoints
+          ) || 0;
+
+        const pointClass =
+            appliedPoints > 0
+                ? "score-positive"
+                : appliedPoints < 0
+                    ? "score-negative"
+                    : "";
+
+        const statusText =
+          item.status === "ACTIVE"
+            ? ""
+            : ` (${item.status})`;
+
+        const memberName =
+          item.member?.fullName ||
+          "Không xác định";
+
+        const tkhCode =
+          item.member?.tkhCode ||
+          item.member?.username ||
+          "—";
+
+        const groupName =
+          item.group?.name ||
+          "Chưa phân nhóm";
+
+        return `
+          <tr>
+            <td>
+              ${escapeHtml(
+                createdAtText
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                memberName
+              )}
+              <br>
+
+              <small>
+                ${escapeHtml(
+                  tkhCode
+                )}
+              </small>
+            </td>
+
+            <td>
+              ${escapeHtml(
+                groupName
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                item.scoreTypeLabel ||
+                item.scoreType ||
+                "Không xác định"
+              )}
+            </td>
+
+            <td class="${pointClass}">
+                ${
+                    appliedPoints > 0
+                        ? "+"
+                        : ""
+                }${appliedPoints}${escapeHtml(
+                    statusText
+                )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                item.description ||
+                "—"
+              )}
+            </td>
+          </tr>
+        `;
+      }).join("");
+  } catch (error) {
+    console.error(
+      "Load admin score history error:",
+      error
+    );
+
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="6">
+          ${escapeHtml(
+            error.message ||
+            "Không thể tải lịch sử điểm."
+          )}
+        </td>
+      </tr>
+    `;
+  }
 }//hết
 
 
@@ -6130,6 +6711,9 @@ function getGroupTotalScoreDemo(groupName) {
 
 }
 
+let adminScoreHistoryApiCache = [];
+let adminScoreSummaryApiCache = null;
+let adminScoreHistoryApiPromise = null;
 
 let myGroupScoreApiCache = null;
 let myGroupScoreApiPromise = null;
@@ -9757,35 +10341,123 @@ async function resetStudentPasswordDemo(
     }
 }
 
-function loadAdminScoreSummaryDemo() {
-    const totalPointsElement = document.getElementById("adminScoreTotalPoints");
-    const totalRecordsElement = document.getElementById("adminScoreTotalRecords");
-    const topGroupElement = document.getElementById("adminScoreTopGroup");
-    const topGroupPointsElement = document.getElementById("adminScoreTopGroupPoints");
-
-    if (!totalPointsElement) {
-        return;
-    }
-
-    const scores = getStoredScoresDemo();
-
-    const totalPoints = scores.reduce(
-        (total, item) => total + Number(item.scoreValue || 0),
-        0
+async function loadAdminScoreSummaryDemo(
+  forceRefresh = false
+) {
+  const totalPointsElement =
+    document.getElementById(
+      "adminScoreTotalPoints"
     );
 
-    const ranking = getGroupRankingWithScoresDemo();
+  const totalRecordsElement =
+    document.getElementById(
+      "adminScoreTotalRecords"
+    );
 
-    totalPointsElement.innerText = totalPoints;
-    totalRecordsElement.innerText = scores.length;
+  const topGroupElement =
+    document.getElementById(
+      "adminScoreTopGroup"
+    );
 
-    if (ranking.length > 0) {
-        topGroupElement.innerText = ranking[0].groupName;
-        topGroupPointsElement.innerText = ranking[0].score + " điểm";
-    } else {
-        topGroupElement.innerText = "-";
-        topGroupPointsElement.innerText = "0 điểm";
+  const topGroupPointsElement =
+    document.getElementById(
+      "adminScoreTopGroupPoints"
+    );
+
+  if (
+    !totalPointsElement ||
+    !totalRecordsElement ||
+    !topGroupElement ||
+    !topGroupPointsElement
+  ) {
+    return;
+  }
+
+  totalPointsElement.innerText =
+    "...";
+
+  totalRecordsElement.innerText =
+    "...";
+
+  topGroupElement.innerText =
+    "...";
+
+  topGroupPointsElement.innerText =
+    "Đang tải...";
+
+  try {
+    const [
+      historyData,
+      groups
+    ] = await Promise.all([
+      getAdminScoreHistoryApiData(
+        forceRefresh
+      ),
+
+      getGroupRankingApiData()
+    ]);
+
+    const summary =
+      historyData?.summary || {
+        totalRecords: 0,
+        totalAppliedPoints: 0
+      };
+
+    totalPointsElement.innerText =
+      Number(
+        summary.totalAppliedPoints
+      ) || 0;
+
+    totalRecordsElement.innerText =
+      Number(
+        summary.totalRecords
+      ) || 0;
+
+    const topGroup =
+      Array.isArray(groups) &&
+      groups.length > 0
+        ? groups[0]
+        : null;
+
+    if (!topGroup) {
+      topGroupElement.innerText =
+        "Chưa có";
+
+      topGroupPointsElement.innerText =
+        "0 điểm";
+
+      return;
     }
+
+    topGroupElement.innerText =
+      topGroup.group?.name ||
+      "Không xác định";
+
+    topGroupPointsElement.innerText =
+      `${
+        Number(
+          topGroup.totalPoints
+        ) || 0
+      } điểm`;
+
+  } catch (error) {
+    console.error(
+      "Load admin score summary error:",
+      error
+    );
+
+    totalPointsElement.innerText =
+      "—";
+
+    totalRecordsElement.innerText =
+      "—";
+
+    topGroupElement.innerText =
+      "Không thể tải";
+
+    topGroupPointsElement.innerText =
+      "—";
+  }
 }
 
 
