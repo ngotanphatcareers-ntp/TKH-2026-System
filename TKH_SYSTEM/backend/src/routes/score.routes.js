@@ -110,4 +110,27 @@ router.post(
     .importManualScoresExcel
 );
 
+router.get(
+  "/admin/groups/:groupId/discipline",
+
+  authenticateToken,
+
+  requireRole("ADMIN"),
+
+  scoreController
+    .getGroupDisciplineScore
+);
+
+
+router.put(
+  "/admin/groups/:groupId/discipline",
+
+  authenticateToken,
+
+  requireRole("ADMIN"),
+
+  scoreController
+    .saveGroupDisciplineScore
+);
+
 module.exports = router;

@@ -1256,7 +1256,722 @@ async function completeManualScoreImportBatch({
   return result.recordset[0] || null;
 }
 
+async function findGroupDisciplineScoreByGroupId({
+  groupId,
+  transaction = null,
+}) {
+  const request = transaction
+    ? new sql.Request(transaction)
+    : (await getPool()).request();
+
+  const result = await request
+    .input(
+      "groupId",
+      sql.Int,
+      groupId
+    )
+    .query(`
+      SELECT TOP (1)
+        gds.id,
+
+        gds.group_id
+          AS groupId,
+
+        g.code
+          AS groupCode,
+
+        g.name
+          AS groupName,
+
+        gds.cleaning_points
+          AS cleaningPoints,
+
+        gds.compliance_points
+          AS compliancePoints,
+
+        gds.spirit_points
+          AS spiritPoints,
+
+        gds.status,
+
+        gds.scored_by_user_id
+          AS scoredByUserId,
+
+        gds.scored_at
+          AS scoredAt,
+
+        gds.updated_by_user_id
+          AS updatedByUserId,
+
+        gds.updated_at
+          AS updatedAt
+
+      FROM dbo.group_discipline_scores
+        AS gds
+
+      INNER JOIN dbo.groups AS g
+        ON g.id = gds.group_id
+
+      INNER JOIN dbo.seasons AS s
+        ON s.id = g.season_id
+        AND s.status = 'ACTIVE'
+
+      WHERE gds.group_id = @groupId;
+    `);
+
+  return result.recordset[0] || null;
+}
+
+async function findActiveGroupMembershipsForDiscipline({
+  groupId,
+  transaction,
+}) {
+  const request =
+    new sql.Request(transaction);
+
+  const result = await request
+    .input(
+      "groupId",
+      sql.Int,
+      groupId
+    )
+    .query(`
+      SELECT
+        sm.id
+          AS seasonMembershipId,
+
+        sm.member_id
+          AS memberId,
+
+        m.tkh_code
+          AS tkhCode,
+
+        m.full_name
+          AS fullName
+
+      FROM dbo.season_memberships AS sm
+
+      INNER JOIN dbo.seasons AS s
+        ON s.id = sm.season_id
+        AND s.status = 'ACTIVE'
+
+      INNER JOIN dbo.members AS m
+        ON m.id = sm.member_id
+
+      WHERE sm.group_id = @groupId
+        AND sm.status = 'ACTIVE'
+
+      ORDER BY
+        m.full_name ASC,
+        sm.id ASC;
+    `);
+
+  return result.recordset;
+}
+
+async function createGroupDisciplineScore({
+  groupId,
+  cleaningPoints,
+  compliancePoints,
+  spiritPoints,
+  adminUserId,
+  transaction,
+}) {
+  const request =
+    new sql.Request(transaction);
+
+  const result = await request
+    .input(
+      "groupId",
+      sql.Int,
+      groupId
+    )
+    .input(
+      "cleaningPoints",
+      sql.Decimal(5, 2),
+      cleaningPoints
+    )
+    .input(
+      "compliancePoints",
+      sql.Decimal(5, 2),
+      compliancePoints
+    )
+    .input(
+      "spiritPoints",
+      sql.Decimal(5, 2),
+      spiritPoints
+    )
+    .input(
+      "adminUserId",
+      sql.Int,
+      adminUserId
+    )
+    .query(`
+      INSERT INTO dbo.group_discipline_scores
+      (
+        group_id,
+        cleaning_points,
+        compliance_points,
+        spirit_points,
+        status,
+        scored_by_user_id,
+        scored_at
+      )
+
+      OUTPUT
+        INSERTED.id,
+
+        INSERTED.group_id
+          AS groupId,
+
+        INSERTED.cleaning_points
+          AS cleaningPoints,
+
+        INSERTED.compliance_points
+          AS compliancePoints,
+
+        INSERTED.spirit_points
+          AS spiritPoints,
+
+        INSERTED.status,
+
+        INSERTED.scored_by_user_id
+          AS scoredByUserId,
+
+        INSERTED.scored_at
+          AS scoredAt
+
+      VALUES
+      (
+        @groupId,
+        @cleaningPoints,
+        @compliancePoints,
+        @spiritPoints,
+        'ACTIVE',
+        @adminUserId,
+        SYSUTCDATETIME()
+      );
+    `);
+
+  return result.recordset[0] || null;
+}
+
+async function updateGroupDisciplineScore({
+  groupDisciplineScoreId,
+  cleaningPoints,
+  compliancePoints,
+  spiritPoints,
+  adminUserId,
+  transaction,
+}) {
+  const request =
+    new sql.Request(transaction);
+
+  const result = await request
+    .input(
+      "groupDisciplineScoreId",
+      sql.Int,
+      groupDisciplineScoreId
+    )
+    .input(
+      "cleaningPoints",
+      sql.Decimal(5, 2),
+      cleaningPoints
+    )
+    .input(
+      "compliancePoints",
+      sql.Decimal(5, 2),
+      compliancePoints
+    )
+    .input(
+      "spiritPoints",
+      sql.Decimal(5, 2),
+      spiritPoints
+    )
+    .input(
+      "adminUserId",
+      sql.Int,
+      adminUserId
+    )
+    .query(`
+      UPDATE dbo.group_discipline_scores
+
+      SET
+        cleaning_points =
+          @cleaningPoints,
+
+        compliance_points =
+          @compliancePoints,
+
+        spirit_points =
+          @spiritPoints,
+
+        status =
+          'ACTIVE',
+
+        updated_by_user_id =
+          @adminUserId,
+
+        updated_at =
+          SYSUTCDATETIME()
+
+      OUTPUT
+        INSERTED.id,
+
+        INSERTED.group_id
+          AS groupId,
+
+        INSERTED.cleaning_points
+          AS cleaningPoints,
+
+        INSERTED.compliance_points
+          AS compliancePoints,
+
+        INSERTED.spirit_points
+          AS spiritPoints,
+
+        INSERTED.status,
+
+        INSERTED.scored_by_user_id
+          AS scoredByUserId,
+
+        INSERTED.scored_at
+          AS scoredAt,
+
+        INSERTED.updated_by_user_id
+          AS updatedByUserId,
+
+        INSERTED.updated_at
+          AS updatedAt
+
+      WHERE id =
+        @groupDisciplineScoreId;
+    `);
+
+  return result.recordset[0] || null;
+}
+
+async function createGroupDisciplineScoreHistory({
+  groupDisciplineScoreId,
+
+  oldCleaningPoints,
+  newCleaningPoints,
+
+  oldCompliancePoints,
+  newCompliancePoints,
+
+  oldSpiritPoints,
+  newSpiritPoints,
+
+  changeType,
+  reason,
+  adminUserId,
+  transaction,
+}) {
+  const request =
+    new sql.Request(transaction);
+
+  const result = await request
+    .input(
+      "groupDisciplineScoreId",
+      sql.Int,
+      groupDisciplineScoreId
+    )
+    .input(
+      "oldCleaningPoints",
+      sql.Decimal(5, 2),
+      oldCleaningPoints
+    )
+    .input(
+      "newCleaningPoints",
+      sql.Decimal(5, 2),
+      newCleaningPoints
+    )
+    .input(
+      "oldCompliancePoints",
+      sql.Decimal(5, 2),
+      oldCompliancePoints
+    )
+    .input(
+      "newCompliancePoints",
+      sql.Decimal(5, 2),
+      newCompliancePoints
+    )
+    .input(
+      "oldSpiritPoints",
+      sql.Decimal(5, 2),
+      oldSpiritPoints
+    )
+    .input(
+      "newSpiritPoints",
+      sql.Decimal(5, 2),
+      newSpiritPoints
+    )
+    .input(
+      "changeType",
+      sql.VarChar(20),
+      changeType
+    )
+    .input(
+      "reason",
+      sql.NVarChar(500),
+      reason || null
+    )
+    .input(
+      "adminUserId",
+      sql.Int,
+      adminUserId
+    )
+    .query(`
+      INSERT INTO dbo.group_discipline_score_history
+      (
+        group_discipline_score_id,
+
+        old_cleaning_points,
+        new_cleaning_points,
+
+        old_compliance_points,
+        new_compliance_points,
+
+        old_spirit_points,
+        new_spirit_points,
+
+        change_type,
+        reason,
+        changed_by_user_id,
+        changed_at
+      )
+
+      OUTPUT
+        INSERTED.id,
+
+        INSERTED.group_discipline_score_id
+          AS groupDisciplineScoreId,
+
+        INSERTED.change_type
+          AS changeType,
+
+        INSERTED.reason,
+
+        INSERTED.changed_by_user_id
+          AS changedByUserId,
+
+        INSERTED.changed_at
+          AS changedAt
+
+      VALUES
+      (
+        @groupDisciplineScoreId,
+
+        @oldCleaningPoints,
+        @newCleaningPoints,
+
+        @oldCompliancePoints,
+        @newCompliancePoints,
+
+        @oldSpiritPoints,
+        @newSpiritPoints,
+
+        @changeType,
+        @reason,
+        @adminUserId,
+        SYSUTCDATETIME()
+      );
+    `);
+
+  return result.recordset[0] || null;
+}
+
+async function createGroupDisciplineScoreMember({
+  groupDisciplineScoreId,
+  seasonMembershipId,
+
+  cleaningTransactionId,
+  complianceTransactionId,
+  spiritTransactionId,
+
+  transaction,
+}) {
+  const request =
+    new sql.Request(transaction);
+
+  const result = await request
+    .input(
+      "groupDisciplineScoreId",
+      sql.Int,
+      groupDisciplineScoreId
+    )
+    .input(
+      "seasonMembershipId",
+      sql.Int,
+      seasonMembershipId
+    )
+    .input(
+      "cleaningTransactionId",
+      sql.Int,
+      cleaningTransactionId
+    )
+    .input(
+      "complianceTransactionId",
+      sql.Int,
+      complianceTransactionId
+    )
+    .input(
+      "spiritTransactionId",
+      sql.Int,
+      spiritTransactionId
+    )
+    .query(`
+      INSERT INTO dbo.group_discipline_score_members
+      (
+        group_discipline_score_id,
+        season_membership_id,
+
+        cleaning_transaction_id,
+        compliance_transaction_id,
+        spirit_transaction_id,
+
+        created_at
+      )
+
+      OUTPUT
+        INSERTED.id,
+
+        INSERTED.group_discipline_score_id
+          AS groupDisciplineScoreId,
+
+        INSERTED.season_membership_id
+          AS seasonMembershipId,
+
+        INSERTED.cleaning_transaction_id
+          AS cleaningTransactionId,
+
+        INSERTED.compliance_transaction_id
+          AS complianceTransactionId,
+
+        INSERTED.spirit_transaction_id
+          AS spiritTransactionId,
+
+        INSERTED.created_at
+          AS createdAt
+
+      VALUES
+      (
+        @groupDisciplineScoreId,
+        @seasonMembershipId,
+
+        @cleaningTransactionId,
+        @complianceTransactionId,
+        @spiritTransactionId,
+
+        SYSUTCDATETIME()
+      );
+    `);
+
+  return result.recordset[0] || null;
+}
+
+async function findGroupDisciplineScoreMembers({
+  groupDisciplineScoreId,
+  transaction,
+}) {
+  const request =
+    new sql.Request(transaction);
+
+  const result = await request
+    .input(
+      "groupDisciplineScoreId",
+      sql.Int,
+      groupDisciplineScoreId
+    )
+    .query(`
+      SELECT
+        gdsm.id,
+
+        gdsm.group_discipline_score_id
+          AS groupDisciplineScoreId,
+
+        gdsm.season_membership_id
+          AS seasonMembershipId,
+
+        gdsm.cleaning_transaction_id
+          AS cleaningTransactionId,
+
+        gdsm.compliance_transaction_id
+          AS complianceTransactionId,
+
+        gdsm.spirit_transaction_id
+          AS spiritTransactionId,
+
+        m.tkh_code
+          AS tkhCode,
+
+        m.full_name
+          AS fullName
+
+      FROM dbo.group_discipline_score_members
+        AS gdsm
+
+      INNER JOIN dbo.season_memberships AS sm
+        ON sm.id =
+           gdsm.season_membership_id
+
+      INNER JOIN dbo.members AS m
+        ON m.id = sm.member_id
+
+      WHERE gdsm.group_discipline_score_id =
+            @groupDisciplineScoreId
+
+      ORDER BY
+        gdsm.id ASC;
+    `);
+
+  return result.recordset;
+}
+
+async function reverseScoreTransaction({
+  scoreTransactionId,
+  adminUserId,
+  reversalReason,
+  transaction,
+}) {
+  const request =
+    new sql.Request(transaction);
+
+  const result = await request
+    .input(
+      "scoreTransactionId",
+      sql.Int,
+      scoreTransactionId
+    )
+    .input(
+      "adminUserId",
+      sql.Int,
+      adminUserId
+    )
+    .input(
+      "reversalReason",
+      sql.NVarChar(500),
+      reversalReason
+    )
+    .query(`
+      UPDATE dbo.score_transactions
+
+      SET
+        status =
+          'REVERSED',
+
+        reversed_by_user_id =
+          @adminUserId,
+
+        reversed_at =
+          SYSUTCDATETIME(),
+
+        reversal_reason =
+          @reversalReason
+
+      OUTPUT
+        INSERTED.id,
+        INSERTED.status,
+
+        INSERTED.reversed_by_user_id
+          AS reversedByUserId,
+
+        INSERTED.reversed_at
+          AS reversedAt,
+
+        INSERTED.reversal_reason
+          AS reversalReason
+
+      WHERE id = @scoreTransactionId
+        AND status = 'ACTIVE';
+    `);
+
+  return result.recordset[0] || null;
+}
+
+async function updateGroupDisciplineScoreMemberTransactions({
+  groupDisciplineScoreMemberId,
+
+  cleaningTransactionId,
+  complianceTransactionId,
+  spiritTransactionId,
+
+  transaction,
+}) {
+  const request =
+    new sql.Request(transaction);
+
+  const result = await request
+    .input(
+      "groupDisciplineScoreMemberId",
+      sql.Int,
+      groupDisciplineScoreMemberId
+    )
+    .input(
+      "cleaningTransactionId",
+      sql.Int,
+      cleaningTransactionId
+    )
+    .input(
+      "complianceTransactionId",
+      sql.Int,
+      complianceTransactionId
+    )
+    .input(
+      "spiritTransactionId",
+      sql.Int,
+      spiritTransactionId
+    )
+    .query(`
+      UPDATE dbo.group_discipline_score_members
+
+      SET
+        cleaning_transaction_id =
+          @cleaningTransactionId,
+
+        compliance_transaction_id =
+          @complianceTransactionId,
+
+        spirit_transaction_id =
+          @spiritTransactionId
+
+      OUTPUT
+        INSERTED.id,
+
+        INSERTED.group_discipline_score_id
+          AS groupDisciplineScoreId,
+
+        INSERTED.season_membership_id
+          AS seasonMembershipId,
+
+        INSERTED.cleaning_transaction_id
+          AS cleaningTransactionId,
+
+        INSERTED.compliance_transaction_id
+          AS complianceTransactionId,
+
+        INSERTED.spirit_transaction_id
+          AS spiritTransactionId
+
+      WHERE id =
+        @groupDisciplineScoreMemberId;
+    `);
+
+  return result.recordset[0] || null;
+}
+
 module.exports = {
+    findGroupDisciplineScoreByGroupId,
+    findActiveGroupMembershipsForDiscipline,
+    createGroupDisciplineScore,
+    updateGroupDisciplineScore,
+    createGroupDisciplineScoreHistory,
+    createGroupDisciplineScoreMember,
+    findGroupDisciplineScoreMembers,
+    reverseScoreTransaction,
+    updateGroupDisciplineScoreMemberTransactions,
+
     findManualScoreImportBatchByKey,
     createManualScoreImportBatch,
     completeManualScoreImportBatch,

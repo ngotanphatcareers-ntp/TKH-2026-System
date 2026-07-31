@@ -1580,6 +1580,787 @@ async function importManualScoreFileDemo() {
     }
 }
 
+async function disciplineApiRequestDemo(
+    path,
+    options = {}
+) {
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
+
+    if (!token) {
+        logoutDemo();
+
+        throw new Error(
+            "Phiên đăng nhập không hợp lệ."
+        );
+    }
+
+    const response = await fetch(
+        `${API_BASE_URL}${path}`,
+        {
+            ...options,
+
+            headers: {
+                Authorization:
+                    `Bearer ${token}`,
+
+                ...(
+                    options.body
+                        ? {
+                            "Content-Type":
+                                "application/json"
+                        }
+                        : {}
+                ),
+
+                ...(options.headers || {})
+            }
+        }
+    );
+
+    let result = null;
+
+    try {
+        result =
+            await response.json();
+    } catch (error) {
+        result = null;
+    }
+
+    if (response.status === 401) {
+        logoutDemo();
+
+        throw new Error(
+            "Phiên đăng nhập đã hết hạn."
+        );
+    }
+
+    if (response.status === 403) {
+        throw new Error(
+            result?.error?.message ||
+            "Bạn không có quyền quản lý điểm Rèn luyện."
+        );
+    }
+
+    if (
+        !response.ok ||
+        result?.success !== true
+    ) {
+        const apiError =
+            new Error(
+                result?.error?.message ||
+                "Không thể xử lý điểm Rèn luyện."
+            );
+
+        apiError.status =
+            response.status;
+
+        apiError.code =
+            result?.error?.code ||
+            null;
+
+        apiError.details =
+            result?.error?.details ||
+            null;
+
+        throw apiError;
+    }
+
+    return result.data;
+}
+
+function getDisciplineInputNumberDemo(
+    elementId
+) {
+    const element =
+        document.getElementById(
+            elementId
+        );
+
+    const value =
+        Number(element?.value);
+
+    return Number.isFinite(value)
+        ? value
+        : 0;
+}
+
+
+function buildDisciplinePreviewDemo() {
+    const cleaningPoints =
+        getDisciplineInputNumberDemo(
+            "disciplineCleaningPoints"
+        );
+
+    const compliancePoints =
+        getDisciplineInputNumberDemo(
+            "disciplineCompliancePoints"
+        );
+
+    const spiritPoints =
+        getDisciplineInputNumberDemo(
+            "disciplineSpiritPoints"
+        );
+
+    const rawTotal =
+        Number(
+            (
+                cleaningPoints +
+                compliancePoints +
+                spiritPoints
+            ).toFixed(2)
+        );
+
+    const weightedScore =
+        Number(
+            (
+                rawTotal /
+                90 *
+                30
+            ).toFixed(2)
+        );
+
+    return {
+        cleaningPoints,
+        compliancePoints,
+        spiritPoints,
+        rawTotal,
+        weightedScore
+    };
+}
+
+
+function updateDisciplinePreviewDemo() {
+    const preview =
+        buildDisciplinePreviewDemo();
+
+    const rawTotalElement =
+        document.getElementById(
+            "disciplineRawTotal"
+        );
+
+    const weightedElement =
+        document.getElementById(
+            "disciplineWeightedScore"
+        );
+
+    const message =
+        document.getElementById(
+            "disciplineMessage"
+        );
+
+    if (rawTotalElement) {
+        rawTotalElement.innerText =
+            preview.rawTotal;
+    }
+
+    if (weightedElement) {
+        weightedElement.innerText =
+            preview.weightedScore;
+    }
+
+    const values = [
+        preview.cleaningPoints,
+        preview.compliancePoints,
+        preview.spiritPoints
+    ];
+
+    const hasInvalidValue =
+        values.some(
+            value =>
+                !Number.isFinite(value) ||
+                value < 0 ||
+                value > 30
+        );
+
+    if (
+        hasInvalidValue &&
+        message
+    ) {
+        message.style.color = "red";
+        message.innerText =
+            "Mỗi hạng mục phải từ 0 đến 30 điểm.";
+    } else if (message) {
+        message.innerText = "";
+    }
+}
+
+async function loadDisciplineGroupOptionsDemo() {
+    const select =
+        document.getElementById(
+            "disciplineGroup"
+        );
+
+    if (!select) {
+        return;
+    }
+
+    select.innerHTML = `
+        <option value="">
+            Đang tải danh sách nhóm...
+        </option>
+    `;
+
+    select.disabled = true;
+
+    try {
+        const data =
+            await disciplineApiRequestDemo(
+                "/api/groups"
+            );
+
+        const groups =
+            Array.isArray(
+                data.groups
+            )
+                ? data.groups
+                : [];
+
+        disciplineGroupsApiCache =
+            groups;
+
+        if (groups.length === 0) {
+            select.innerHTML = `
+                <option value="">
+                    Chưa có nhóm trong mùa hiện tại
+                </option>
+            `;
+
+            return;
+        }
+
+        select.innerHTML = `
+            <option value="">
+                Chọn nhóm
+            </option>
+
+            ${
+                groups
+                    .map(group => `
+                        <option
+                            value="${Number(group.id)}"
+                        >
+                            ${escapeHtml(
+                                group.name ||
+                                group.code ||
+                                `Nhóm #${group.id}`
+                            )}
+
+                            ${
+                                group.memberCount !==
+                                null &&
+                                group.memberCount !==
+                                undefined
+                                    ? `— ${Number(group.memberCount)} thành viên`
+                                    : ""
+                            }
+                        </option>
+                    `)
+                    .join("")
+            }
+        `;
+
+        select.disabled = false;
+    } catch (error) {
+        console.error(
+            "Load discipline groups error:",
+            error
+        );
+
+        select.innerHTML = `
+            <option value="">
+                Không thể tải danh sách nhóm
+            </option>
+        `;
+    }
+}
+
+function setDisciplineFormValuesDemo(
+    disciplineScore
+) {
+    const score =
+        disciplineScore || {};
+
+    const cleaningElement =
+        document.getElementById(
+            "disciplineCleaningPoints"
+        );
+
+    const complianceElement =
+        document.getElementById(
+            "disciplineCompliancePoints"
+        );
+
+    const spiritElement =
+        document.getElementById(
+            "disciplineSpiritPoints"
+        );
+
+    if (cleaningElement) {
+        cleaningElement.value =
+            Number(
+                score.cleaningPoints
+            ) || 0;
+    }
+
+    if (complianceElement) {
+        complianceElement.value =
+            Number(
+                score.compliancePoints
+            ) || 0;
+    }
+
+    if (spiritElement) {
+        spiritElement.value =
+            Number(
+                score.spiritPoints
+            ) || 0;
+    }
+
+    updateDisciplinePreviewDemo();
+}
+
+
+function renderDisciplineCurrentStatusDemo(
+    group,
+    disciplineScore
+) {
+    const container =
+        document.getElementById(
+            "disciplineCurrentStatus"
+        );
+
+    if (!container) {
+        return;
+    }
+
+    const hasSavedScore =
+        disciplineScore?.id !==
+            null &&
+        disciplineScore?.id !==
+            undefined;
+
+    if (!hasSavedScore) {
+        container.innerHTML = `
+            <h3>
+                ${escapeHtml(
+                    group?.name ||
+                    "Nhóm"
+                )}
+            </h3>
+
+            <p>
+                Nhóm này chưa có điểm Rèn luyện chính thức.
+            </p>
+
+            <p>
+                Nhập điểm rồi bấm
+                <strong>Lưu điểm Rèn luyện</strong>.
+            </p>
+        `;
+
+        return;
+    }
+
+    const updatedDate =
+        disciplineScore.updatedAt
+            ? parseSqlLocalDateTime(
+                disciplineScore.updatedAt
+            )
+            : null;
+
+    const scoredDate =
+        disciplineScore.scoredAt
+            ? parseSqlLocalDateTime(
+                disciplineScore.scoredAt
+            )
+            : null;
+
+    const savedDate =
+        updatedDate ||
+        scoredDate;
+
+    const savedDateText =
+        savedDate
+            ? savedDate.toLocaleString(
+                "vi-VN"
+            )
+            : "Không xác định";
+
+    container.innerHTML = `
+        <h3>
+            Điểm hiện tại của
+            ${escapeHtml(
+                group?.name ||
+                "nhóm"
+            )}
+        </h3>
+
+        <p>
+            <strong>Trực nhật:</strong>
+            ${Number(
+                disciplineScore.cleaningPoints
+            ) || 0}
+            / 30
+        </p>
+
+        <p>
+            <strong>Tuân thủ:</strong>
+            ${Number(
+                disciplineScore.compliancePoints
+            ) || 0}
+            / 30
+        </p>
+
+        <p>
+            <strong>Tinh thần:</strong>
+            ${Number(
+                disciplineScore.spiritPoints
+            ) || 0}
+            / 30
+        </p>
+
+        <p>
+            <strong>Tổng thô:</strong>
+            ${Number(
+                disciplineScore.rawTotal
+            ) || 0}
+            / 90
+        </p>
+
+        <p>
+            <strong>Điểm quy đổi:</strong>
+            ${Number(
+                disciplineScore.weightedScore
+            ) || 0}
+            / 30
+        </p>
+
+        <p class="question-meta">
+            Cập nhật lúc:
+            ${escapeHtml(
+                savedDateText
+            )}
+        </p>
+    `;
+}
+
+
+async function loadSelectedGroupDisciplineDemo() {
+    const select =
+        document.getElementById(
+            "disciplineGroup"
+        );
+
+    const groupId =
+        Number(select?.value);
+
+    const message =
+        document.getElementById(
+            "disciplineMessage"
+        );
+
+    const saveButton =
+        document.getElementById(
+            "saveDisciplineScoreBtn"
+        );
+
+    const statusContainer =
+        document.getElementById(
+            "disciplineCurrentStatus"
+        );
+
+    disciplineSelectedScoreApi = null;
+
+    if (
+        !Number.isInteger(groupId) ||
+        groupId <= 0
+    ) {
+        setDisciplineFormValuesDemo({
+            cleaningPoints: 0,
+            compliancePoints: 0,
+            spiritPoints: 0
+        });
+
+        if (statusContainer) {
+            statusContainer.innerHTML = `
+                <p>
+                    Chọn nhóm để xem điểm Rèn luyện hiện tại.
+                </p>
+            `;
+        }
+
+        if (saveButton) {
+            saveButton.disabled = true;
+        }
+
+        if (message) {
+            message.innerText = "";
+        }
+
+        return;
+    }
+
+    if (saveButton) {
+        saveButton.disabled = true;
+    }
+
+    if (message) {
+        message.style.color = "#555";
+        message.innerText =
+            "Đang tải điểm Rèn luyện của nhóm...";
+    }
+
+    try {
+        const data =
+            await disciplineApiRequestDemo(
+                `/api/scores/admin/groups/${groupId}/discipline`
+            );
+
+        disciplineSelectedScoreApi =
+            data;
+
+        setDisciplineFormValuesDemo(
+            data.disciplineScore
+        );
+
+        renderDisciplineCurrentStatusDemo(
+            data.group,
+            data.disciplineScore
+        );
+
+        if (message) {
+            message.innerText = "";
+        }
+
+        if (saveButton) {
+            saveButton.disabled = false;
+        }
+    } catch (error) {
+        console.error(
+            "Load group discipline score error:",
+            error
+        );
+
+        setDisciplineFormValuesDemo({
+            cleaningPoints: 0,
+            compliancePoints: 0,
+            spiritPoints: 0
+        });
+
+        if (statusContainer) {
+            statusContainer.innerHTML = `
+                <p style="color: red;">
+                    Không thể tải điểm Rèn luyện của nhóm.
+                </p>
+            `;
+        }
+
+        if (message) {
+            message.style.color = "red";
+            message.innerText =
+                error.message ||
+                "Không thể tải điểm Rèn luyện.";
+        }
+    }
+}
+
+async function saveGroupDisciplineDemo() {
+    const groupSelect =
+        document.getElementById(
+            "disciplineGroup"
+        );
+
+    const saveButton =
+        document.getElementById(
+            "saveDisciplineScoreBtn"
+        );
+
+    const message =
+        document.getElementById(
+            "disciplineMessage"
+        );
+
+    const reasonElement =
+        document.getElementById(
+            "disciplineReason"
+        );
+
+    const groupId =
+        Number(groupSelect?.value);
+
+    if (
+        !Number.isInteger(groupId) ||
+        groupId <= 0
+    ) {
+        message.style.color = "red";
+        message.innerText =
+            "Vui lòng chọn nhóm.";
+
+        return;
+    }
+
+    const preview =
+        buildDisciplinePreviewDemo();
+
+    const values = [
+        preview.cleaningPoints,
+        preview.compliancePoints,
+        preview.spiritPoints
+    ];
+
+    if (
+        values.some(
+            value =>
+                !Number.isFinite(value) ||
+                value < 0 ||
+                value > 30
+        )
+    ) {
+        message.style.color = "red";
+        message.innerText =
+            "Mỗi hạng mục phải từ 0 đến 30 điểm.";
+
+        return;
+    }
+
+    const selectedGroup =
+        disciplineGroupsApiCache
+            .find(
+                group =>
+                    Number(group.id) ===
+                    groupId
+            );
+
+    const groupName =
+        selectedGroup?.name ||
+        `nhóm #${groupId}`;
+
+    const confirmed =
+        confirm(
+            `Bạn có chắc muốn lưu điểm Rèn luyện cho ${groupName}?\n\n` +
+            `Trực nhật: ${preview.cleaningPoints}/30\n` +
+            `Tuân thủ: ${preview.compliancePoints}/30\n` +
+            `Tinh thần: ${preview.spiritPoints}/30\n` +
+            `Điểm quy đổi: ${preview.weightedScore}/30`
+        );
+
+    if (!confirmed) {
+        return;
+    }
+
+    if (disciplineSaveInProgress) {
+        return;
+    }
+
+    disciplineSaveInProgress = true;
+
+    if (saveButton) {
+        saveButton.disabled = true;
+        saveButton.innerText =
+            "Đang lưu...";
+    }
+
+    message.style.color = "#555";
+    message.innerText =
+        "Đang lưu điểm Rèn luyện...";
+
+    try {
+        const data =
+            await disciplineApiRequestDemo(
+                `/api/scores/admin/groups/${groupId}/discipline`,
+                {
+                    method: "PUT",
+
+                    body: JSON.stringify({
+                        cleaningPoints:
+                            preview.cleaningPoints,
+
+                        compliancePoints:
+                            preview.compliancePoints,
+
+                        spiritPoints:
+                            preview.spiritPoints,
+
+                        reason:
+                            reasonElement
+                                ?.value
+                                .trim() ||
+                            "Cập nhật điểm Rèn luyện của nhóm."
+                    })
+                }
+            );
+
+        disciplineSelectedScoreApi =
+            data;
+
+        setDisciplineFormValuesDemo(
+            data.disciplineScore
+        );
+
+        renderDisciplineCurrentStatusDemo(
+            data.group,
+            data.disciplineScore
+        );
+
+        if (reasonElement) {
+            reasonElement.value = "";
+        }
+
+        message.style.color = "green";
+
+        message.innerText =
+            `${data.message} ` +
+            `Đã áp dụng cho ${Number(data.affectedMembers) || 0} thành viên.`;
+
+        /*
+         * Điểm nhóm và lịch sử điểm đã thay đổi.
+         */
+        groupRankingApiCache = null;
+        groupRankingApiPromise = null;
+
+        adminScoreHistoryApiPromise = null;
+        adminScoreHistoryApiCache = [];
+
+        myGroupScoreApiCache = null;
+        myGroupScoreApiPromise = null;
+
+        await Promise.all([
+            loadAdminScoreHistoryDemo(true),
+            loadAdminScoreSummaryDemo(true)
+        ]);
+    } catch (error) {
+        console.error(
+            "Save group discipline score error:",
+            error
+        );
+
+        message.style.color = "red";
+
+        if (
+            error.code ===
+            "DISCIPLINE_SCORE_NO_CHANGE"
+        ) {
+            message.innerText =
+                "Điểm Rèn luyện không có thay đổi. Không tạo thêm giao dịch.";
+        } else {
+            message.innerText =
+                error.message ||
+                "Không thể lưu điểm Rèn luyện.";
+        }
+    } finally {
+        disciplineSaveInProgress = false;
+
+        if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.innerText =
+                "Lưu điểm Rèn luyện";
+        }
+    }
+}
+
 async function addScoreDemo() {
     const username =
         document
@@ -3526,6 +4307,7 @@ function runPageLoaders() {
     loadGroupRankingDemo();
     loadAttendancePageData();
     loadScoreStudentOptionsDemo();
+    loadDisciplineGroupOptionsDemo();
     loadAdminScoreHistoryDemo();
     loadMyScoreDemo();
     loadDashboardPersonalScoreDemo();
@@ -7829,6 +8611,10 @@ let adminScoreExamsApiPromise = null;
 let manualScoreImportValidatedFile = null;
 let manualScoreImportValidationData = null;
 let manualScoreImportInProgress = false;
+
+let disciplineGroupsApiCache = [];
+let disciplineSelectedScoreApi = null;
+let disciplineSaveInProgress = false;
 
 let myGroupScoreApiCache = null;
 let myGroupScoreApiPromise = null;

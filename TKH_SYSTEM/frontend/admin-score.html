@@ -168,6 +168,114 @@
     </section>
 
     <section class="attendance-box">
+        <h2>Điểm Rèn luyện theo nhóm</h2>
+
+        <p class="empty-note">
+            Chọn nhóm và nhập điểm chính thức cho ba hạng mục.
+            Mỗi hạng mục tối đa 30 điểm.
+        </p>
+
+        <label>Chọn nhóm</label>
+
+        <select
+            class="form-input"
+            id="disciplineGroup"
+            onchange="loadSelectedGroupDisciplineDemo()"
+        >
+            <option value="">
+                Đang tải danh sách nhóm...
+            </option>
+        </select>
+
+        <div
+            id="disciplineCurrentStatus"
+            class="question-card"
+        >
+            <p>
+                Chọn nhóm để xem điểm Rèn luyện hiện tại.
+            </p>
+        </div>
+
+        <label>Trực nhật</label>
+
+        <input
+            class="form-input"
+            type="number"
+            id="disciplineCleaningPoints"
+            min="0"
+            max="30"
+            step="0.01"
+            value="0"
+            oninput="updateDisciplinePreviewDemo()"
+        >
+
+        <label>Tuân thủ</label>
+
+        <input
+            class="form-input"
+            type="number"
+            id="disciplineCompliancePoints"
+            min="0"
+            max="30"
+            step="0.01"
+            value="0"
+            oninput="updateDisciplinePreviewDemo()"
+        >
+
+        <label>Tinh thần</label>
+
+        <input
+            class="form-input"
+            type="number"
+            id="disciplineSpiritPoints"
+            min="0"
+            max="30"
+            step="0.01"
+            value="0"
+            oninput="updateDisciplinePreviewDemo()"
+        >
+
+        <label>Lý do / ghi chú</label>
+
+        <input
+            class="form-input"
+            type="text"
+            id="disciplineReason"
+            maxlength="500"
+            placeholder="Ví dụ: Tổng kết điểm Rèn luyện cuối chương trình"
+        >
+
+        <div
+            id="disciplinePreview"
+            class="question-card"
+        >
+            <p>
+                <strong>Tổng điểm thô:</strong>
+                <span id="disciplineRawTotal">0</span>
+                / 90
+            </p>
+
+            <p>
+                <strong>Điểm quy đổi:</strong>
+                <span id="disciplineWeightedScore">0</span>
+                / 30
+            </p>
+        </div>
+
+        <button
+            type="button"
+            class="checkin-btn"
+            id="saveDisciplineScoreBtn"
+            onclick="saveGroupDisciplineDemo()"
+            disabled
+        >
+            Lưu điểm Rèn luyện
+        </button>
+
+        <p id="disciplineMessage"></p>
+    </section>
+
+    <section class="attendance-box">
         <h2>Import điểm từ Excel</h2>
 
         <p class="empty-note">
@@ -291,6 +399,6 @@
                 </div>
         </div>
 </div>
-<script src="js/app.js?v=138"></script>
+<script src="js/app.js?v=139"></script>
 </body>
 </html>

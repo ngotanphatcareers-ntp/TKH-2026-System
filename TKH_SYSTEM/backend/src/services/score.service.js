@@ -37,6 +37,16 @@ const {
 findManualScoreImportBatchByKey,
 createManualScoreImportBatch,
 completeManualScoreImportBatch,
+
+findGroupDisciplineScoreByGroupId,
+findActiveGroupMembershipsForDiscipline,
+createGroupDisciplineScore,
+updateGroupDisciplineScore,
+createGroupDisciplineScoreHistory,
+createGroupDisciplineScoreMember,
+findGroupDisciplineScoreMembers,
+reverseScoreTransaction,
+updateGroupDisciplineScoreMemberTransactions,
 } = require("../repositories/score.repository");
 
 const {
@@ -2862,7 +2872,834 @@ if (!completedBatch) {
   }
 }
 
+function buildGroupDisciplineSummary({
+  cleaningPoints,
+  compliancePoints,
+  spiritPoints,
+}) {
+  const cleaning =
+    Number(cleaningPoints) || 0;
+
+  const compliance =
+    Number(compliancePoints) || 0;
+
+  const spirit =
+    Number(spiritPoints) || 0;
+
+  const rawTotal =
+    Number(
+      (
+        cleaning +
+        compliance +
+        spirit
+      ).toFixed(2)
+    );
+
+  const weightedScore =
+    Number(
+      (
+        rawTotal /
+        scoreConfig.discipline.maxRawScore *
+        scoreConfig.discipline.maxWeightedScore
+      ).toFixed(2)
+    );
+
+  return {
+    cleaningPoints:
+      cleaning,
+
+    compliancePoints:
+      compliance,
+
+    spiritPoints:
+      spirit,
+
+    rawTotal,
+
+    maximumRawPoints:
+      scoreConfig.discipline.maxRawScore,
+
+    weightedScore,
+
+    maximumWeightedPoints:
+      scoreConfig.discipline.maxWeightedScore,
+  };
+}
+
+async function getGroupDisciplineScore({
+  groupId,
+}) {
+  const normalizedGroupId =
+    Number(groupId);
+
+  if (
+    !Number.isInteger(
+      normalizedGroupId
+    ) ||
+    normalizedGroupId <= 0
+  ) {
+    return {
+      success: false,
+      code:
+        "INVALID_GROUP_ID",
+    };
+  }
+
+  const group =
+    await findActiveGroupById(
+      normalizedGroupId
+    );
+
+  if (!group) {
+    return {
+      success: false,
+      code:
+        "GROUP_NOT_FOUND",
+    };
+  }
+
+  const current =
+    await findGroupDisciplineScoreByGroupId({
+      groupId:
+        normalizedGroupId,
+    });
+
+  const summary =
+    buildGroupDisciplineSummary({
+      cleaningPoints:
+        current?.cleaningPoints || 0,
+
+      compliancePoints:
+        current?.compliancePoints || 0,
+
+      spiritPoints:
+        current?.spiritPoints || 0,
+    });
+
+  return {
+    success: true,
+
+    group: {
+      id:
+        Number(group.group_id),
+
+      code:
+        group.group_code,
+
+      name:
+        group.group_name,
+    },
+
+    disciplineScore:
+      current
+        ? {
+            id:
+              Number(current.id),
+
+            status:
+              current.status,
+
+            scoredByUserId:
+              current.scoredByUserId != null
+                ? Number(
+                    current.scoredByUserId
+                  )
+                : null,
+
+            scoredAt:
+              current.scoredAt,
+
+            updatedByUserId:
+              current.updatedByUserId != null
+                ? Number(
+                    current.updatedByUserId
+                  )
+                : null,
+
+            updatedAt:
+              current.updatedAt,
+
+            ...summary,
+          }
+        : {
+            id: null,
+            status: null,
+            scoredByUserId: null,
+            scoredAt: null,
+            updatedByUserId: null,
+            updatedAt: null,
+            ...summary,
+          },
+  };
+}
+
+async function saveGroupDisciplineScore({
+  groupId,
+  cleaningPoints,
+  compliancePoints,
+  spiritPoints,
+  reason,
+  adminUserId,
+}) {
+  const normalizedGroupId =
+    Number(groupId);
+
+  const normalizedAdminUserId =
+    Number(adminUserId);
+
+  const normalizedCleaningPoints =
+    Number(cleaningPoints);
+
+  const normalizedCompliancePoints =
+    Number(compliancePoints);
+
+  const normalizedSpiritPoints =
+    Number(spiritPoints);
+
+  const normalizedReason =
+    String(reason || "")
+      .trim();
+
+  if (
+    !Number.isInteger(
+      normalizedGroupId
+    ) ||
+    normalizedGroupId <= 0
+  ) {
+    return {
+      success: false,
+      code:
+        "INVALID_GROUP_ID",
+    };
+  }
+
+  if (
+    !Number.isInteger(
+      normalizedAdminUserId
+    ) ||
+    normalizedAdminUserId <= 0
+  ) {
+    return {
+      success: false,
+      code:
+        "ADMIN_USER_REQUIRED",
+    };
+  }
+
+  const pointValues = [
+    normalizedCleaningPoints,
+    normalizedCompliancePoints,
+    normalizedSpiritPoints,
+  ];
+
+  if (
+    pointValues.some(
+      value =>
+        !Number.isFinite(value)
+    )
+  ) {
+    return {
+      success: false,
+      code:
+        "INVALID_DISCIPLINE_POINTS",
+    };
+  }
+
+  if (
+    pointValues.some(
+      value =>
+        value < 0 ||
+        value > 30
+    )
+  ) {
+    return {
+      success: false,
+      code:
+        "DISCIPLINE_POINTS_OUT_OF_RANGE",
+
+      minimumPoints: 0,
+      maximumPoints: 30,
+    };
+  }
+
+  if (
+    normalizedReason.length > 500
+  ) {
+    return {
+      success: false,
+      code:
+        "DESCRIPTION_TOO_LONG",
+
+      maximumLength: 500,
+    };
+  }
+
+  const group =
+    await findActiveGroupById(
+      normalizedGroupId
+    );
+
+  if (!group) {
+    return {
+      success: false,
+      code:
+        "GROUP_NOT_FOUND",
+    };
+  }
+
+  const pool =
+    await getPool();
+
+  const transaction =
+    new sql.Transaction(pool);
+
+  let transactionStarted = false;
+
+  try {
+    await transaction.begin(
+      sql.ISOLATION_LEVEL.SERIALIZABLE
+    );
+
+    transactionStarted = true;
+
+    const current =
+      await findGroupDisciplineScoreByGroupId({
+        groupId:
+          normalizedGroupId,
+
+        transaction,
+      });
+
+    const oldSummary =
+      buildGroupDisciplineSummary({
+        cleaningPoints:
+          current?.cleaningPoints || 0,
+
+        compliancePoints:
+          current?.compliancePoints || 0,
+
+        spiritPoints:
+          current?.spiritPoints || 0,
+      });
+
+    const newSummary =
+      buildGroupDisciplineSummary({
+        cleaningPoints:
+          normalizedCleaningPoints,
+
+        compliancePoints:
+          normalizedCompliancePoints,
+
+        spiritPoints:
+          normalizedSpiritPoints,
+      });
+
+    const hasNoChange =
+      oldSummary.cleaningPoints ===
+        newSummary.cleaningPoints &&
+      oldSummary.compliancePoints ===
+        newSummary.compliancePoints &&
+      oldSummary.spiritPoints ===
+        newSummary.spiritPoints;
+
+    if (
+      current &&
+      hasNoChange
+    ) {
+      await transaction.rollback();
+      transactionStarted = false;
+
+      return {
+        success: false,
+        code:
+          "DISCIPLINE_SCORE_NO_CHANGE",
+
+        currentScore:
+          oldSummary,
+      };
+    }
+
+    let savedScore = null;
+
+    if (!current) {
+      savedScore =
+        await createGroupDisciplineScore({
+          groupId:
+            normalizedGroupId,
+
+          cleaningPoints:
+            newSummary.cleaningPoints,
+
+          compliancePoints:
+            newSummary.compliancePoints,
+
+          spiritPoints:
+            newSummary.spiritPoints,
+
+          adminUserId:
+            normalizedAdminUserId,
+
+          transaction,
+        });
+    } else {
+      savedScore =
+        await updateGroupDisciplineScore({
+          groupDisciplineScoreId:
+            Number(current.id),
+
+          cleaningPoints:
+            newSummary.cleaningPoints,
+
+          compliancePoints:
+            newSummary.compliancePoints,
+
+          spiritPoints:
+            newSummary.spiritPoints,
+
+          adminUserId:
+            normalizedAdminUserId,
+
+          transaction,
+        });
+    }
+
+    if (!savedScore) {
+      throw new Error(
+        "Không thể lưu điểm Rèn luyện của nhóm."
+      );
+    }
+
+    const groupDisciplineScoreId =
+      Number(savedScore.id);
+
+    const existingMemberLinks =
+      current
+        ? await findGroupDisciplineScoreMembers({
+            groupDisciplineScoreId,
+            transaction,
+          })
+        : [];
+
+    const members =
+      current
+        ? existingMemberLinks.map(
+            item => ({
+              id:
+                Number(item.id),
+
+              seasonMembershipId:
+                Number(
+                  item.seasonMembershipId
+                ),
+
+              tkhCode:
+                item.tkhCode,
+
+              fullName:
+                item.fullName,
+
+              cleaningTransactionId:
+                Number(
+                  item.cleaningTransactionId
+                ),
+
+              complianceTransactionId:
+                Number(
+                  item.complianceTransactionId
+                ),
+
+              spiritTransactionId:
+                Number(
+                  item.spiritTransactionId
+                ),
+            })
+          )
+        : await findActiveGroupMembershipsForDiscipline({
+            groupId:
+              normalizedGroupId,
+
+            transaction,
+          });
+
+    if (members.length === 0) {
+      throw new Error(
+        "Nhóm không có thành viên đang hoạt động."
+      );
+    }
+
+    const transactionResults = [];
+
+    for (const member of members) {
+      if (current) {
+        const oldTransactionIds = [
+          member.cleaningTransactionId,
+          member.complianceTransactionId,
+          member.spiritTransactionId,
+        ];
+
+        for (
+          const transactionId of
+          oldTransactionIds
+        ) {
+          const reversed =
+            await reverseScoreTransaction({
+              scoreTransactionId:
+                transactionId,
+
+              adminUserId:
+                normalizedAdminUserId,
+
+              reversalReason:
+                normalizedReason ||
+                "Cập nhật điểm Rèn luyện của nhóm.",
+
+              transaction,
+            });
+
+          if (!reversed) {
+            throw new Error(
+              `Không thể thu hồi giao dịch cũ ${transactionId}.`
+            );
+          }
+        }
+      }
+
+      const cleaningTransaction =
+        await createScoreTransaction({
+          seasonMembershipId:
+            Number(
+              member.seasonMembershipId
+            ),
+
+          scoreCategory:
+            "DISCIPLINE",
+
+          scoreType:
+            "DISCIPLINE_CLEANING",
+
+          requestedPoints:
+            newSummary.cleaningPoints,
+
+          appliedPoints:
+            newSummary.cleaningPoints,
+
+          sourceType:
+            "GROUP_DISCIPLINE",
+
+          sourceId:
+            groupDisciplineScoreId,
+
+          sourceKey:
+            `GROUP_DISCIPLINE:${groupDisciplineScoreId}:MEMBERSHIP:${member.seasonMembershipId}:CLEANING:${randomUUID()}`,
+
+          description:
+            normalizedReason ||
+            `Điểm Trực nhật của nhóm ${group.group_name}`,
+
+          createdByUserId:
+            normalizedAdminUserId,
+
+          transaction,
+        });
+
+      const complianceTransaction =
+        await createScoreTransaction({
+          seasonMembershipId:
+            Number(
+              member.seasonMembershipId
+            ),
+
+          scoreCategory:
+            "DISCIPLINE",
+
+          scoreType:
+            "DISCIPLINE_COMPLIANCE",
+
+          requestedPoints:
+            newSummary.compliancePoints,
+
+          appliedPoints:
+            newSummary.compliancePoints,
+
+          sourceType:
+            "GROUP_DISCIPLINE",
+
+          sourceId:
+            groupDisciplineScoreId,
+
+          sourceKey:
+            `GROUP_DISCIPLINE:${groupDisciplineScoreId}:MEMBERSHIP:${member.seasonMembershipId}:COMPLIANCE:${randomUUID()}`,
+
+          description:
+            normalizedReason ||
+            `Điểm Tuân thủ của nhóm ${group.group_name}`,
+
+          createdByUserId:
+            normalizedAdminUserId,
+
+          transaction,
+        });
+
+      const spiritTransaction =
+        await createScoreTransaction({
+          seasonMembershipId:
+            Number(
+              member.seasonMembershipId
+            ),
+
+          scoreCategory:
+            "DISCIPLINE",
+
+          scoreType:
+            "DISCIPLINE_SPIRIT",
+
+          requestedPoints:
+            newSummary.spiritPoints,
+
+          appliedPoints:
+            newSummary.spiritPoints,
+
+          sourceType:
+            "GROUP_DISCIPLINE",
+
+          sourceId:
+            groupDisciplineScoreId,
+
+          sourceKey:
+            `GROUP_DISCIPLINE:${groupDisciplineScoreId}:MEMBERSHIP:${member.seasonMembershipId}:SPIRIT:${randomUUID()}`,
+
+          description:
+            normalizedReason ||
+            `Điểm Tinh thần của nhóm ${group.group_name}`,
+
+          createdByUserId:
+            normalizedAdminUserId,
+
+          transaction,
+        });
+
+      if (
+        !cleaningTransaction ||
+        !complianceTransaction ||
+        !spiritTransaction
+      ) {
+        throw new Error(
+          `Không thể tạo đủ giao dịch cho ${member.tkhCode || member.seasonMembershipId}.`
+        );
+      }
+
+      if (!current) {
+        const memberLink =
+          await createGroupDisciplineScoreMember({
+            groupDisciplineScoreId,
+
+            seasonMembershipId:
+              Number(
+                member.seasonMembershipId
+              ),
+
+            cleaningTransactionId:
+              Number(
+                cleaningTransaction.id
+              ),
+
+            complianceTransactionId:
+              Number(
+                complianceTransaction.id
+              ),
+
+            spiritTransactionId:
+              Number(
+                spiritTransaction.id
+              ),
+
+            transaction,
+          });
+
+        if (!memberLink) {
+          throw new Error(
+            `Không thể liên kết giao dịch cho ${member.tkhCode || member.seasonMembershipId}.`
+          );
+        }
+      } else {
+        const updatedMemberLink =
+          await updateGroupDisciplineScoreMemberTransactions({
+            groupDisciplineScoreMemberId:
+              Number(member.id),
+
+            cleaningTransactionId:
+              Number(
+                cleaningTransaction.id
+              ),
+
+            complianceTransactionId:
+              Number(
+                complianceTransaction.id
+              ),
+
+            spiritTransactionId:
+              Number(
+                spiritTransaction.id
+              ),
+
+            transaction,
+          });
+
+        if (!updatedMemberLink) {
+          throw new Error(
+            `Không thể cập nhật liên kết giao dịch cho ${member.tkhCode || member.seasonMembershipId}.`
+          );
+        }
+      }
+
+      transactionResults.push({
+        seasonMembershipId:
+          Number(
+            member.seasonMembershipId
+          ),
+
+        tkhCode:
+          member.tkhCode || null,
+
+        fullName:
+          member.fullName || null,
+
+        cleaningTransactionId:
+          Number(
+            cleaningTransaction.id
+          ),
+
+        complianceTransactionId:
+          Number(
+            complianceTransaction.id
+          ),
+
+        spiritTransactionId:
+          Number(
+            spiritTransaction.id
+          ),
+      });
+    }
+
+    const history =
+      await createGroupDisciplineScoreHistory({
+        groupDisciplineScoreId,
+
+        oldCleaningPoints:
+          current
+            ? oldSummary.cleaningPoints
+            : null,
+
+        newCleaningPoints:
+          newSummary.cleaningPoints,
+
+        oldCompliancePoints:
+          current
+            ? oldSummary.compliancePoints
+            : null,
+
+        newCompliancePoints:
+          newSummary.compliancePoints,
+
+        oldSpiritPoints:
+          current
+            ? oldSummary.spiritPoints
+            : null,
+
+        newSpiritPoints:
+          newSummary.spiritPoints,
+
+        changeType:
+          current
+            ? "UPDATE"
+            : "CREATE",
+
+        reason:
+          normalizedReason || null,
+
+        adminUserId:
+          normalizedAdminUserId,
+
+        transaction,
+      });
+
+    if (!history) {
+      throw new Error(
+        "Không thể ghi lịch sử điểm Rèn luyện."
+      );
+    }
+
+    await transaction.commit();
+    transactionStarted = false;
+
+    return {
+      success: true,
+
+      group: {
+        id:
+          Number(group.group_id),
+
+        code:
+          group.group_code,
+
+        name:
+          group.group_name,
+      },
+
+      disciplineScore: {
+        id:
+          groupDisciplineScoreId,
+
+        ...newSummary,
+      },
+
+      affectedMembers:
+        transactionResults.length,
+
+      transactions:
+        transactionResults,
+
+      changeType:
+        current
+          ? "UPDATE"
+          : "CREATE",
+
+      message:
+        current
+          ? "Đã cập nhật điểm Rèn luyện cho nhóm."
+          : "Đã tạo điểm Rèn luyện cho nhóm.",
+    };
+  } catch (error) {
+    if (transactionStarted) {
+      try {
+        await transaction.rollback();
+      } catch (rollbackError) {
+        console.error(
+          "Group discipline rollback error:",
+          rollbackError
+        );
+      }
+    }
+
+    console.error(
+      "Save group discipline score error:",
+      error
+    );
+
+    return {
+      success: false,
+      code:
+        "SAVE_GROUP_DISCIPLINE_SCORE_FAILED",
+
+      internalMessage:
+        error.message,
+    };
+  }
+}
+
 module.exports = {
+    getGroupDisciplineScore,
+    saveGroupDisciplineScore,
     validateManualScoreImport,
     importManualScoresExcel,
   getAdminScoreHistory,

@@ -946,7 +946,219 @@ async function importManualScoresExcel(
   }
 }
 
+async function getGroupDisciplineScore(
+  req,
+  res,
+  next
+) {
+  try {
+    const result =
+      await scoreService
+        .getGroupDisciplineScore({
+          groupId:
+            req.params.groupId,
+        });
+
+    if (!result.success) {
+      const errorMap = {
+        INVALID_GROUP_ID: {
+          status: 400,
+          message:
+            "Mã nhóm không hợp lệ.",
+        },
+
+        GROUP_NOT_FOUND: {
+          status: 404,
+          message:
+            "Không tìm thấy nhóm trong mùa đang hoạt động.",
+        },
+      };
+
+      const mappedError =
+        errorMap[result.code] || {
+          status: 400,
+          message:
+            "Không thể tải điểm Rèn luyện của nhóm.",
+        };
+
+      return res
+        .status(mappedError.status)
+        .json({
+          success: false,
+
+          error: {
+            code:
+              result.code,
+
+            message:
+              mappedError.message,
+          },
+        });
+    }
+
+    return res.status(200).json({
+      success: true,
+
+      data: {
+        group:
+          result.group,
+
+        disciplineScore:
+          result.disciplineScore,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function saveGroupDisciplineScore(
+  req,
+  res,
+  next
+) {
+  try {
+    const result =
+      await scoreService
+        .saveGroupDisciplineScore({
+          groupId:
+            req.params.groupId,
+
+          cleaningPoints:
+            req.body?.cleaningPoints,
+
+          compliancePoints:
+            req.body?.compliancePoints,
+
+          spiritPoints:
+            req.body?.spiritPoints,
+
+          reason:
+            req.body?.reason,
+
+          adminUserId:
+            req.user.id,
+        });
+
+    if (!result.success) {
+      const errorMap = {
+        INVALID_GROUP_ID: {
+          status: 400,
+          message:
+            "Mã nhóm không hợp lệ.",
+        },
+
+        ADMIN_USER_REQUIRED: {
+          status: 403,
+          message:
+            "Không xác định được tài khoản Admin.",
+        },
+
+        INVALID_DISCIPLINE_POINTS: {
+          status: 400,
+          message:
+            "Điểm Rèn luyện phải là số hợp lệ.",
+        },
+
+        DISCIPLINE_POINTS_OUT_OF_RANGE: {
+          status: 400,
+          message:
+            "Mỗi hạng mục Rèn luyện phải từ 0 đến 30 điểm.",
+        },
+
+        DESCRIPTION_TOO_LONG: {
+          status: 400,
+          message:
+            "Lý do không được vượt quá 500 ký tự.",
+        },
+
+        GROUP_NOT_FOUND: {
+          status: 404,
+          message:
+            "Không tìm thấy nhóm trong mùa đang hoạt động.",
+        },
+
+        DISCIPLINE_SCORE_NO_CHANGE: {
+          status: 409,
+          message:
+            "Điểm Rèn luyện không có thay đổi.",
+        },
+
+        SAVE_GROUP_DISCIPLINE_SCORE_FAILED: {
+          status: 500,
+          message:
+            "Không thể lưu điểm Rèn luyện cho nhóm.",
+        },
+      };
+
+      const mappedError =
+        errorMap[result.code] || {
+          status: 400,
+          message:
+            "Không thể cập nhật điểm Rèn luyện.",
+        };
+
+      return res
+        .status(mappedError.status)
+        .json({
+          success: false,
+
+          error: {
+            code:
+              result.code,
+
+            message:
+              mappedError.message,
+
+            details: {
+              minimumPoints:
+                result.minimumPoints ??
+                null,
+
+              maximumPoints:
+                result.maximumPoints ??
+                null,
+
+              currentScore:
+                result.currentScore ||
+                null,
+
+              internalMessage:
+                result.internalMessage ||
+                null,
+            },
+          },
+        });
+    }
+
+    return res.status(200).json({
+      success: true,
+
+      data: {
+        message:
+          result.message,
+
+        group:
+          result.group,
+
+        disciplineScore:
+          result.disciplineScore,
+
+        affectedMembers:
+          result.affectedMembers,
+
+        changeType:
+          result.changeType,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
+    getGroupDisciplineScore,
+    saveGroupDisciplineScore,
     validateManualScoreImport,
     importManualScoresExcel,
     getAdminScoreHistory,
