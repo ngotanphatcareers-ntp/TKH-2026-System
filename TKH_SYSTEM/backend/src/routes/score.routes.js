@@ -1,5 +1,7 @@
 const express = require("express");
 
+const multer = require("multer");
+
 const authenticateToken = require(
   "../middleware/authenticate-token"
 );
@@ -13,6 +15,17 @@ const scoreController = require(
 );
 
 const router = express.Router();
+
+const uploadManualScores =
+  multer({
+    storage:
+      multer.memoryStorage(),
+
+    limits: {
+      fileSize:
+        5 * 1024 * 1024,
+    },
+  });
 
 
 router.get(
@@ -67,5 +80,34 @@ router.post(
   scoreController.createAdminGroupScore
 );
 
+router.post(
+  "/admin/import/validate",
+
+  authenticateToken,
+
+  requireRole("ADMIN"),
+
+  uploadManualScores.single(
+    "file"
+  ),
+
+  scoreController
+    .validateManualScoreImport
+);
+
+router.post(
+  "/admin/import",
+
+  authenticateToken,
+
+  requireRole("ADMIN"),
+
+  uploadManualScores.single(
+    "file"
+  ),
+
+  scoreController
+    .importManualScoresExcel
+);
 
 module.exports = router;

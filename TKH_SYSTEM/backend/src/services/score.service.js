@@ -1,9 +1,23 @@
 const {
   randomUUID,
+  createHash,
 } = require("node:crypto");
+
+const {
+  getPool,
+  sql,
+} = require(
+  "../config/database"
+);
 
 const scoreConfig = require(
   "../config/score.config"
+);
+
+const {
+  parseManualScoresExcel,
+} = require(
+  "../utils/parse-manual-scores-excel"
 );
 
 
@@ -20,6 +34,9 @@ const {
   findAllActiveGroupScoreBases,
   findActiveGroupMemberScoreTransactions,
   findActiveMemberScoreTransactions,
+findManualScoreImportBatchByKey,
+createManualScoreImportBatch,
+completeManualScoreImportBatch,
 } = require("../repositories/score.repository");
 
 const {
@@ -1938,7 +1955,916 @@ async function getAdminScoreHistory({
   };
 }
 
+function createManualScoreImportBatchKey(
+  fileBuffer
+) {
+  if (
+    !fileBuffer ||
+    !Buffer.isBuffer(fileBuffer)
+  ) {
+    return "";
+  }
+
+  return createHash("sha256")
+    .update(fileBuffer)
+    .digest("hex");
+}
+
+async function validateManualScoreImport({
+  fileBuffer,
+}) {
+  /*
+   * Bước 1:
+   * Kiểm tra cấu trúc và dữ liệu cơ bản
+   * trong file Excel.
+   */
+  const parsed =
+    parseManualScoresExcel(
+      fileBuffer
+    );
+
+  if (!parsed.success) {
+    return parsed;
+  }
+
+  const batchKey =
+  createManualScoreImportBatchKey(
+    fileBuffer
+  );
+
+const existingBatch =
+  await findManualScoreImportBatchByKey({
+    batchKey,
+  });
+
+if (
+  existingBatch &&
+  existingBatch.status === "COMPLETED"
+) {
+  return {
+    success: false,
+
+    code:
+      "MANUAL_SCORE_IMPORT_ALREADY_COMPLETED",
+
+    batch: existingBatch,
+
+    errors: [],
+  };
+}
+
+  const errors = [];
+  const preview = [];
+
+  /*
+   * Cache giúp tránh truy vấn lại nhiều lần
+   * nếu một học viên có nhiều dòng trong file.
+   */
+  const membershipCache =
+    new Map();
+
+  const transactionCache =
+    new Map();
+
+  const projectedAttendancePoints =
+    new Map();
+
+  const projectedParticipationPoints =
+    new Map();
+
+  const examScoreCache =
+    new Map();
+
+  const projectedExamPoints =
+    new Map();
+
+
+  for (const row of parsed.rows) {
+    /*
+     * ========================================
+     * 1. Tìm học viên
+     * ========================================
+     */
+    let membership =
+      membershipCache.get(
+        row.username
+      );
+
+    if (
+      membership === undefined
+    ) {
+      membership =
+        await findActiveMembershipByUsername(
+          row.username
+        );
+
+      membershipCache.set(
+        row.username,
+        membership || null
+      );
+    }
+
+    if (!membership) {
+      errors.push({
+        row: row.rowNumber,
+
+        code:
+          "ACTIVE_MEMBERSHIP_NOT_FOUND",
+
+        message:
+          `Không tìm thấy học viên ${row.tkhCode} trong mùa đang hoạt động.`,
+      });
+
+      continue;
+    }
+
+    const seasonMembershipId =
+      Number(
+        membership
+          .season_membership_id
+      );
+
+
+    /*
+     * ========================================
+     * 2. Tải lịch sử điểm hiện tại
+     * ========================================
+     */
+    let existingTransactions =
+      transactionCache.get(
+        seasonMembershipId
+      );
+
+    if (
+      existingTransactions ===
+      undefined
+    ) {
+      existingTransactions =
+        await findScoreTransactionsBySeasonMembershipId(
+          seasonMembershipId
+        );
+
+      transactionCache.set(
+        seasonMembershipId,
+        existingTransactions
+      );
+    }
+
+
+    /*
+     * ========================================
+     * 3. Điều chỉnh điểm danh
+     * ========================================
+     */
+    if (
+      row.scoreType ===
+      "ATTENDANCE_ADJUSTMENT"
+    ) {
+      let currentPoints =
+        projectedAttendancePoints.get(
+          seasonMembershipId
+        );
+
+      if (
+        currentPoints === undefined
+      ) {
+        currentPoints =
+          sumActiveScoreByTypes(
+            existingTransactions,
+            [
+              "ATTENDANCE",
+              "ATTENDANCE_ADJUSTMENT",
+            ]
+          );
+      }
+
+      const projectedPoints =
+        Number(
+          (
+            currentPoints +
+            row.points
+          ).toFixed(2)
+        );
+
+      if (projectedPoints < 0) {
+        errors.push({
+          row: row.rowNumber,
+
+          code:
+            "ATTENDANCE_SCORE_BELOW_ZERO",
+
+          message:
+            `${row.tkhCode}: tổng điểm danh sẽ giảm xuống ${projectedPoints}, nhỏ hơn 0.`,
+
+          currentPoints,
+          requestedPoints:
+            row.points,
+          minimumPoints: 0,
+        });
+
+        continue;
+      }
+
+      if (
+        projectedPoints >
+        scoreConfig.attendance
+          .maxRawScore
+      ) {
+        errors.push({
+          row: row.rowNumber,
+
+          code:
+            "ATTENDANCE_SCORE_LIMIT_EXCEEDED",
+
+          message:
+            `${row.tkhCode}: tổng điểm danh sẽ thành ${projectedPoints}, vượt quá 110.`,
+
+          currentPoints,
+          requestedPoints:
+            row.points,
+
+          maximumPoints:
+            scoreConfig.attendance
+              .maxRawScore,
+        });
+
+        continue;
+      }
+
+      projectedAttendancePoints.set(
+        seasonMembershipId,
+        projectedPoints
+      );
+
+      preview.push({
+        ...row,
+
+        member: {
+          seasonMembershipId,
+
+          tkhCode:
+            membership.tkh_code,
+
+          fullName:
+            membership.full_name,
+
+          groupName:
+            membership.group_name ||
+            "Chưa phân nhóm",
+        },
+
+        currentPoints,
+        projectedPoints,
+        maximumPoints:
+          scoreConfig.attendance
+            .maxRawScore,
+      });
+
+      continue;
+    }
+
+
+    /*
+     * ========================================
+     * 4. Điểm phát biểu
+     * ========================================
+     */
+    if (
+      row.scoreType ===
+      "PARTICIPATION"
+    ) {
+      let currentPoints =
+        projectedParticipationPoints.get(
+          seasonMembershipId
+        );
+
+      if (
+        currentPoints === undefined
+      ) {
+        currentPoints =
+          sumActiveScoreByTypes(
+            existingTransactions,
+            ["PARTICIPATION"]
+          );
+      }
+
+      const projectedPoints =
+        Number(
+          (
+            currentPoints +
+            row.points
+          ).toFixed(2)
+        );
+
+      const maximumPoints =
+        scoreConfig.learning
+          .participation
+          .maxScore;
+
+      if (
+        projectedPoints >
+        maximumPoints
+      ) {
+        errors.push({
+          row: row.rowNumber,
+
+          code:
+            "PARTICIPATION_SCORE_LIMIT_EXCEEDED",
+
+          message:
+            `${row.tkhCode}: tổng điểm phát biểu sẽ thành ${projectedPoints}, vượt quá ${maximumPoints}.`,
+
+          currentPoints,
+          requestedPoints:
+            row.points,
+          maximumPoints,
+        });
+
+        continue;
+      }
+
+      projectedParticipationPoints.set(
+        seasonMembershipId,
+        projectedPoints
+      );
+
+      preview.push({
+        ...row,
+
+        member: {
+          seasonMembershipId,
+
+          tkhCode:
+            membership.tkh_code,
+
+          fullName:
+            membership.full_name,
+
+          groupName:
+            membership.group_name ||
+            "Chưa phân nhóm",
+        },
+
+        currentPoints,
+        projectedPoints,
+        maximumPoints,
+      });
+
+      continue;
+    }
+
+
+    /*
+     * ========================================
+     * 5. Pre-test hoặc Final Test giấy
+     * ========================================
+     */
+    if (
+      row.scoreType === "PRE_TEST" ||
+      row.scoreType === "FINAL_TEST"
+    ) {
+      const examCacheKey =
+        `${seasonMembershipId}:${row.examId}`;
+
+      let examScore =
+        examScoreCache.get(
+          examCacheKey
+        );
+
+      if (
+        examScore === undefined
+      ) {
+        examScore =
+          await findActiveExamScoreForMembership({
+            seasonMembershipId,
+            examId:
+              row.examId,
+          });
+
+        examScoreCache.set(
+          examCacheKey,
+          examScore || null
+        );
+      }
+
+      if (!examScore) {
+        errors.push({
+          row: row.rowNumber,
+
+          code:
+            "EXAM_NOT_FOUND",
+
+          message:
+            `Không tìm thấy bài kiểm tra ID ${row.examId}.`,
+        });
+
+        continue;
+      }
+
+      const actualExamType =
+        String(
+          examScore.examType || ""
+        )
+          .trim()
+          .toUpperCase();
+
+      if (
+        actualExamType !==
+        row.scoreType
+      ) {
+        errors.push({
+          row: row.rowNumber,
+
+          code:
+            "EXAM_TYPE_MISMATCH",
+
+          message:
+            `Bài kiểm tra ID ${row.examId} có loại ${actualExamType}, không phải ${row.scoreType}.`,
+
+          expectedType:
+            row.scoreType,
+
+          actualType:
+            actualExamType,
+        });
+
+        continue;
+      }
+
+      let currentPoints =
+        projectedExamPoints.get(
+          examCacheKey
+        );
+
+      if (
+        currentPoints === undefined
+      ) {
+        currentPoints =
+          Number(
+            examScore.currentPoints
+          ) || 0;
+      }
+
+      const projectedPoints =
+        Number(
+          (
+            currentPoints +
+            row.points
+          ).toFixed(2)
+        );
+
+      const maximumPoints =
+        row.scoreType === "PRE_TEST"
+          ? scoreConfig.learning
+              .preTest
+              .maxScorePerTest
+          : scoreConfig.learning
+              .finalTest
+              .maxScore;
+
+      if (
+        projectedPoints >
+        maximumPoints
+      ) {
+        errors.push({
+          row: row.rowNumber,
+
+          code:
+            "EXAM_SCORE_LIMIT_EXCEEDED",
+
+          message:
+            `${row.tkhCode}: điểm của bài "${examScore.examName}" sẽ thành ${projectedPoints}, vượt quá ${maximumPoints}.`,
+
+          currentPoints,
+          requestedPoints:
+            row.points,
+          maximumPoints,
+
+          remainingPoints:
+            Math.max(
+              maximumPoints -
+                currentPoints,
+              0
+            ),
+        });
+
+        continue;
+      }
+
+      projectedExamPoints.set(
+        examCacheKey,
+        projectedPoints
+      );
+
+      preview.push({
+        ...row,
+
+        member: {
+          seasonMembershipId,
+
+          tkhCode:
+            membership.tkh_code,
+
+          fullName:
+            membership.full_name,
+
+          groupName:
+            membership.group_name ||
+            "Chưa phân nhóm",
+        },
+
+        exam: {
+          id:
+            Number(examScore.examId),
+
+          name:
+            examScore.examName,
+
+          type:
+            actualExamType,
+
+          status:
+            examScore.examStatus,
+        },
+
+        currentPoints,
+        projectedPoints,
+        maximumPoints,
+      });
+    }
+  }
+
+
+  /*
+   * Chỉ cần một dòng lỗi thì toàn bộ file
+   * chưa được phép import.
+   */
+  if (errors.length > 0) {
+    return {
+      success: false,
+
+      code:
+        "MANUAL_SCORE_IMPORT_VALIDATION_FAILED",
+
+      summary: {
+        totalRows:
+          parsed.rows.length,
+
+        validRows:
+          preview.length,
+
+        invalidRows:
+          errors.length,
+      },
+
+      errors,
+
+      preview: [],
+    };
+  }
+
+
+  return {
+    success: true,
+
+    code:
+      "MANUAL_SCORE_IMPORT_VALID",
+    batchKey,
+
+    summary: {
+      ...parsed.summary,
+
+      validRows:
+        preview.length,
+
+      invalidRows: 0,
+    },
+
+    preview,
+  };
+}
+
+async function importManualScoresExcel({
+  fileBuffer,
+  originalFileName = null,
+  fileSizeBytes = null,
+  adminUserId,
+}) {
+  /*
+   * Xác định Admin thực hiện import.
+   */
+  const normalizedAdminUserId =
+    Number(adminUserId);
+
+  if (
+    !Number.isInteger(
+      normalizedAdminUserId
+    ) ||
+    normalizedAdminUserId <= 0
+  ) {
+    return {
+      success: false,
+      code:
+        "ADMIN_USER_REQUIRED",
+    };
+  }
+
+  /*
+   * Validate lại toàn bộ file ngay trước khi ghi.
+   *
+   * Hàm này kiểm tra:
+   * - cấu trúc Excel;
+   * - mã TKH;
+   * - điểm hiện tại;
+   * - giới hạn điểm;
+   * - điểm cộng dồn trong chính file.
+   */
+  const validation =
+    await validateManualScoreImport({
+      fileBuffer,
+    });
+
+  if (!validation.success) {
+    return validation;
+  }
+
+  const batchKey =
+  validation.batchKey ||
+  createManualScoreImportBatchKey(
+    fileBuffer
+  );
+
+  const pool =
+    await getPool();
+
+  const transaction =
+    new sql.Transaction(pool);
+
+  let transactionStarted = false;
+
+  try {
+    await transaction.begin(
+  sql.ISOLATION_LEVEL.SERIALIZABLE
+);
+
+transactionStarted = true;
+
+/*
+ * Kiểm tra lại bên trong transaction
+ * để chặn hai request import đồng thời.
+ */
+const existingBatch =
+  await findManualScoreImportBatchByKey({
+    batchKey,
+    transaction,
+  });
+
+if (existingBatch) {
+  await transaction.rollback();
+  transactionStarted = false;
+
+  return {
+    success: false,
+
+    code:
+      "MANUAL_SCORE_IMPORT_ALREADY_COMPLETED",
+
+    batch:
+      existingBatch,
+  };
+}
+
+const importBatch =
+  await createManualScoreImportBatch({
+    batchKey,
+
+    originalFileName,
+
+    fileSizeBytes:
+      Number(fileSizeBytes) || null,
+
+    totalRows:
+      validation.preview.length,
+
+    createdByUserId:
+      normalizedAdminUserId,
+
+    transaction,
+  });
+
+if (!importBatch) {
+  throw new Error(
+    "Không thể tạo batch import."
+  );
+}
+
+const createdTransactions = [];
+
+    for (
+      const row of
+      validation.preview
+    ) {
+      const scoreCategory =
+        SCORE_TYPE_CATEGORY[
+          row.scoreType
+        ];
+
+      const isExamScore =
+        row.scoreType ===
+          "PRE_TEST" ||
+        row.scoreType ===
+          "FINAL_TEST";
+
+      const sourceType =
+        isExamScore
+          ? "MANUAL_TEST"
+          : "MANUAL_IMPORT";
+
+      const sourceId =
+        isExamScore
+          ? Number(row.examId)
+          : null;
+
+      const sourceKey =
+        isExamScore
+            ? `${row.scoreType}:IMPORT_BATCH:${importBatch.id}:EXAM:${row.examId}:ROW:${row.rowNumber}`
+            : `${row.scoreType}:IMPORT_BATCH:${importBatch.id}:ROW:${row.rowNumber}`;
+
+      const appliedPoints =
+        Math.round(
+          Number(row.points) * 100
+        ) / 100;
+
+      const created =
+        await createScoreTransaction({
+          seasonMembershipId:
+            Number(
+              row.member
+                .seasonMembershipId
+            ),
+
+          scoreCategory,
+
+          scoreType:
+            row.scoreType,
+
+          requestedPoints:
+            appliedPoints,
+
+          appliedPoints,
+
+          sourceType,
+
+          sourceId,
+
+          sourceKey,
+
+          description:
+            row.description,
+
+          createdByUserId:
+            normalizedAdminUserId,
+
+          transaction,
+        });
+
+      if (!created) {
+        throw new Error(
+          `Không thể tạo giao dịch tại dòng ${row.rowNumber}.`
+        );
+      }
+
+      createdTransactions.push({
+        rowNumber:
+          row.rowNumber,
+
+        tkhCode:
+          row.member.tkhCode,
+
+        fullName:
+          row.member.fullName,
+
+        groupName:
+          row.member.groupName,
+
+        scoreType:
+          row.scoreType,
+
+        examId:
+          row.examId,
+
+        points:
+          appliedPoints,
+
+        transactionId:
+          Number(created.id),
+
+        sourceType:
+          created.sourceType,
+
+        sourceKey:
+          created.sourceKey,
+      });
+    }
+
+const completedBatch =
+  await completeManualScoreImportBatch({
+    batchId:
+      Number(importBatch.id),
+
+    importedRows:
+      createdTransactions.length,
+
+    transaction,
+  });
+
+if (!completedBatch) {
+  throw new Error(
+    "Không thể hoàn tất batch import."
+  );
+}
+
+    await transaction.commit();
+    transactionStarted = false;
+
+    return {
+      success: true,
+
+      code:
+        "MANUAL_SCORE_IMPORT_COMPLETED",
+
+      message:
+        `Đã import thành công ${createdTransactions.length} giao dịch điểm.`,
+
+        batch: {
+            id:
+                Number(completedBatch.id),
+
+            batchKey:
+                completedBatch.batchKey,
+
+            status:
+                completedBatch.status,
+
+            totalRows:
+                Number(
+                completedBatch.totalRows
+                ),
+
+            importedRows:
+                Number(
+                completedBatch.importedRows
+                ),
+
+            completedAt:
+                completedBatch.completedAt,
+            },
+
+      summary: {
+        ...validation.summary,
+
+        importedRows:
+          createdTransactions.length,
+      },
+
+      transactions:
+        createdTransactions,
+    };
+  } catch (error) {
+    if (transactionStarted) {
+      try {
+        await transaction.rollback();
+      } catch (rollbackError) {
+        console.error(
+          "Manual score import rollback error:",
+          rollbackError
+        );
+      }
+    }
+
+    console.error(
+      "Manual score import error:",
+      error
+    );
+
+    return {
+      success: false,
+
+      code:
+        "MANUAL_SCORE_IMPORT_FAILED",
+
+      message:
+        "Không thể import điểm. Toàn bộ giao dịch đã được rollback.",
+
+      internalMessage:
+        error.message,
+    };
+  }
+}
+
 module.exports = {
+    validateManualScoreImport,
+    importManualScoresExcel,
   getAdminScoreHistory,
   getMemberScoreSummary,
   createAdminScoreTransaction,

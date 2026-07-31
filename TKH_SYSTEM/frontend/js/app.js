@@ -854,6 +854,732 @@ async function changePasswordDemo() {
 //////hết
 
 
+function getManualScoreTypeLabelDemo(
+    scoreType
+) {
+    const labels = {
+        ATTENDANCE_ADJUSTMENT:
+            "Điểm danh thủ công",
+
+        PARTICIPATION:
+            "Phát biểu",
+
+        PRE_TEST:
+            "Pre-test",
+
+        FINAL_TEST:
+            "Final Test"
+    };
+
+    return (
+        labels[scoreType] ||
+        scoreType ||
+        "Không xác định"
+    );
+}
+
+
+function resetManualScoreImportDemo() {
+    manualScoreImportValidatedFile = null;
+    manualScoreImportValidationData = null;
+
+    const message =
+        document.getElementById(
+            "manualScoreImportMessage"
+        );
+
+    const summary =
+        document.getElementById(
+            "manualScoreImportSummary"
+        );
+
+    const errors =
+        document.getElementById(
+            "manualScoreImportErrors"
+        );
+
+    const preview =
+        document.getElementById(
+            "manualScoreImportPreview"
+        );
+
+    const previewBody =
+        document.getElementById(
+            "manualScoreImportPreviewBody"
+        );
+
+    const importButton =
+        document.getElementById(
+            "importManualScoreFileBtn"
+        );
+
+    if (message) {
+        message.innerText = "";
+        message.style.color = "";
+    }
+
+    if (summary) {
+        summary.classList.add("hidden");
+        summary.innerHTML = "";
+    }
+
+    if (errors) {
+        errors.classList.add("hidden");
+        errors.innerHTML = "";
+    }
+
+    if (preview) {
+        preview.classList.add("hidden");
+    }
+
+    if (previewBody) {
+        previewBody.innerHTML = `
+            <tr>
+                <td colspan="10">
+                    Chưa có dữ liệu xem trước.
+                </td>
+            </tr>
+        `;
+    }
+
+    if (importButton) {
+        importButton.disabled = true;
+    }
+}
+
+
+function renderManualScoreImportErrorsDemo(
+    errorItems
+) {
+    const container =
+        document.getElementById(
+            "manualScoreImportErrors"
+        );
+
+    if (!container) {
+        return;
+    }
+
+    const errors =
+        Array.isArray(errorItems)
+            ? errorItems
+            : [];
+
+    if (errors.length === 0) {
+        container.classList.add("hidden");
+        container.innerHTML = "";
+        return;
+    }
+
+    container.classList.remove("hidden");
+
+    container.innerHTML = `
+        <h3 style="color: red;">
+            Các dòng cần chỉnh sửa
+        </h3>
+
+        <ul>
+            ${
+                errors
+                    .map(item => `
+                        <li>
+                            <strong>
+                                Dòng ${Number(item.row) || "?"}:
+                            </strong>
+
+                            ${escapeHtml(
+                                item.message ||
+                                "Dữ liệu không hợp lệ."
+                            )}
+                        </li>
+                    `)
+                    .join("")
+            }
+        </ul>
+    `;
+}
+
+
+function renderManualScoreImportPreviewDemo(
+    validationData
+) {
+    const summaryContainer =
+        document.getElementById(
+            "manualScoreImportSummary"
+        );
+
+    const previewContainer =
+        document.getElementById(
+            "manualScoreImportPreview"
+        );
+
+    const previewBody =
+        document.getElementById(
+            "manualScoreImportPreviewBody"
+        );
+
+    if (
+        !summaryContainer ||
+        !previewContainer ||
+        !previewBody
+    ) {
+        return;
+    }
+
+    const summary =
+        validationData?.summary || {};
+
+    const preview =
+        Array.isArray(
+            validationData?.preview
+        )
+            ? validationData.preview
+            : [];
+
+    summaryContainer.classList.remove(
+        "hidden"
+    );
+
+    summaryContainer.innerHTML = `
+        <div class="question-card">
+            <p>
+                <strong>Tổng số dòng hợp lệ:</strong>
+                ${Number(summary.validRows) || preview.length}
+            </p>
+
+            <p>
+                <strong>Điểm danh:</strong>
+                ${Number(summary.attendanceRows) || 0}
+            </p>
+
+            <p>
+                <strong>Phát biểu:</strong>
+                ${Number(summary.participationRows) || 0}
+            </p>
+
+            <p>
+                <strong>Pre-test:</strong>
+                ${Number(summary.preTestRows) || 0}
+            </p>
+
+            <p>
+                <strong>Final Test:</strong>
+                ${Number(summary.finalTestRows) || 0}
+            </p>
+        </div>
+    `;
+
+    previewContainer.classList.remove(
+        "hidden"
+    );
+
+    if (preview.length === 0) {
+        previewBody.innerHTML = `
+            <tr>
+                <td colspan="10">
+                    Không có dữ liệu xem trước.
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    previewBody.innerHTML =
+        preview.map(item => {
+            const examName =
+                item.exam?.name ||
+                "—";
+
+            return `
+                <tr>
+                    <td>
+                        ${Number(item.rowNumber) || "—"}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(
+                            item.member?.tkhCode ||
+                            item.tkhCode ||
+                            "—"
+                        )}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(
+                            item.member?.fullName ||
+                            "—"
+                        )}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(
+                            item.member?.groupName ||
+                            "Chưa phân nhóm"
+                        )}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(
+                            getManualScoreTypeLabelDemo(
+                                item.scoreType
+                            )
+                        )}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(examName)}
+                    </td>
+
+                    <td>
+                        ${
+                            Number(item.points) > 0
+                                ? `+${Number(item.points)}`
+                                : Number(item.points)
+                        }
+                    </td>
+
+                    <td>
+                        ${Number(item.currentPoints) || 0}
+                    </td>
+
+                    <td>
+                        ${Number(item.projectedPoints) || 0}
+                        /
+                        ${Number(item.maximumPoints) || 0}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(
+                            item.description ||
+                            ""
+                        )}
+                    </td>
+                </tr>
+            `;
+        }).join("");
+}
+
+async function manualScoreImportApiRequestDemo(
+    endpoint,
+    file
+) {
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
+
+    if (!token) {
+        logoutDemo();
+
+        throw new Error(
+            "Phiên đăng nhập không hợp lệ."
+        );
+    }
+
+    const formData =
+        new FormData();
+
+    formData.append(
+        "file",
+        file
+    );
+
+    const response = await fetch(
+        `${API_BASE_URL}${endpoint}`,
+        {
+            method: "POST",
+
+            headers: {
+                Authorization:
+                    `Bearer ${token}`
+            },
+
+            body:
+                formData
+        }
+    );
+
+    let result = null;
+
+    try {
+        result =
+            await response.json();
+    } catch (error) {
+        result = null;
+    }
+
+    if (response.status === 401) {
+        logoutDemo();
+
+        throw new Error(
+            "Phiên đăng nhập đã hết hạn."
+        );
+    }
+
+    if (response.status === 403) {
+        throw new Error(
+            result?.error?.message ||
+            "Bạn không có quyền import điểm."
+        );
+    }
+
+    if (
+        !response.ok ||
+        result?.success !== true
+    ) {
+        const apiError =
+            new Error(
+                result?.error?.message ||
+                "Không thể xử lý file Excel."
+            );
+
+        apiError.status =
+            response.status;
+
+        apiError.code =
+            result?.error?.code ||
+            null;
+
+        apiError.details =
+            result?.error?.details ||
+            null;
+
+        throw apiError;
+    }
+
+    return result.data;
+}
+
+async function validateManualScoreFileDemo() {
+    const fileInput =
+        document.getElementById(
+            "manualScoreExcelFile"
+        );
+
+    const message =
+        document.getElementById(
+            "manualScoreImportMessage"
+        );
+
+    const validateButton =
+        document.getElementById(
+            "validateManualScoreFileBtn"
+        );
+
+    const importButton =
+        document.getElementById(
+            "importManualScoreFileBtn"
+        );
+
+    if (
+        !fileInput ||
+        !fileInput.files ||
+        fileInput.files.length === 0
+    ) {
+        message.style.color = "red";
+        message.innerText =
+            "Vui lòng chọn file Excel.";
+
+        return;
+    }
+
+    const file =
+        fileInput.files[0];
+
+    manualScoreImportValidatedFile = null;
+    manualScoreImportValidationData = null;
+
+    if (importButton) {
+        importButton.disabled = true;
+    }
+
+    renderManualScoreImportErrorsDemo(
+        []
+    );
+
+    message.style.color = "#555";
+    message.innerText =
+        "Đang kiểm tra file Excel...";
+
+    if (validateButton) {
+        validateButton.disabled = true;
+        validateButton.innerText =
+            "Đang kiểm tra...";
+    }
+
+    try {
+        const data =
+            await manualScoreImportApiRequestDemo(
+                "/api/scores/admin/import/validate",
+                file
+            );
+
+        manualScoreImportValidatedFile =
+            file;
+
+        manualScoreImportValidationData =
+            data;
+
+        renderManualScoreImportPreviewDemo(
+            data
+        );
+
+        message.style.color = "green";
+        message.innerText =
+            data.message ||
+            "File hợp lệ. Bạn có thể tiến hành import.";
+
+        if (importButton) {
+            importButton.disabled = false;
+        }
+    } catch (error) {
+        console.error(
+            "Validate manual score file error:",
+            error
+        );
+
+        manualScoreImportValidatedFile =
+            null;
+
+        manualScoreImportValidationData =
+            null;
+
+        renderManualScoreImportErrorsDemo(
+            error.details?.errors
+        );
+
+        message.style.color = "red";
+
+        if (
+            error.code ===
+            "MANUAL_SCORE_IMPORT_ALREADY_COMPLETED"
+        ) {
+            message.innerText =
+                "File này đã được import trước đó. Hệ thống đã chặn import trùng.";
+        } else {
+            message.innerText =
+                error.message ||
+                "Không thể kiểm tra file Excel.";
+        }
+    } finally {
+        if (validateButton) {
+            validateButton.disabled = false;
+            validateButton.innerText =
+                "Kiểm tra file";
+        }
+    }
+}
+
+async function importManualScoreFileDemo() {
+    const fileInput =
+        document.getElementById(
+            "manualScoreExcelFile"
+        );
+
+    const message =
+        document.getElementById(
+            "manualScoreImportMessage"
+        );
+
+    const validateButton =
+        document.getElementById(
+            "validateManualScoreFileBtn"
+        );
+
+    const importButton =
+        document.getElementById(
+            "importManualScoreFileBtn"
+        );
+
+    const selectedFile =
+        fileInput?.files?.[0] ||
+        null;
+
+    if (
+        !manualScoreImportValidatedFile ||
+        !manualScoreImportValidationData ||
+        !selectedFile
+    ) {
+        message.style.color = "red";
+        message.innerText =
+            "Vui lòng kiểm tra file trước khi import.";
+
+        return;
+    }
+
+    /*
+     * Đảm bảo Admin không đổi sang file khác
+     * sau khi vừa validate.
+     */
+    if (
+        selectedFile !==
+        manualScoreImportValidatedFile
+    ) {
+        resetManualScoreImportDemo();
+
+        message.style.color = "red";
+        message.innerText =
+            "File đã thay đổi. Vui lòng kiểm tra lại file.";
+
+        return;
+    }
+
+    const confirmed =
+        confirm(
+            `Bạn có chắc muốn import ${
+                manualScoreImportValidationData
+                    ?.summary
+                    ?.validRows ||
+                manualScoreImportValidationData
+                    ?.preview
+                    ?.length ||
+                0
+            } giao dịch điểm không?`
+        );
+
+    if (!confirmed) {
+        return;
+    }
+
+    if (manualScoreImportInProgress) {
+        return;
+    }
+
+    manualScoreImportInProgress = true;
+
+    message.style.color = "#555";
+    message.innerText =
+        "Đang import điểm...";
+
+    if (validateButton) {
+        validateButton.disabled = true;
+    }
+
+    if (importButton) {
+        importButton.disabled = true;
+        importButton.innerText =
+            "Đang import...";
+    }
+
+    try {
+        const data =
+            await manualScoreImportApiRequestDemo(
+                "/api/scores/admin/import",
+                selectedFile
+            );
+
+        const importedRows =
+            Number(
+                data.summary?.importedRows
+            ) || 0;
+
+        const batchId =
+            data.batch?.id;
+
+        message.style.color = "green";
+
+        message.innerText =
+            `${data.message || "Import điểm thành công."}` +
+            (
+                batchId
+                    ? ` Batch #${batchId}.`
+                    : ""
+            );
+
+        /*
+         * Làm mới lịch sử và thống kê điểm.
+         */
+        adminScoreHistoryApiPromise = null;
+        groupRankingApiCache = null;
+
+        await Promise.all([
+            loadAdminScoreHistoryDemo(true),
+            loadAdminScoreSummaryDemo(true)
+        ]);
+
+        if (fileInput) {
+            fileInput.value = "";
+        }
+
+        manualScoreImportValidatedFile = null;
+        manualScoreImportValidationData = null;
+
+        if (importButton) {
+            importButton.disabled = true;
+        }
+
+        const summaryContainer =
+            document.getElementById(
+                "manualScoreImportSummary"
+            );
+
+        if (summaryContainer) {
+            summaryContainer.classList.remove(
+                "hidden"
+            );
+
+            summaryContainer.innerHTML = `
+                <div class="question-card">
+                    <h3>Import thành công</h3>
+
+                    <p>
+                        <strong>Batch:</strong>
+                        ${batchId || "—"}
+                    </p>
+
+                    <p>
+                        <strong>Số giao dịch:</strong>
+                        ${importedRows}
+                    </p>
+
+                    <p>
+                        <strong>Trạng thái:</strong>
+                        ${escapeHtml(
+                            data.batch?.status ||
+                            "COMPLETED"
+                        )}
+                    </p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error(
+            "Import manual score file error:",
+            error
+        );
+
+        message.style.color = "red";
+
+        if (
+            error.code ===
+            "MANUAL_SCORE_IMPORT_ALREADY_COMPLETED"
+        ) {
+            message.innerText =
+                "File này đã được import trước đó. Hệ thống đã chặn import trùng.";
+        } else {
+            message.innerText =
+                error.message ||
+                "Không thể import điểm.";
+        }
+
+        renderManualScoreImportErrorsDemo(
+            error.details?.errors
+        );
+    } finally {
+        manualScoreImportInProgress = false;
+
+        if (validateButton) {
+            validateButton.disabled = false;
+        }
+
+        if (importButton) {
+            importButton.innerText =
+                "Import điểm";
+        }
+    }
+}
+
 async function addScoreDemo() {
     const username =
         document
@@ -7099,6 +7825,10 @@ let adminScoreHistoryApiPromise = null;
 
 let adminScoreExamsApiCache = [];
 let adminScoreExamsApiPromise = null;
+
+let manualScoreImportValidatedFile = null;
+let manualScoreImportValidationData = null;
+let manualScoreImportInProgress = false;
 
 let myGroupScoreApiCache = null;
 let myGroupScoreApiPromise = null;

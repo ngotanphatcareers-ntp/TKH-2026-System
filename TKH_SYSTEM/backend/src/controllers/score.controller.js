@@ -604,7 +604,7 @@ async function createAdminIndividualScore(
 
             requiredPoints:
                 result.requiredPoints ?? null,
-                
+
             requestedPoints:
                 result.requestedPoints ?? null,
             },
@@ -656,7 +656,299 @@ async function getAdminScoreHistory(
   }
 }
 
+async function validateManualScoreImport(
+  req,
+  res,
+  next
+) {
+  try {
+    const result =
+      await scoreService
+        .validateManualScoreImport({
+          fileBuffer:
+            req.file?.buffer,
+        });
+
+    if (!result.success) {
+      const errorMap = {
+        EXCEL_FILE_REQUIRED: {
+          status: 400,
+          message:
+            "Vui lòng chọn file Excel.",
+        },
+
+        MANUAL_SCORE_IMPORT_ALREADY_COMPLETED: {
+          status: 409,
+          message:
+            "File này đã được import trước đó. Hệ thống đã chặn import trùng.",
+        },
+
+        INVALID_EXCEL_FILE: {
+          status: 400,
+          message:
+            "File Excel không hợp lệ hoặc không thể đọc.",
+        },
+
+        EXCEL_HAS_NO_SHEET: {
+          status: 400,
+          message:
+            "File Excel không có sheet dữ liệu.",
+        },
+
+        EXCEL_HAS_NO_ROWS: {
+          status: 400,
+          message:
+            "File Excel không có dữ liệu.",
+        },
+
+        INVALID_EXCEL_COLUMNS: {
+          status: 400,
+          message:
+            "Các cột trong file Excel không đúng template.",
+        },
+
+        INVALID_EXCEL_ROWS: {
+          status: 400,
+          message:
+            "File Excel có dòng dữ liệu không hợp lệ.",
+        },
+
+        EXCEL_HAS_NO_SCORE_ROWS: {
+          status: 400,
+          message:
+            "File Excel không có dòng cộng điểm.",
+        },
+
+        MANUAL_SCORE_IMPORT_VALIDATION_FAILED: {
+          status: 400,
+          message:
+            "File chưa đạt kiểm tra nghiệp vụ. Chưa có điểm nào được ghi.",
+        },
+      };
+
+      const mappedError =
+        errorMap[result.code] || {
+          status: 400,
+          message:
+            "Không thể kiểm tra file cộng điểm.",
+        };
+
+      return res
+        .status(mappedError.status)
+        .json({
+          success: false,
+
+          error: {
+            code:
+              result.code,
+
+            message:
+              mappedError.message,
+
+            details: {
+              missingHeaders:
+                result.missingHeaders ||
+                [],
+
+              summary:
+                result.summary ||
+                null,
+
+              errors:
+                result.errors ||
+                [],
+
+              batch:
+                result.batch ||
+                null,
+            },
+          },
+        });
+    }
+
+    return res.status(200).json({
+      success: true,
+
+      data: {
+        message:
+          "File hợp lệ. Chưa có điểm nào được ghi vào hệ thống.",
+
+        summary:
+          result.summary,
+
+        preview:
+          result.preview,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function importManualScoresExcel(
+  req,
+  res,
+  next
+) {
+  try {
+    const result =
+      await scoreService
+        .importManualScoresExcel({
+          fileBuffer:
+            req.file?.buffer,
+
+          originalFileName:
+            req.file?.originalname ||
+            null,
+
+          fileSizeBytes:
+            req.file?.size ||
+            null,
+
+          adminUserId:
+            req.user.id,
+        });
+
+    if (!result.success) {
+      const errorMap = {
+        EXCEL_FILE_REQUIRED: {
+          status: 400,
+          message:
+            "Vui lòng chọn file Excel.",
+        },
+
+        INVALID_EXCEL_FILE: {
+          status: 400,
+          message:
+            "File Excel không hợp lệ hoặc không thể đọc.",
+        },
+
+        EXCEL_HAS_NO_SHEET: {
+          status: 400,
+          message:
+            "File Excel không có sheet dữ liệu.",
+        },
+
+        EXCEL_HAS_NO_ROWS: {
+          status: 400,
+          message:
+            "File Excel không có dữ liệu.",
+        },
+
+        INVALID_EXCEL_COLUMNS: {
+          status: 400,
+          message:
+            "Các cột trong file Excel không đúng template.",
+        },
+
+        INVALID_EXCEL_ROWS: {
+          status: 400,
+          message:
+            "File Excel có dòng dữ liệu không hợp lệ.",
+        },
+
+        EXCEL_HAS_NO_SCORE_ROWS: {
+          status: 400,
+          message:
+            "File Excel không có dòng cộng điểm.",
+        },
+
+        MANUAL_SCORE_IMPORT_VALIDATION_FAILED: {
+          status: 400,
+          message:
+            "File chưa đạt kiểm tra nghiệp vụ. Chưa có điểm nào được ghi.",
+        },
+
+        MANUAL_SCORE_IMPORT_ALREADY_COMPLETED: {
+          status: 409,
+          message:
+            "File này đã được import trước đó. Hệ thống đã chặn import trùng.",
+        },
+
+        ADMIN_USER_REQUIRED: {
+          status: 403,
+          message:
+            "Không xác định được tài khoản Admin.",
+        },
+
+        MANUAL_SCORE_IMPORT_FAILED: {
+          status: 500,
+          message:
+            "Import điểm thất bại. Không có giao dịch nào được lưu.",
+        },
+      };
+
+      const mappedError =
+        errorMap[result.code] || {
+          status: 400,
+          message:
+            "Không thể import file cộng điểm.",
+        };
+
+      return res
+        .status(mappedError.status)
+        .json({
+          success: false,
+
+          error: {
+            code:
+              result.code ||
+              "MANUAL_SCORE_IMPORT_ERROR",
+
+            message:
+              result.message ||
+              mappedError.message,
+
+            details: {
+              missingHeaders:
+                result.missingHeaders ||
+                [],
+
+              summary:
+                result.summary ||
+                null,
+
+              errors:
+                result.errors ||
+                [],
+
+              batch:
+                result.batch ||
+                null,
+
+              internalMessage:
+                result.internalMessage ||
+                null,
+            },
+          },
+        });
+    }
+
+    return res.status(201).json({
+      success: true,
+
+      data: {
+        message:
+          result.message,
+
+        batch:
+          result.batch,
+
+        summary:
+          result.summary,
+
+        transactions:
+          result.transactions,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
+    validateManualScoreImport,
+    importManualScoresExcel,
     getAdminScoreHistory,
   getMemberScoreSummary,
   getMyScores,

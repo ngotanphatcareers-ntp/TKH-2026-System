@@ -167,6 +167,93 @@
         <p id="scoreMessage"></p>
     </section>
 
+    <section class="attendance-box">
+        <h2>Import điểm từ Excel</h2>
+
+        <p class="empty-note">
+            File Excel gồm 5 cột:
+            tkh_code, score_type, exam_id, points, description.
+        </p>
+
+        <p class="empty-note">
+            Hãy kiểm tra file trước. Chỉ khi toàn bộ dòng hợp lệ,
+            nút Import điểm mới được kích hoạt.
+        </p>
+
+        <input
+            class="form-input"
+            type="file"
+            id="manualScoreExcelFile"
+            accept=".xlsx,.xls"
+            onchange="resetManualScoreImportDemo()"
+        >
+
+        <div class="admin-actions">
+            <button
+                type="button"
+                id="validateManualScoreFileBtn"
+                onclick="validateManualScoreFileDemo()"
+            >
+                Kiểm tra file
+            </button>
+
+            <button
+                type="button"
+                id="importManualScoreFileBtn"
+                onclick="importManualScoreFileDemo()"
+                disabled
+            >
+                Import điểm
+            </button>
+        </div>
+
+        <p id="manualScoreImportMessage"></p>
+
+        <div
+            id="manualScoreImportSummary"
+            class="hidden"
+        ></div>
+
+        <div
+            id="manualScoreImportErrors"
+            class="hidden"
+        ></div>
+
+        <div
+            id="manualScoreImportPreview"
+            class="hidden"
+        >
+            <h3>Xem trước dữ liệu</h3>
+
+            <div style="overflow-x: auto;">
+                <table class="score-table">
+                    <thead>
+                        <tr>
+                            <th>Dòng</th>
+                            <th>Mã TKH</th>
+                            <th>Họ tên</th>
+                            <th>Nhóm</th>
+                            <th>Loại điểm</th>
+                            <th>Bài kiểm tra</th>
+                            <th>Điểm nhập</th>
+                            <th>Điểm hiện tại</th>
+                            <th>Sau import</th>
+                            <th>Lý do</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="manualScoreImportPreviewBody">
+                        <tr>
+                            <td colspan="10">
+                                Chưa có dữ liệu xem trước.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
     <div class="attendance-box">
         <h2>Lịch sử điểm gần đây</h2>
 
@@ -204,6 +291,6 @@
                 </div>
         </div>
 </div>
-<script src="js/app.js?v=137"></script>
+<script src="js/app.js?v=138"></script>
 </body>
 </html>

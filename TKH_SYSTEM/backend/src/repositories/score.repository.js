@@ -1066,7 +1066,200 @@ async function findActiveExamScoreForMembership({
   return result.recordset[0] || null;
 }
 
+async function findManualScoreImportBatchByKey({
+  batchKey,
+  transaction = null,
+}) {
+  const request = transaction
+    ? new sql.Request(transaction)
+    : (await getPool()).request();
+
+  const result = await request
+    .input(
+      "batchKey",
+      sql.VarChar(64),
+      batchKey
+    )
+    .query(`
+      SELECT TOP (1)
+        id,
+        batch_key AS batchKey,
+
+        original_file_name
+          AS originalFileName,
+
+        file_size_bytes
+          AS fileSizeBytes,
+
+        total_rows
+          AS totalRows,
+
+        imported_rows
+          AS importedRows,
+
+        status,
+
+        created_by_user_id
+          AS createdByUserId,
+
+        created_at
+          AS createdAt,
+
+        completed_at
+          AS completedAt,
+
+        error_message
+          AS errorMessage
+
+      FROM dbo.manual_score_import_batches
+
+      WHERE batch_key = @batchKey;
+    `);
+
+  return result.recordset[0] || null;
+}
+
+
+async function createManualScoreImportBatch({
+  batchKey,
+  originalFileName,
+  fileSizeBytes,
+  totalRows,
+  createdByUserId,
+  transaction,
+}) {
+  const request =
+    new sql.Request(transaction);
+
+  const result = await request
+    .input(
+      "batchKey",
+      sql.VarChar(64),
+      batchKey
+    )
+    .input(
+      "originalFileName",
+      sql.NVarChar(255),
+      originalFileName || null
+    )
+    .input(
+      "fileSizeBytes",
+      sql.BigInt,
+      fileSizeBytes ?? null
+    )
+    .input(
+      "totalRows",
+      sql.Int,
+      totalRows
+    )
+    .input(
+      "createdByUserId",
+      sql.Int,
+      createdByUserId
+    )
+    .query(`
+      INSERT INTO dbo.manual_score_import_batches
+      (
+        batch_key,
+        original_file_name,
+        file_size_bytes,
+        total_rows,
+        imported_rows,
+        status,
+        created_by_user_id,
+        created_at
+      )
+
+      OUTPUT
+        INSERTED.id,
+        INSERTED.batch_key
+          AS batchKey,
+
+        INSERTED.status,
+        INSERTED.total_rows
+          AS totalRows,
+
+        INSERTED.created_at
+          AS createdAt
+
+      VALUES
+      (
+        @batchKey,
+        @originalFileName,
+        @fileSizeBytes,
+        @totalRows,
+        0,
+        'PROCESSING',
+        @createdByUserId,
+        SYSUTCDATETIME()
+      );
+    `);
+
+  return result.recordset[0] || null;
+}
+
+
+async function completeManualScoreImportBatch({
+  batchId,
+  importedRows,
+  transaction,
+}) {
+  const request =
+    new sql.Request(transaction);
+
+  const result = await request
+    .input(
+      "batchId",
+      sql.Int,
+      batchId
+    )
+    .input(
+      "importedRows",
+      sql.Int,
+      importedRows
+    )
+    .query(`
+      UPDATE dbo.manual_score_import_batches
+
+      SET
+        imported_rows =
+          @importedRows,
+
+        status =
+          'COMPLETED',
+
+        completed_at =
+          SYSUTCDATETIME(),
+
+        error_message =
+          NULL
+
+      OUTPUT
+        INSERTED.id,
+        INSERTED.batch_key
+          AS batchKey,
+
+        INSERTED.total_rows
+          AS totalRows,
+
+        INSERTED.imported_rows
+          AS importedRows,
+
+        INSERTED.status,
+
+        INSERTED.completed_at
+          AS completedAt
+
+      WHERE id = @batchId;
+    `);
+
+  return result.recordset[0] || null;
+}
+
 module.exports = {
+    findManualScoreImportBatchByKey,
+    createManualScoreImportBatch,
+    completeManualScoreImportBatch,
     findAdminScoreHistory,
     findActiveExamScoreForMembership,
     findActiveMemberScoreTransactions,
