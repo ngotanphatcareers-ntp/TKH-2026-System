@@ -422,11 +422,12 @@ async function createAdminIndividualScore(
 ) {
   try {
     const {
-      username,
-      scoreType,
-      points,
-      description,
-    } = req.body;
+        username,
+        scoreType,
+        examId,
+        points,
+        description,
+        } = req.body;
 
     const result =
       await scoreService.createAdminScoreTransaction({
@@ -434,6 +435,7 @@ async function createAdminIndividualScore(
         scoreType,
         requestedPoints: points,
         sourceType: "MANUAL",
+        sourceId: examId,
         description,
         adminUserId: req.user.id,
       });
@@ -529,6 +531,37 @@ async function createAdminIndividualScore(
           message:
             "Không tìm thấy học viên đang tham gia mùa hiện tại.",
         },
+
+        EXAM_ID_REQUIRED: {
+        status: 400,
+        message:
+            "Vui lòng chọn bài kiểm tra.",
+        },
+
+        EXAM_NOT_FOUND: {
+        status: 404,
+        message:
+            "Không tìm thấy bài kiểm tra.",
+        },
+
+        EXAM_TYPE_MISMATCH: {
+        status: 400,
+        message:
+            "Loại bài kiểm tra không khớp với loại điểm đã chọn.",
+        },
+
+        INVALID_MANUAL_TEST_POINTS: {
+        status: 400,
+        message:
+            "Điểm bài thi giấy phải là số lớn hơn hoặc bằng 0.",
+        },
+
+        EXAM_SCORE_LIMIT_EXCEEDED: {
+        status: 400,
+        message:
+            "Điểm nhập sẽ làm tổng điểm của bài kiểm tra vượt quá giới hạn.",
+        },
+
       };
 
       const mappedError =
@@ -571,6 +604,9 @@ async function createAdminIndividualScore(
 
             requiredPoints:
                 result.requiredPoints ?? null,
+                
+            requestedPoints:
+                result.requestedPoints ?? null,
             },
           },
         });

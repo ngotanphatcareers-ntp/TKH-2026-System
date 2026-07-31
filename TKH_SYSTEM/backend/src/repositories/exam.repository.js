@@ -461,9 +461,9 @@ async function createExamQuestion(
       correctAnswer
     )
     .input(
-      "points",
-      sql.Int,
-      points
+    "points",
+    sql.Decimal(10, 2),
+    points
     )
     .query(`
       INSERT INTO dbo.exam_questions
@@ -1590,8 +1590,9 @@ async function finishInProgressExamById({
           DECLARE @completedAt DATETIME2(0)
             = SYSDATETIME();
 
-          DECLARE @attemptsCompleted INT;
-          DECLARE @liveStateUpdated INT;
+            DECLARE @attemptsCompleted INT;
+            DECLARE @liveStateUpdated INT;
+            DECLARE @scoreTransactionsCreated INT;
 
           ;WITH AttemptResults AS
 (
@@ -1651,6 +1652,93 @@ INNER JOIN AttemptResults AS results
 
 SET @attemptsCompleted = @@ROWCOUNT;
 
+
+/*
+ * Đồng bộ điểm bài thi đã hoàn thành
+ * sang Score Foundation.
+ *
+ * source_key giúp chống tạo trùng giao dịch
+ * nếu tiến trình được gọi lại.
+ */
+INSERT INTO dbo.score_transactions
+(
+  season_membership_id,
+  score_category,
+  score_type,
+  requested_points,
+  applied_points,
+  source_type,
+  source_id,
+  source_key,
+  description,
+  status,
+  created_by_user_id
+)
+SELECT
+  ea.season_membership_id,
+
+  'LEARNING',
+
+  CASE
+    WHEN e.type = 'PRE_TEST'
+      THEN 'PRE_TEST'
+    WHEN e.type = 'FINAL_TEST'
+      THEN 'FINAL_TEST'
+  END,
+
+  CAST(
+    ea.score AS DECIMAL(10, 2)
+  ),
+
+  CAST(
+    ea.score AS DECIMAL(10, 2)
+  ),
+
+  'TEST',
+
+  ea.id,
+
+  CONCAT(
+    'EXAM_ATTEMPT:',
+    ea.id
+  ),
+
+  CONCAT(
+    N'Điểm ',
+    e.name
+  ),
+
+  'ACTIVE',
+
+  NULL
+
+FROM dbo.exam_attempts AS ea
+
+INNER JOIN dbo.exams AS e
+  ON e.id = ea.exam_id
+
+WHERE ea.exam_id = @examId
+  AND ea.status = 'COMPLETED'
+  AND e.type IN
+  (
+    'PRE_TEST',
+    'FINAL_TEST'
+  )
+  AND NOT EXISTS
+  (
+    SELECT 1
+    FROM dbo.score_transactions AS st
+    WHERE st.source_key =
+      CONCAT(
+        'EXAM_ATTEMPT:',
+        ea.id
+      )
+  );
+
+SET @scoreTransactionsCreated =
+  @@ROWCOUNT;
+
+
 UPDATE dbo.exam_live_states
 SET
   state = 'LOCKED',
@@ -1676,10 +1764,15 @@ SET @liveStateUpdated = @@ROWCOUNT;
 
           SELECT
             @completedAt AS completed_at,
+
             @attemptsCompleted
-              AS attempts_completed,
+                AS attempts_completed,
+
             @liveStateUpdated
-              AS live_state_updated;
+                AS live_state_updated,
+
+            @scoreTransactionsCreated
+                AS score_transactions_created;
         `);
 
     await transaction.commit();
@@ -1706,6 +1799,12 @@ SET @liveStateUpdated = @@ROWCOUNT;
           completion.attempts_completed
         ) || 0,
 
+      scoreTransactionsCreated:
+        Number(
+            completion
+            .score_transactions_created
+        ) || 0,
+    
       liveStateUpdated:
         Number(
           completion.live_state_updated

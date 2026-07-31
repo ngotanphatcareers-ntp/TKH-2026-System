@@ -89,6 +89,14 @@
             <option value="PARTICIPATION">
                 Điểm phát biểu
             </option>
+
+            <option value="PRE_TEST">
+                Pre-test làm giấy
+            </option>
+
+            <option value="FINAL_TEST">
+                Final Test làm giấy
+            </option>
         </select>
 
         <label>Số điểm</label>
@@ -101,6 +109,43 @@
                 Hãy chọn loại điểm trước
             </option>
         </select>
+
+        <div
+            id="scoreExamGroup"
+            class="hidden"
+        >
+            <label>Bài kiểm tra</label>
+
+            <select
+                class="form-input"
+                id="scoreExam"
+            >
+                <option value="">
+                    Chọn bài kiểm tra
+                </option>
+            </select>
+        </div>
+
+        <div
+            id="scoreTestValueGroup"
+            class="hidden"
+        >
+            <label>Điểm bài giấy</label>
+
+            <input
+                class="form-input"
+                type="number"
+                id="scoreTestValue"
+                min="0.01"
+                step="0.01"
+                placeholder="Ví dụ: 4.5 hoặc 8.25"
+            >
+
+            <p
+                id="scoreTestLimitNote"
+                class="empty-note"
+            ></p>
+        </div>
 
         <label>Lý do</label>
         <input

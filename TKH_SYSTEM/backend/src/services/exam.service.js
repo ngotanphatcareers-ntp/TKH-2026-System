@@ -993,6 +993,56 @@ async function importExamQuestionsFromExcel({
       };
     }
 
+    const examType =
+    String(exam.type || "")
+        .trim()
+        .toUpperCase();
+
+    const maximumTotalPoints =
+    examType === "PRE_TEST"
+        ? 10
+        : examType === "FINAL_TEST"
+        ? 60
+        : null;
+
+    if (!maximumTotalPoints) {
+    await transaction.rollback();
+    transactionStarted = false;
+
+    return {
+        success: false,
+        code:
+        "INVALID_EXAM_TYPE",
+    };
+    }
+
+    const importedTotalPoints =
+    Number(
+        parsedExcel.totalPoints
+    ) || 0;
+
+    if (
+    importedTotalPoints >
+    maximumTotalPoints
+    ) {
+    await transaction.rollback();
+    transactionStarted = false;
+
+    return {
+        success: false,
+        code:
+        "EXAM_TOTAL_POINTS_EXCEEDED",
+
+        errors: [
+        {
+            row: 1,
+            message:
+            `Tổng điểm của file là ${importedTotalPoints}, vượt quá giới hạn ${maximumTotalPoints} điểm của bài ${examType}.`,
+        },
+        ],
+    };
+    }
+
     const maximumQuestionIndex =
       await findMaximumQuestionIndexByExamId(
         normalizedExamId,
@@ -1560,6 +1610,9 @@ async function finishExam({
 
       attemptsCompleted:
         result.attemptsCompleted,
+
+      scoreTransactionsCreated:
+        result.scoreTransactionsCreated,
 
       liveStateUpdated:
         result.liveStateUpdated,

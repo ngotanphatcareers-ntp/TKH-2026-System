@@ -867,12 +867,38 @@ async function addScoreDemo() {
             ?.value
             .trim();
 
-    const scoreValue =
+    const selectedScoreType =
+        String(scoreType || "")
+            .trim()
+            .toUpperCase();
+
+    const isManualTestScore =
+        selectedScoreType === "PRE_TEST" ||
+        selectedScoreType === "FINAL_TEST";
+
+    const scoreExamId =
         Number(
             document
-                .getElementById("scoreValue")
+                .getElementById("scoreExam")
                 ?.value
         );
+
+    const scoreValue =
+        isManualTestScore
+            ? Number(
+                document
+                    .getElementById(
+                        "scoreTestValue"
+                    )
+                    ?.value
+            )
+            : Number(
+                document
+                    .getElementById(
+                        "scoreValue"
+                    )
+                    ?.value
+            );
 
     const scoreReason =
         document
@@ -905,8 +931,27 @@ async function addScoreDemo() {
     }
 
     if (
+        isManualTestScore &&
+        (
+            !Number.isInteger(
+                scoreExamId
+            ) ||
+            scoreExamId <= 0
+        )
+    ) {
+        message.style.color = "red";
+        message.innerText =
+            "Vui lòng chọn bài kiểm tra.";
+        return;
+    }
+
+    if (
         !Number.isFinite(scoreValue) ||
-        scoreValue === 0
+        (
+            isManualTestScore
+                ? scoreValue <= 0
+                : scoreValue === 0
+        )
     ) {
         message.style.color = "red";
         message.innerText =
@@ -957,9 +1002,18 @@ async function addScoreDemo() {
 
                 body: JSON.stringify({
                     username,
-                    scoreType,
+
+                    scoreType:
+                        selectedScoreType,
+
+                    examId:
+                        isManualTestScore
+                            ? scoreExamId
+                            : null,
+
                     points:
                         scoreValue,
+
                     description:
                         scoreReason
                 })
@@ -1039,6 +1093,24 @@ async function addScoreDemo() {
             "scoreReason"
         ).value = "";
 
+        const scoreExamElement =
+            document.getElementById(
+                "scoreExam"
+            );
+
+        const scoreTestValueElement =
+            document.getElementById(
+                "scoreTestValue"
+            );
+
+        if (scoreExamElement) {
+            scoreExamElement.value = "";
+        }
+
+        if (scoreTestValueElement) {
+            scoreTestValueElement.value = "";
+        }
+
         /*
         * Xóa cache xếp hạng vì điểm mới có thể
         * làm thay đổi điểm và thứ hạng nhóm.
@@ -1072,7 +1144,160 @@ async function addScoreDemo() {
     }
 }
 
-function updateManualScoreFormDemo() {
+async function loadAdminScoreExamsDemo(
+    forceRefresh = false
+) {
+    if (
+        forceRefresh ||
+        !adminScoreExamsApiPromise
+    ) {
+        adminScoreExamsApiPromise =
+            (async () => {
+                const token =
+                    localStorage.getItem(
+                        "accessToken"
+                    );
+
+                if (!token) {
+                    return [];
+                }
+
+                const response = await fetch(
+                    `${API_BASE_URL}/api/admin/test/exams`,
+                    {
+                        method: "GET",
+
+                        headers: {
+                            Authorization:
+                                `Bearer ${token}`
+                        }
+                    }
+                );
+
+                let result = null;
+
+                try {
+                    result =
+                        await response.json();
+                } catch (error) {
+                    result = null;
+                }
+
+                if (response.status === 401) {
+                    logoutDemo();
+                    return [];
+                }
+
+                if (response.status === 403) {
+                    throw new Error(
+                        "Bạn không có quyền xem danh sách bài kiểm tra."
+                    );
+                }
+
+                if (
+                    !response.ok ||
+                    result?.success !== true
+                ) {
+                    throw new Error(
+                        result?.error?.message ||
+                        result?.message ||
+                        "Không thể tải danh sách bài kiểm tra."
+                    );
+                }
+
+                const exams =
+                    Array.isArray(
+                        result.exams
+                    )
+                        ? result.exams
+                        : Array.isArray(
+                            result.data?.exams
+                        )
+                            ? result.data.exams
+                            : [];
+
+                adminScoreExamsApiCache =
+                    exams;
+
+                return exams;
+            })()
+            .catch(error => {
+                adminScoreExamsApiPromise =
+                    null;
+
+                throw error;
+            });
+    }
+
+    return adminScoreExamsApiPromise;
+}
+
+function renderManualScoreExamOptionsDemo(
+    scoreType
+) {
+    const examSelect =
+        document.getElementById(
+            "scoreExam"
+        );
+
+    if (!examSelect) {
+        return;
+    }
+
+    const normalizedScoreType =
+        String(scoreType || "")
+            .trim()
+            .toUpperCase();
+
+    const matchingExams =
+        adminScoreExamsApiCache
+            .filter(exam =>
+                String(exam.type || "")
+                    .toUpperCase() ===
+                normalizedScoreType
+            );
+
+    if (matchingExams.length === 0) {
+        examSelect.innerHTML = `
+            <option value="">
+                Không có bài kiểm tra phù hợp
+            </option>
+        `;
+
+        examSelect.disabled = true;
+        return;
+    }
+
+    examSelect.innerHTML = `
+        <option value="">
+            Chọn bài kiểm tra
+        </option>
+
+        ${
+            matchingExams
+                .map(exam => `
+                    <option
+                        value="${Number(exam.id)}"
+                    >
+                        ${escapeHtml(
+                            exam.name ||
+                            `Bài kiểm tra #${exam.id}`
+                        )}
+                        —
+                        ${escapeHtml(
+                            exam.status ||
+                            "Không xác định"
+                        )}
+                    </option>
+                `)
+                .join("")
+        }
+    `;
+
+    examSelect.disabled = false;
+}
+
+async function updateManualScoreFormDemo() {
     const scoreType =
         document.getElementById(
             "scoreType"
@@ -1083,13 +1308,91 @@ function updateManualScoreFormDemo() {
             "scoreValue"
         );
 
-    if (!scoreType || !scoreValue) {
+    const examGroup =
+        document.getElementById(
+            "scoreExamGroup"
+        );
+
+    const examSelect =
+        document.getElementById(
+            "scoreExam"
+        );
+
+    const testValueGroup =
+        document.getElementById(
+            "scoreTestValueGroup"
+        );
+
+    const testValue =
+        document.getElementById(
+            "scoreTestValue"
+        );
+
+    const testLimitNote =
+        document.getElementById(
+            "scoreTestLimitNote"
+        );
+
+    const message =
+        document.getElementById(
+            "scoreMessage"
+        );
+
+    if (
+        !scoreType ||
+        !scoreValue
+    ) {
         return;
     }
 
     const selectedType =
-        scoreType.value;
+        String(scoreType.value || "")
+            .trim()
+            .toUpperCase();
 
+    /*
+     * Reset giao diện trước khi hiển thị
+     * trường phù hợp.
+     */
+    scoreValue.disabled = true;
+
+    scoreValue.innerHTML = `
+        <option value="">
+            Hãy chọn loại điểm trước
+        </option>
+    `;
+
+    if (examGroup) {
+        examGroup.classList.add(
+            "hidden"
+        );
+    }
+
+    if (testValueGroup) {
+        testValueGroup.classList.add(
+            "hidden"
+        );
+    }
+
+    if (examSelect) {
+        examSelect.value = "";
+    }
+
+    if (testValue) {
+        testValue.value = "";
+    }
+
+    if (testLimitNote) {
+        testLimitNote.innerText = "";
+    }
+
+    if (message) {
+        message.innerText = "";
+    }
+
+    /*
+     * Điểm danh thủ công.
+     */
     if (
         selectedType ===
         "ATTENDANCE_ADJUSTMENT"
@@ -1121,6 +1424,9 @@ function updateManualScoreFormDemo() {
         return;
     }
 
+    /*
+     * Điểm phát biểu.
+     */
     if (
         selectedType ===
         "PARTICIPATION"
@@ -1136,13 +1442,76 @@ function updateManualScoreFormDemo() {
         return;
     }
 
-    scoreValue.disabled = true;
+    /*
+     * Điểm bài thi giấy.
+     */
+    if (
+        selectedType === "PRE_TEST" ||
+        selectedType === "FINAL_TEST"
+    ) {
+        if (examGroup) {
+            examGroup.classList.remove(
+                "hidden"
+            );
+        }
 
-    scoreValue.innerHTML = `
-        <option value="">
-            Hãy chọn loại điểm trước
-        </option>
-    `;
+        if (testValueGroup) {
+            testValueGroup.classList.remove(
+                "hidden"
+            );
+        }
+
+        if (testValue) {
+            testValue.min = "0.01";
+            testValue.step = "0.01";
+
+            testValue.max =
+                selectedType === "PRE_TEST"
+                    ? "10"
+                    : "60";
+        }
+
+        if (testLimitNote) {
+            testLimitNote.innerText =
+                selectedType === "PRE_TEST"
+                    ? "Pre-test tối đa 10 điểm cho mỗi bài, tính chung điểm online và điểm giấy."
+                    : "Final Test tối đa 60 điểm, tính chung điểm online và điểm giấy.";
+        }
+
+        try {
+            await loadAdminScoreExamsDemo();
+
+            renderManualScoreExamOptionsDemo(
+                selectedType
+            );
+        } catch (error) {
+            console.error(
+                "Load manual score exams error:",
+                error
+            );
+
+            if (examSelect) {
+                examSelect.innerHTML = `
+                    <option value="">
+                        Không thể tải bài kiểm tra
+                    </option>
+                `;
+
+                examSelect.disabled = true;
+            }
+
+            if (message) {
+                message.style.color =
+                    "red";
+
+                message.innerText =
+                    error.message ||
+                    "Không thể tải danh sách bài kiểm tra.";
+            }
+        }
+
+        return;
+    }
 }
 
 //quản lý buổi học
@@ -2457,6 +2826,19 @@ function runPageLoaders() {
     loadStudentDashboardStatsDemo();
     loadGroupScoreHistoryDemo();
     loadAdminScoreSummaryDemo();
+    if (
+        document.getElementById(
+            "scoreExam"
+        )
+    ) {
+        loadAdminScoreExamsDemo()
+            .catch(error => {
+                console.error(
+                    "Preload admin score exams error:",
+                    error
+                );
+            });
+    }
     loadBibleChallengeDemo();
     loadBibleChallengeSummaryDemo();
     loadBibleChallengeHistoryDemo();
@@ -6714,6 +7096,9 @@ function getGroupTotalScoreDemo(groupName) {
 let adminScoreHistoryApiCache = [];
 let adminScoreSummaryApiCache = null;
 let adminScoreHistoryApiPromise = null;
+
+let adminScoreExamsApiCache = [];
+let adminScoreExamsApiPromise = null;
 
 let myGroupScoreApiCache = null;
 let myGroupScoreApiPromise = null;

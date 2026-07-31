@@ -9,6 +9,7 @@ const scoreConfig = require(
 
 const {
     findAdminScoreHistory,
+    findActiveExamScoreForMembership,
   findActiveMembershipByMemberId,
   findActiveMembershipByUsername,
   findActiveGroupById,
@@ -437,6 +438,7 @@ async function createAdminScoreTransaction({
   scoreType,
   requestedPoints,
   sourceType,
+  sourceId = null,
   description,
   adminUserId,
 }) {
@@ -535,16 +537,46 @@ async function createAdminScoreTransaction({
                 membership.season_membership_id
             );
 
+
+            let normalizedExamId = null;
+
+            if (
+            normalizedScoreType === "PRE_TEST" ||
+            normalizedScoreType === "FINAL_TEST"
+            ) {
+            normalizedExamId =
+                Number(sourceId);
+
+            if (
+                !Number.isInteger(
+                normalizedExamId
+                ) ||
+                normalizedExamId <= 0
+            ) {
+                return {
+                success: false,
+                code:
+                    "EXAM_ID_REQUIRED",
+                };
+            }
+            }
+
             /*
             * Giai đoạn 1 chỉ cho phép Admin cộng:
             * - Điểm danh bù: +3 hoặc +5
             * - Phát biểu: +2
             */
+        const allowedManualScoreTypes = [
+            "ATTENDANCE_ADJUSTMENT",
+            "PARTICIPATION",
+            "PRE_TEST",
+            "FINAL_TEST",
+            ];
+
             if (
-            normalizedScoreType !==
-                "ATTENDANCE_ADJUSTMENT" &&
-            normalizedScoreType !==
-                "PARTICIPATION"
+            !allowedManualScoreTypes.includes(
+                normalizedScoreType
+            )
             ) {
             return {
                 success: false,
@@ -552,7 +584,6 @@ async function createAdminScoreTransaction({
                 "MANUAL_SCORE_TYPE_NOT_ALLOWED",
             };
             }
-
 
             /*
             * Điểm danh thủ công.
@@ -704,13 +735,130 @@ async function createAdminScoreTransaction({
             }
             }
 
+
+/*
+ * Điểm thi giấy: Pre-test hoặc Final Test.
+ */
+if (
+  normalizedScoreType === "PRE_TEST" ||
+  normalizedScoreType === "FINAL_TEST"
+) {
+  if (
+    !Number.isFinite(
+      normalizedRequestedPoints
+    ) ||
+    normalizedRequestedPoints < 0
+  ) {
+    return {
+      success: false,
+      code:
+        "INVALID_MANUAL_TEST_POINTS",
+    };
+  }
+
+  const examScore =
+    await findActiveExamScoreForMembership({
+      seasonMembershipId:
+        membership.season_membership_id,
+
+      examId:
+        normalizedExamId,
+    });
+
+  if (!examScore) {
+    return {
+      success: false,
+      code:
+        "EXAM_NOT_FOUND",
+    };
+  }
+
+  const examType =
+    String(
+      examScore.examType || ""
+    ).toUpperCase();
+
+  if (
+    examType !==
+    normalizedScoreType
+  ) {
+    return {
+      success: false,
+      code:
+        "EXAM_TYPE_MISMATCH",
+
+      expectedType:
+        normalizedScoreType,
+
+      actualType:
+        examType,
+    };
+  }
+
+  const currentPoints =
+    Number(
+      examScore.currentPoints
+    ) || 0;
+
+  const maximumPoints =
+    normalizedScoreType === "PRE_TEST"
+      ? scoreConfig.learning
+          .preTest
+          .maxScorePerTest
+      : scoreConfig.learning
+          .finalTest
+          .maxScore;
+
+  const pointsAfterAdjustment =
+    currentPoints +
+    normalizedRequestedPoints;
+
+  if (
+    pointsAfterAdjustment >
+    maximumPoints
+  ) {
+    return {
+      success: false,
+      code:
+        "EXAM_SCORE_LIMIT_EXCEEDED",
+
+      currentPoints,
+      requestedPoints:
+        normalizedRequestedPoints,
+      maximumPoints,
+
+      remainingPoints:
+        Math.max(
+          maximumPoints -
+            currentPoints,
+          0
+        ),
+    };
+  }
+}
+
         const appliedPoints =
         Math.round(
             normalizedRequestedPoints * 100
         ) / 100;
 
+        const transactionSourceType =
+        normalizedScoreType === "PRE_TEST" ||
+        normalizedScoreType === "FINAL_TEST"
+            ? "MANUAL_TEST"
+            : normalizedSourceType;
+
+        const transactionSourceId =
+        normalizedScoreType === "PRE_TEST" ||
+        normalizedScoreType === "FINAL_TEST"
+            ? normalizedExamId
+            : null;
+
         const sourceKey =
-            `${normalizedScoreType}:MANUAL:${randomUUID()}`;
+        normalizedScoreType === "PRE_TEST" ||
+        normalizedScoreType === "FINAL_TEST"
+            ? `${normalizedScoreType}:MANUAL_EXAM:${normalizedExamId}:${randomUUID()}`
+            : `${normalizedScoreType}:MANUAL:${randomUUID()}`;
 
         const transaction =
         await createScoreTransaction({
@@ -728,9 +876,10 @@ async function createAdminScoreTransaction({
             appliedPoints,
 
             sourceType:
-            normalizedSourceType,
+            transactionSourceType,
 
-            sourceId: null,
+            sourceId:
+            transactionSourceId,
 
             sourceKey,
 

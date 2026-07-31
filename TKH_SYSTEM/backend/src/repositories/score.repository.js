@@ -980,8 +980,95 @@ async function findAdminScoreHistory(
   };
 }
 
+async function findActiveExamScoreForMembership({
+  seasonMembershipId,
+  examId,
+}) {
+  const pool = await getPool();
+
+  const result = await pool
+    .request()
+    .input(
+      "seasonMembershipId",
+      sql.Int,
+      seasonMembershipId
+    )
+    .input(
+      "examId",
+      sql.Int,
+      examId
+    )
+    .query(`
+      SELECT
+        e.id AS examId,
+        e.name AS examName,
+        e.type AS examType,
+        e.status AS examStatus,
+
+        COALESCE(
+          SUM(
+            CASE
+              /*
+               * Điểm được tạo tự động từ bài thi online.
+               * source_id ở đây là exam_attempt_id.
+               */
+              WHEN st.source_type = 'TEST'
+                AND ea.exam_id = e.id
+              THEN st.applied_points
+
+              /*
+               * Điểm Admin nhập cho bài thi giấy.
+               * source_id ở đây là exam_id.
+               */
+              WHEN st.source_type = 'MANUAL_TEST'
+                AND st.source_id = e.id
+              THEN st.applied_points
+
+              ELSE 0
+            END
+          ),
+          0
+        ) AS currentPoints
+
+      FROM dbo.exams AS e
+
+      LEFT JOIN dbo.exam_attempts AS ea
+        ON ea.exam_id = e.id
+        AND ea.season_membership_id =
+            @seasonMembershipId
+
+      LEFT JOIN dbo.score_transactions AS st
+        ON st.season_membership_id =
+             @seasonMembershipId
+        AND st.status = 'ACTIVE'
+        AND
+        (
+          (
+            st.source_type = 'TEST'
+            AND st.source_id = ea.id
+          )
+          OR
+          (
+            st.source_type = 'MANUAL_TEST'
+            AND st.source_id = e.id
+          )
+        )
+
+      WHERE e.id = @examId
+
+      GROUP BY
+        e.id,
+        e.name,
+        e.type,
+        e.status;
+    `);
+
+  return result.recordset[0] || null;
+}
+
 module.exports = {
     findAdminScoreHistory,
+    findActiveExamScoreForMembership,
     findActiveMemberScoreTransactions,
   findActiveMembershipByMemberId,
   findActiveMembershipByUsername,

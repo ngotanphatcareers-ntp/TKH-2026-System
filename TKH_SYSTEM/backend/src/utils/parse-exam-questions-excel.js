@@ -8,6 +8,7 @@ const REQUIRED_HEADERS = [
   "c",
   "d",
   "correct",
+  "points",
 ];
 
 
@@ -248,19 +249,30 @@ async function parseExamQuestionsExcel(
       }
     );
 
-    let points = 10;
+    let points = null;
 
-    if (pointsText !== "") {
-      points = Number(pointsText);
+    if (pointsText === "") {
+    rowErrors.push(
+        "points không được để trống"
+    );
+    } else {
+    points = Number(
+        String(pointsText)
+        .trim()
+        .replace(",", ".")
+    );
 
-      if (
-        !Number.isInteger(points) ||
-        points < 0
-      ) {
+    if (
+        !Number.isFinite(points) ||
+        points <= 0
+    ) {
         rowErrors.push(
-          "points phải là số nguyên lớn hơn hoặc bằng 0"
+        "points phải là số lớn hơn 0"
         );
-      }
+    } else {
+        points =
+        Math.round(points * 100) / 100;
+    }
     }
 
     if (rowErrors.length > 0) {
@@ -284,6 +296,27 @@ async function parseExamQuestionsExcel(
     });
   }
 
+const totalPoints =
+  questions.reduce(
+    (total, question) =>
+      total +
+      (
+        Number(question.points) || 0
+      ),
+    0
+  );
+
+const roundedTotalPoints =
+  Math.round(totalPoints * 100) / 100;
+
+if (roundedTotalPoints <= 0) {
+  errors.push({
+    row: 1,
+    message:
+      "Tổng điểm của bài phải lớn hơn 0.",
+  });
+}
+  
   if (errors.length > 0) {
     return {
       success: false,
@@ -307,9 +340,11 @@ async function parseExamQuestionsExcel(
   }
 
   return {
-    success: true,
-    questions,
-  };
+  success: true,
+  questions,
+  totalPoints:
+    roundedTotalPoints,
+};
 }
 
 
