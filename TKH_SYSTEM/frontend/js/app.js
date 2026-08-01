@@ -4200,6 +4200,19 @@ function isProtectedStudentPage() {
     return protectedStudentPages.includes(pageName);
 }
 
+function isSharedProtectedPage() {
+    const pageName =
+        getCurrentPageName();
+
+    const sharedProtectedPages = [
+        "forum.html"
+    ];
+
+    return sharedProtectedPages.includes(
+        pageName
+    );
+}
+
 function isChangePasswordPage() {
     const pageName = window.location.pathname
         .split("/")
@@ -4213,10 +4226,13 @@ async function initializePage() {
     const adminPage = isAdminPage();
     const studentPage = isProtectedStudentPage();
     const changePasswordPage = isChangePasswordPage();
+    const sharedPage =
+    isSharedProtectedPage();
 
     const protectedPage =
         adminPage ||
         studentPage ||
+        sharedPage ||
         changePasswordPage;
 
     if (!protectedPage) {
@@ -4351,6 +4367,7 @@ function runPageLoaders() {
     loadBibleChallengeSummaryDemo();
     loadBibleChallengeHistoryDemo();
     loadBibleChallengeProgressDemo();
+    initializeForumPage();
 }
 
 document.addEventListener("DOMContentLoaded", initializePage);
@@ -19222,3 +19239,1961 @@ document.addEventListener(
     initializeAdminExamPresentation
 );
 
+/*
+=====================================================
+FORUM
+=====================================================
+*/
+
+let forumSocket = null;
+
+let forumRooms = [];
+
+let forumCurrentRoom = null;
+
+let forumPendingPasswordRoom = null;
+
+let forumMessageItems = [];
+
+let forumPageInitialized = false;
+
+let forumJoiningRoom = false;
+
+let forumSendingMessage = false;
+
+let forumCreatingRoom = false;
+
+
+/*
+=====================================================
+Forum Helpers
+=====================================================
+*/
+
+function isForumPageDemo() {
+    return (
+        getCurrentPageName() ===
+        "forum.html"
+    );
+}
+
+
+function forumEscapeHtmlDemo(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+
+function getForumCurrentUserDemo() {
+    try {
+        return JSON.parse(
+            localStorage.getItem(
+                "currentUser"
+            )
+        );
+    } catch (error) {
+        return null;
+    }
+}
+
+
+function getForumTokenDemo() {
+    return localStorage.getItem(
+        "accessToken"
+    );
+}
+
+
+function getForumAvatarUrlDemo(
+    sender
+) {
+    const avatarFilename =
+        String(
+            sender?.avatarFilename ||
+            ""
+        ).trim();
+
+    /*
+     * Nếu database có lưu rõ tên file avatar,
+     * ưu tiên dùng tên file đó.
+     */
+    if (avatarFilename) {
+        return (
+            "assets/images/members/" +
+            encodeURIComponent(
+                avatarFilename
+            )
+        );
+    }
+
+    /*
+     * Nếu avatar_filename đang NULL,
+     * dùng lại quy tắc avatar hiện có:
+     *
+     * Ngô Tấn Phát
+     * → ngotanphat.jpg
+     *
+     * Riêng các trường hợp trùng tên
+     * sẽ dùng mã TKH theo helper chung.
+     */
+    if (
+        typeof getMemberAvatarUrlDemo ===
+        "function"
+    ) {
+        return getMemberAvatarUrlDemo({
+            fullName:
+                sender?.fullName,
+
+            tkhCode:
+                sender?.tkhCode,
+
+            username:
+                sender?.username,
+        });
+    }
+
+    return (
+        "assets/images/members/" +
+        "default-avatar.jpg"
+    );
+}
+
+
+function formatForumDateTimeDemo(
+    value
+) {
+    if (!value) {
+        return "";
+    }
+
+    let date = null;
+
+    if (
+        typeof parseSqlLocalDateTime ===
+        "function"
+    ) {
+        date =
+            parseSqlLocalDateTime(
+                value
+            );
+    }
+
+    if (!date) {
+        date =
+            new Date(value);
+    }
+
+    if (
+        !date ||
+        Number.isNaN(
+            date.getTime()
+        )
+    ) {
+        return "";
+    }
+
+    return date.toLocaleString(
+        "vi-VN",
+        {
+            day: "2-digit",
+            month: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit"
+        }
+    );
+}
+
+
+function setForumInlineMessageDemo(
+    element,
+    message = "",
+    type = ""
+) {
+    if (!element) {
+        return;
+    }
+
+    element.textContent =
+        message;
+
+    element.className =
+        "forum-inline-message";
+
+    if (type) {
+        element.classList.add(
+            type
+        );
+    }
+}
+
+
+function setForumConnectionStatusDemo(
+    status,
+    text
+) {
+    const element =
+        document.getElementById(
+            "forumConnectionStatus"
+        );
+
+    if (!element) {
+        return;
+    }
+
+    element.textContent =
+        text;
+
+    element.className =
+        "forum-connection-status";
+
+    if (status === "connected") {
+        element.classList.add(
+            "forum-connection-connected"
+        );
+
+        return;
+    }
+
+    if (
+        status ===
+        "disconnected"
+    ) {
+        element.classList.add(
+            "forum-connection-disconnected"
+        );
+
+        return;
+    }
+
+    element.classList.add(
+        "forum-connection-connecting"
+    );
+}
+
+
+function getForumRoomIconDemo(
+    room
+) {
+    if (
+        room?.roomType ===
+        "GLOBAL"
+    ) {
+        return "🌐";
+    }
+
+    if (room?.hasPassword) {
+        return "🔒";
+    }
+
+    return "💬";
+}
+
+
+function scrollForumMessagesToBottomDemo() {
+    const list =
+        document.getElementById(
+            "forumMessageList"
+        );
+
+    if (!list) {
+        return;
+    }
+
+    requestAnimationFrame(() => {
+        list.scrollTop =
+            list.scrollHeight;
+    });
+}
+
+
+/*
+=====================================================
+Forum REST Request
+=====================================================
+*/
+
+async function forumApiRequestDemo(
+    path,
+    options = {}
+) {
+    const token =
+        getForumTokenDemo();
+
+    if (!token) {
+        logoutDemo();
+
+        throw new Error(
+            "Phiên đăng nhập không tồn tại."
+        );
+    }
+
+    const response =
+        await fetch(
+            `${API_BASE_URL}${path}`,
+            {
+                ...options,
+
+                headers: {
+                    Authorization:
+                        `Bearer ${token}`,
+
+                    ...(
+                        options.body
+                            ? {
+                                "Content-Type":
+                                    "application/json"
+                            }
+                            : {}
+                    ),
+
+                    ...(
+                        options.headers ||
+                        {}
+                    )
+                }
+            }
+        );
+
+    let result = null;
+
+    try {
+        result =
+            await response.json();
+    } catch (error) {
+        result = null;
+    }
+
+    if (response.status === 401) {
+        logoutDemo();
+
+        throw new Error(
+            "Phiên đăng nhập đã hết hạn."
+        );
+    }
+
+    if (
+        !response.ok ||
+        result?.success !== true
+    ) {
+        const apiError =
+            new Error(
+                result?.error?.message ||
+                "Không thể xử lý yêu cầu Diễn đàn."
+            );
+
+        apiError.code =
+            result?.error?.code ||
+            null;
+
+        apiError.status =
+            response.status;
+
+        apiError.details =
+            result?.error?.details ||
+            null;
+
+        throw apiError;
+    }
+
+    return result.data;
+}
+
+
+/*
+=====================================================
+Render Rooms
+=====================================================
+*/
+
+function renderForumRoomsDemo() {
+    const list =
+        document.getElementById(
+            "forumRoomList"
+        );
+
+    if (!list) {
+        return;
+    }
+
+    if (
+        !Array.isArray(
+            forumRooms
+        ) ||
+        forumRooms.length === 0
+    ) {
+        list.innerHTML = `
+            <div class="forum-room-empty">
+                Chưa có phòng chat nào.
+            </div>
+        `;
+
+        return;
+    }
+
+    list.innerHTML =
+        forumRooms
+            .map(room => {
+                const isActive =
+                    Number(
+                        forumCurrentRoom?.id
+                    ) ===
+                    Number(room.id);
+
+                const creatorName =
+                    room.creator?.fullName ||
+                    room.creator?.username ||
+                    "";
+
+                let metaText =
+                    room.roomType ===
+                    "GLOBAL"
+                        ? "Phòng chat chung"
+                        : creatorName
+                            ? `Tạo bởi ${creatorName}`
+                            : "Phòng chat thành viên";
+
+                if (
+                    room.hasPassword
+                ) {
+                    metaText +=
+                        " · Có mật khẩu";
+                }
+
+                return `
+                    <button
+                        type="button"
+                        class="forum-room-item ${
+                            isActive
+                                ? "active"
+                                : ""
+                        }"
+                        data-forum-room-id="${
+                            Number(room.id)
+                        }"
+                    >
+                        <span
+                            class="forum-room-item-icon"
+                        >
+                            ${getForumRoomIconDemo(
+                                room
+                            )}
+                        </span>
+
+                        <span
+                            class="forum-room-item-content"
+                        >
+                            <span
+                                class="forum-room-item-name"
+                            >
+                                ${forumEscapeHtmlDemo(
+                                    room.name
+                                )}
+                            </span>
+
+                            <span
+                                class="forum-room-item-meta"
+                            >
+                                ${forumEscapeHtmlDemo(
+                                    metaText
+                                )}
+                            </span>
+                        </span>
+
+                        ${
+                            room.hasPassword
+                                ? `
+                                    <span
+                                        class="forum-room-lock"
+                                        aria-label="Phòng có mật khẩu"
+                                    >
+                                        🔒
+                                    </span>
+                                `
+                                : ""
+                        }
+                    </button>
+                `;
+            })
+            .join("");
+
+    list
+        .querySelectorAll(
+            "[data-forum-room-id]"
+        )
+        .forEach(button => {
+            button.addEventListener(
+                "click",
+                () => {
+                    const roomId =
+                        Number(
+                            button.dataset
+                                .forumRoomId
+                        );
+
+                    const room =
+                        forumRooms.find(
+                            item =>
+                                Number(
+                                    item.id
+                                ) ===
+                                roomId
+                        );
+
+                    if (room) {
+                        requestJoinForumRoomDemo(
+                            room
+                        );
+                    }
+                }
+            );
+        });
+}
+
+
+/*
+=====================================================
+Render Messages
+=====================================================
+*/
+
+function renderForumMessagesDemo() {
+    const list =
+        document.getElementById(
+            "forumMessageList"
+        );
+
+    if (!list) {
+        return;
+    }
+
+    const currentUser =
+        getForumCurrentUserDemo();
+
+    if (
+        !Array.isArray(
+            forumMessageItems
+        ) ||
+        forumMessageItems.length === 0
+    ) {
+        list.innerHTML = `
+            <div class="forum-message-placeholder">
+                Chưa có tin nhắn nào trong phòng này.
+                Hãy gửi lời chào đầu tiên!
+            </div>
+        `;
+
+        return;
+    }
+
+    list.innerHTML =
+        forumMessageItems
+            .map(message => {
+                const sender =
+                    message.sender ||
+                    {};
+
+                const isMine =
+                    Number(sender.userId) ===
+                    Number(currentUser?.id);
+
+                const senderName =
+                    sender.fullName ||
+                    sender.username ||
+                    "Thành viên TKH";
+
+                const senderCode =
+                    sender.tkhCode ||
+                    sender.username ||
+                    "";
+
+                const timeText =
+                    formatForumDateTimeDemo(
+                        message.createdAt
+                    );
+
+                const avatarUrl =
+                    getForumAvatarUrlDemo(
+                        sender
+                    );
+
+                return `
+                    <article
+                        class="forum-message-item ${
+                            isMine
+                                ? "mine"
+                                : ""
+                        }"
+                        data-forum-message-id="${
+                            Number(message.id)
+                        }"
+                    >
+                        <img
+                            class="forum-message-avatar"
+                            src="${forumEscapeHtmlDemo(
+                                avatarUrl
+                            )}"
+                            alt="Avatar ${forumEscapeHtmlDemo(
+                                senderName
+                            )}"
+                            onerror="
+                                this.onerror=null;
+                                this.src='assets/images/members/default-avatar.jpg';
+                            "
+                        >
+
+                        <div
+                            class="forum-message-content"
+                        >
+                            <div
+                                class="forum-message-header"
+                            >
+                                <span
+                                    class="forum-message-sender"
+                                >
+                                    ${forumEscapeHtmlDemo(
+                                        senderName
+                                    )}
+                                </span>
+
+                                ${
+                                    senderCode
+                                        ? `
+                                            <span
+                                                class="forum-message-code"
+                                            >
+                                                ${forumEscapeHtmlDemo(
+                                                    senderCode
+                                                )}
+                                            </span>
+                                        `
+                                        : ""
+                                }
+
+                                <time
+                                    class="forum-message-time"
+                                >
+                                    ${forumEscapeHtmlDemo(
+                                        timeText
+                                    )}
+                                </time>
+                            </div>
+
+                            <div
+                                class="forum-message-bubble"
+                            >${forumEscapeHtmlDemo(
+                                message.messageText
+                            )}</div>
+                        </div>
+                    </article>
+                `;
+            })
+            .join("");
+
+    scrollForumMessagesToBottomDemo();
+}
+
+
+function appendForumMessageDemo(
+    message
+) {
+    if (
+        !message ||
+        !forumCurrentRoom
+    ) {
+        return;
+    }
+
+    if (
+        Number(message.roomId) !==
+        Number(forumCurrentRoom.id)
+    ) {
+        return;
+    }
+
+    const alreadyExists =
+        forumMessageItems.some(
+            item =>
+                Number(item.id) ===
+                Number(message.id)
+        );
+
+    if (alreadyExists) {
+        return;
+    }
+
+    forumMessageItems.push(
+        message
+    );
+
+    if (
+        forumMessageItems.length >
+        50
+    ) {
+        forumMessageItems =
+            forumMessageItems.slice(
+                -50
+            );
+    }
+
+    renderForumMessagesDemo();
+}
+
+
+/*
+=====================================================
+Current Room UI
+=====================================================
+*/
+
+function setForumCurrentRoomDemo(
+    room
+) {
+    forumCurrentRoom =
+        room || null;
+
+    const nameElement =
+        document.getElementById(
+            "forumCurrentRoomName"
+        );
+
+    const descriptionElement =
+        document.getElementById(
+            "forumCurrentRoomDescription"
+        );
+
+    const iconElement =
+        document.getElementById(
+            "forumCurrentRoomIcon"
+        );
+
+    const input =
+        document.getElementById(
+            "forumMessageInput"
+        );
+
+    const sendButton =
+        document.getElementById(
+            "forumSendMessageButton"
+        );
+
+    if (!room) {
+        if (nameElement) {
+            nameElement.textContent =
+                "Chưa chọn phòng chat";
+        }
+
+        if (
+            descriptionElement
+        ) {
+            descriptionElement
+                .textContent =
+                "Chọn một phòng để tham gia.";
+        }
+
+        if (iconElement) {
+            iconElement.textContent =
+                "💬";
+        }
+
+        if (input) {
+            input.disabled = true;
+        }
+
+        if (sendButton) {
+            sendButton.disabled = true;
+        }
+
+        renderForumRoomsDemo();
+
+        return;
+    }
+
+    if (nameElement) {
+        nameElement.textContent =
+            room.name ||
+            "Phòng chat";
+    }
+
+    if (descriptionElement) {
+        descriptionElement.textContent =
+            room.roomType ===
+            "GLOBAL"
+                ? "Phòng trò chuyện chung của TKH 2026."
+                : room.hasPassword
+                    ? "Phòng riêng có mật khẩu."
+                    : "Phòng chat công khai.";
+    }
+
+    if (iconElement) {
+        iconElement.textContent =
+            getForumRoomIconDemo(
+                room
+            );
+    }
+
+    if (input) {
+        input.disabled = false;
+        input.placeholder =
+            `Nhắn tin trong ${room.name}...`;
+    }
+
+    if (sendButton) {
+        sendButton.disabled = false;
+    }
+
+    renderForumRoomsDemo();
+}
+
+
+/*
+=====================================================
+Load Rooms
+=====================================================
+*/
+
+async function loadForumRoomsDemo(
+    {
+        autoJoinGlobal = false,
+    } = {}
+) {
+    const messageElement =
+        document.getElementById(
+            "forumRoomListMessage"
+        );
+
+    const list =
+        document.getElementById(
+            "forumRoomList"
+        );
+
+    if (list) {
+        list.innerHTML = `
+            <div class="forum-room-loading">
+                Đang tải danh sách phòng...
+            </div>
+        `;
+    }
+
+    setForumInlineMessageDemo(
+        messageElement,
+        "",
+        ""
+    );
+
+    try {
+        const data =
+            await forumApiRequestDemo(
+                "/api/forum/rooms"
+            );
+
+        forumRooms =
+            Array.isArray(
+                data.rooms
+            )
+                ? data.rooms
+                : [];
+
+        renderForumRoomsDemo();
+
+        if (
+            autoJoinGlobal &&
+            !forumCurrentRoom
+        ) {
+            const globalRoom =
+                forumRooms.find(
+                    room =>
+                        room.roomType ===
+                        "GLOBAL"
+                );
+
+            if (globalRoom) {
+                joinForumRoomDemo(
+                    globalRoom,
+                    ""
+                );
+            }
+        }
+    } catch (error) {
+        console.error(
+            "Load forum rooms error:",
+            error
+        );
+
+        if (list) {
+            list.innerHTML = `
+                <div class="forum-room-empty">
+                    Không thể tải danh sách phòng.
+                </div>
+            `;
+        }
+
+        setForumInlineMessageDemo(
+            messageElement,
+            error.message ||
+                "Không thể tải danh sách phòng.",
+            "error"
+        );
+    }
+}
+
+
+/*
+=====================================================
+Join Room
+=====================================================
+*/
+
+function requestJoinForumRoomDemo(
+    room
+) {
+    if (!room) {
+        return;
+    }
+
+    if (
+        Number(
+            forumCurrentRoom?.id
+        ) ===
+        Number(room.id)
+    ) {
+        return;
+    }
+
+    if (room.hasPassword) {
+        openForumPasswordModalDemo(
+            room
+        );
+
+        return;
+    }
+
+    joinForumRoomDemo(
+        room,
+        ""
+    );
+}
+
+
+function joinForumRoomDemo(
+    room,
+    password = ""
+) {
+    if (
+        !forumSocket ||
+        !forumSocket.connected
+    ) {
+        setForumInlineMessageDemo(
+            document.getElementById(
+                "forumChatMessage"
+            ),
+            "Chưa kết nối được với hệ thống realtime.",
+            "error"
+        );
+
+        return;
+    }
+
+    if (
+        !room ||
+        forumJoiningRoom
+    ) {
+        return;
+    }
+
+    forumJoiningRoom = true;
+
+    const messageList =
+        document.getElementById(
+            "forumMessageList"
+        );
+
+    if (messageList) {
+        messageList.innerHTML = `
+            <div class="forum-message-placeholder">
+                Đang tham gia phòng chat...
+            </div>
+        `;
+    }
+
+    forumSocket.emit(
+        "forum:join-room",
+        {
+            roomId:
+                room.id,
+
+            password:
+                password || "",
+        },
+        result => {
+            forumJoiningRoom = false;
+
+            if (
+                result?.success !==
+                true
+            ) {
+                const errorCode =
+                    result?.error?.code;
+
+                const errorMessage =
+                    result?.error?.message ||
+                    "Không thể tham gia phòng chat.";
+
+                if (
+                    errorCode ===
+                    "FORUM_ROOM_PASSWORD_INVALID"
+                ) {
+                    setForumInlineMessageDemo(
+                        document.getElementById(
+                            "forumPasswordMessage"
+                        ),
+                        errorMessage,
+                        "error"
+                    );
+
+                    return;
+                }
+
+                setForumInlineMessageDemo(
+                    document.getElementById(
+                        "forumChatMessage"
+                    ),
+                    errorMessage,
+                    "error"
+                );
+
+                if (messageList) {
+                    messageList.innerHTML = `
+                        <div class="forum-message-placeholder">
+                            Không thể tải phòng chat.
+                        </div>
+                    `;
+                }
+
+                return;
+            }
+
+            closeForumPasswordModalDemo();
+
+            const data =
+                result.data ||
+                {};
+
+            forumMessageItems =
+                Array.isArray(
+                    data.messages
+                )
+                    ? data.messages.slice(
+                        -50
+                    )
+                    : [];
+
+            setForumCurrentRoomDemo(
+                data.room ||
+                room
+            );
+
+            setForumInlineMessageDemo(
+                document.getElementById(
+                    "forumChatMessage"
+                ),
+                "",
+                ""
+            );
+
+            renderForumMessagesDemo();
+
+            document
+                .getElementById(
+                    "forumMessageInput"
+                )
+                ?.focus();
+        }
+    );
+}
+
+
+/*
+=====================================================
+Send Message
+=====================================================
+*/
+
+function sendForumMessageDemo() {
+    const input =
+        document.getElementById(
+            "forumMessageInput"
+        );
+
+    const button =
+        document.getElementById(
+            "forumSendMessageButton"
+        );
+
+    const messageElement =
+        document.getElementById(
+            "forumChatMessage"
+        );
+
+    const messageText =
+        String(
+            input?.value ||
+            ""
+        ).trim();
+
+    if (
+        !forumCurrentRoom ||
+        !forumSocket?.connected
+    ) {
+        setForumInlineMessageDemo(
+            messageElement,
+            "Bạn chưa kết nối hoặc chưa tham gia phòng chat.",
+            "error"
+        );
+
+        return;
+    }
+
+    if (!messageText) {
+        setForumInlineMessageDemo(
+            messageElement,
+            "Vui lòng nhập nội dung tin nhắn.",
+            "error"
+        );
+
+        return;
+    }
+
+    if (
+        messageText.length >
+        1000
+    ) {
+        setForumInlineMessageDemo(
+            messageElement,
+            "Tin nhắn không được vượt quá 1000 ký tự.",
+            "error"
+        );
+
+        return;
+    }
+
+    if (forumSendingMessage) {
+        return;
+    }
+
+    forumSendingMessage = true;
+
+    if (button) {
+        button.disabled = true;
+        button.textContent =
+            "Đang gửi...";
+    }
+
+    forumSocket.emit(
+        "forum:send-message",
+        {
+            roomId:
+                forumCurrentRoom.id,
+
+            messageText,
+        },
+        result => {
+            forumSendingMessage = false;
+
+            if (button) {
+                button.disabled = false;
+                button.textContent =
+                    "Gửi";
+            }
+
+            if (
+                result?.success !==
+                true
+            ) {
+                setForumInlineMessageDemo(
+                    messageElement,
+                    result?.error?.message ||
+                        "Không thể gửi tin nhắn.",
+                    "error"
+                );
+
+                return;
+            }
+
+            if (input) {
+                input.value = "";
+                input.focus();
+            }
+
+            setForumInlineMessageDemo(
+                messageElement,
+                "",
+                ""
+            );
+        }
+    );
+}
+
+
+/*
+=====================================================
+Create Room Modal
+=====================================================
+*/
+
+function openForumCreateRoomModalDemo() {
+    const modal =
+        document.getElementById(
+            "forumCreateRoomModal"
+        );
+
+    if (!modal) {
+        return;
+    }
+
+    document.getElementById(
+        "forumCreateRoomName"
+    ).value = "";
+
+    document.getElementById(
+        "forumCreateRoomPassword"
+    ).value = "";
+
+    setForumInlineMessageDemo(
+        document.getElementById(
+            "forumCreateRoomMessage"
+        ),
+        "",
+        ""
+    );
+
+    modal.classList.remove(
+        "hidden"
+    );
+
+    document
+        .getElementById(
+            "forumCreateRoomName"
+        )
+        ?.focus();
+}
+
+
+function closeForumCreateRoomModalDemo() {
+    document
+        .getElementById(
+            "forumCreateRoomModal"
+        )
+        ?.classList.add(
+            "hidden"
+        );
+}
+
+
+async function submitForumCreateRoomDemo() {
+    const nameInput =
+        document.getElementById(
+            "forumCreateRoomName"
+        );
+
+    const passwordInput =
+        document.getElementById(
+            "forumCreateRoomPassword"
+        );
+
+    const button =
+        document.getElementById(
+            "forumSubmitCreateRoomButton"
+        );
+
+    const messageElement =
+        document.getElementById(
+            "forumCreateRoomMessage"
+        );
+
+    const name =
+        String(
+            nameInput?.value ||
+            ""
+        )
+            .trim()
+            .replace(/\s+/g, " ");
+
+    const password =
+        String(
+            passwordInput?.value ||
+            ""
+        ).trim();
+
+    if (!name) {
+        setForumInlineMessageDemo(
+            messageElement,
+            "Vui lòng nhập tên phòng.",
+            "error"
+        );
+
+        return;
+    }
+
+    if (name.length > 100) {
+        setForumInlineMessageDemo(
+            messageElement,
+            "Tên phòng không được vượt quá 100 ký tự.",
+            "error"
+        );
+
+        return;
+    }
+
+    if (
+        password.length >
+        50
+    ) {
+        setForumInlineMessageDemo(
+            messageElement,
+            "Mật khẩu không được vượt quá 50 ký tự.",
+            "error"
+        );
+
+        return;
+    }
+
+    if (forumCreatingRoom) {
+        return;
+    }
+
+    forumCreatingRoom = true;
+
+    if (button) {
+        button.disabled = true;
+        button.textContent =
+            "Đang tạo...";
+    }
+
+    setForumInlineMessageDemo(
+        messageElement,
+        "Đang tạo phòng...",
+        "info"
+    );
+
+    try {
+        const data =
+            await forumApiRequestDemo(
+                "/api/forum/rooms",
+                {
+                    method: "POST",
+
+                    body:
+                        JSON.stringify({
+                            name,
+                            password,
+                        })
+                }
+            );
+
+        const createdRoom =
+            data.room;
+
+        if (
+            createdRoom &&
+            !forumRooms.some(
+                room =>
+                    Number(room.id) ===
+                    Number(createdRoom.id)
+            )
+        ) {
+            forumRooms.push(
+                createdRoom
+            );
+
+            forumRooms.sort(
+                (a, b) => {
+                    if (
+                        a.roomType ===
+                        "GLOBAL"
+                    ) {
+                        return -1;
+                    }
+
+                    if (
+                        b.roomType ===
+                        "GLOBAL"
+                    ) {
+                        return 1;
+                    }
+
+                    return (
+                        Number(b.id) -
+                        Number(a.id)
+                    );
+                }
+            );
+        }
+
+        renderForumRoomsDemo();
+
+        closeForumCreateRoomModalDemo();
+
+        if (createdRoom) {
+            joinForumRoomDemo(
+                createdRoom,
+                password
+            );
+        }
+    } catch (error) {
+        console.error(
+            "Create forum room error:",
+            error
+        );
+
+        setForumInlineMessageDemo(
+            messageElement,
+            error.message ||
+                "Không thể tạo phòng.",
+            "error"
+        );
+    } finally {
+        forumCreatingRoom = false;
+
+        if (button) {
+            button.disabled = false;
+            button.textContent =
+                "Tạo phòng";
+        }
+    }
+}
+
+
+/*
+=====================================================
+Password Modal
+=====================================================
+*/
+
+function openForumPasswordModalDemo(
+    room
+) {
+    forumPendingPasswordRoom =
+        room;
+
+    const modal =
+        document.getElementById(
+            "forumPasswordModal"
+        );
+
+    const roomName =
+        document.getElementById(
+            "forumPasswordRoomName"
+        );
+
+    const passwordInput =
+        document.getElementById(
+            "forumRoomPasswordInput"
+        );
+
+    if (roomName) {
+        roomName.textContent =
+            room.name ||
+            "phòng chat";
+    }
+
+    if (passwordInput) {
+        passwordInput.value = "";
+    }
+
+    setForumInlineMessageDemo(
+        document.getElementById(
+            "forumPasswordMessage"
+        ),
+        "",
+        ""
+    );
+
+    modal?.classList.remove(
+        "hidden"
+    );
+
+    passwordInput?.focus();
+}
+
+
+function closeForumPasswordModalDemo() {
+    document
+        .getElementById(
+            "forumPasswordModal"
+        )
+        ?.classList.add(
+            "hidden"
+        );
+
+    forumPendingPasswordRoom =
+        null;
+
+    const passwordInput =
+        document.getElementById(
+            "forumRoomPasswordInput"
+        );
+
+    if (passwordInput) {
+        passwordInput.value = "";
+    }
+
+    setForumInlineMessageDemo(
+        document.getElementById(
+            "forumPasswordMessage"
+        ),
+        "",
+        ""
+    );
+}
+
+
+function submitForumPasswordDemo() {
+    const room =
+        forumPendingPasswordRoom;
+
+    const password =
+        document
+            .getElementById(
+                "forumRoomPasswordInput"
+            )
+            ?.value ||
+        "";
+
+    if (!room) {
+        closeForumPasswordModalDemo();
+        return;
+    }
+
+    if (!password.trim()) {
+        setForumInlineMessageDemo(
+            document.getElementById(
+                "forumPasswordMessage"
+            ),
+            "Vui lòng nhập mật khẩu phòng.",
+            "error"
+        );
+
+        return;
+    }
+
+    joinForumRoomDemo(
+        room,
+        password
+    );
+}
+
+
+/*
+=====================================================
+Socket.IO
+=====================================================
+*/
+
+function connectForumSocketDemo() {
+    if (
+        typeof io !==
+        "function"
+    ) {
+        setForumConnectionStatusDemo(
+            "disconnected",
+            "Thiếu Socket.IO"
+        );
+
+        console.error(
+            "Socket.IO client is not loaded."
+        );
+
+        return;
+    }
+
+    const token =
+        getForumTokenDemo();
+
+    if (!token) {
+        logoutDemo();
+        return;
+    }
+
+    if (forumSocket) {
+        forumSocket.disconnect();
+    }
+
+    setForumConnectionStatusDemo(
+        "connecting",
+        "Đang kết nối..."
+    );
+
+    forumSocket =
+        io(
+            `${API_BASE_URL}/forum`,
+            {
+                auth: {
+                    token,
+                },
+
+                transports: [
+                    "websocket",
+                    "polling"
+                ],
+
+                reconnection: true,
+
+                reconnectionAttempts:
+                    Infinity,
+
+                reconnectionDelay:
+                    1000,
+
+                reconnectionDelayMax:
+                    5000,
+            }
+        );
+
+
+    forumSocket.on(
+        "connect",
+        () => {
+            setForumConnectionStatusDemo(
+                "connected",
+                "Đã kết nối"
+            );
+
+            loadForumRoomsDemo({
+                autoJoinGlobal:
+                    !forumCurrentRoom,
+            });
+        }
+    );
+
+
+    forumSocket.on(
+        "disconnect",
+        reason => {
+            console.warn(
+                "Forum socket disconnected:",
+                reason
+            );
+
+            setForumConnectionStatusDemo(
+                "disconnected",
+                "Mất kết nối"
+            );
+
+            const input =
+                document.getElementById(
+                    "forumMessageInput"
+                );
+
+            const button =
+                document.getElementById(
+                    "forumSendMessageButton"
+                );
+
+            if (input) {
+                input.disabled = true;
+            }
+
+            if (button) {
+                button.disabled = true;
+            }
+        }
+    );
+
+
+    forumSocket.on(
+        "connect_error",
+        error => {
+            console.error(
+                "Forum socket connection error:",
+                error
+            );
+
+            setForumConnectionStatusDemo(
+                "disconnected",
+                "Không thể kết nối"
+            );
+
+            setForumInlineMessageDemo(
+                document.getElementById(
+                    "forumChatMessage"
+                ),
+                error?.message ||
+                    "Không thể kết nối đến Diễn đàn.",
+                "error"
+            );
+        }
+    );
+
+
+    forumSocket.on(
+        "forum:new-message",
+        payload => {
+            appendForumMessageDemo(
+                payload?.message
+            );
+        }
+    );
+
+
+    forumSocket.on(
+        "forum:room-created",
+        payload => {
+            const room =
+                payload?.room;
+
+            if (!room) {
+                return;
+            }
+
+            const index =
+                forumRooms.findIndex(
+                    item =>
+                        Number(item.id) ===
+                        Number(room.id)
+                );
+
+            if (index >= 0) {
+                forumRooms[index] =
+                    room;
+            } else {
+                forumRooms.push(
+                    room
+                );
+            }
+
+            forumRooms.sort(
+                (a, b) => {
+                    if (
+                        a.roomType ===
+                        "GLOBAL"
+                    ) {
+                        return -1;
+                    }
+
+                    if (
+                        b.roomType ===
+                        "GLOBAL"
+                    ) {
+                        return 1;
+                    }
+
+                    return (
+                        Number(b.id) -
+                        Number(a.id)
+                    );
+                }
+            );
+
+            renderForumRoomsDemo();
+        }
+    );
+}
+
+
+/*
+=====================================================
+Bind Forum Events
+=====================================================
+*/
+
+function bindForumPageEventsDemo() {
+    document
+        .getElementById(
+            "forumOpenCreateRoomButton"
+        )
+        ?.addEventListener(
+            "click",
+            openForumCreateRoomModalDemo
+        );
+
+
+    document
+        .getElementById(
+            "forumCancelCreateRoomButton"
+        )
+        ?.addEventListener(
+            "click",
+            closeForumCreateRoomModalDemo
+        );
+
+
+    document
+        .getElementById(
+            "forumSubmitCreateRoomButton"
+        )
+        ?.addEventListener(
+            "click",
+            submitForumCreateRoomDemo
+        );
+
+
+    document
+        .getElementById(
+            "forumCancelPasswordButton"
+        )
+        ?.addEventListener(
+            "click",
+            closeForumPasswordModalDemo
+        );
+
+
+    document
+        .getElementById(
+            "forumSubmitPasswordButton"
+        )
+        ?.addEventListener(
+            "click",
+            submitForumPasswordDemo
+        );
+
+
+    document
+        .getElementById(
+            "forumRefreshRoomsButton"
+        )
+        ?.addEventListener(
+            "click",
+            () => {
+                loadForumRoomsDemo({
+                    autoJoinGlobal:
+                        false,
+                });
+            }
+        );
+
+
+    document
+        .getElementById(
+            "forumMessageForm"
+        )
+        ?.addEventListener(
+            "submit",
+            event => {
+                event.preventDefault();
+
+                sendForumMessageDemo();
+            }
+        );
+
+
+    document
+        .getElementById(
+            "forumMessageInput"
+        )
+        ?.addEventListener(
+            "keydown",
+            event => {
+                if (
+                    event.key ===
+                        "Enter" &&
+                    !event.shiftKey
+                ) {
+                    event.preventDefault();
+
+                    sendForumMessageDemo();
+                }
+            }
+        );
+
+
+    document
+        .getElementById(
+            "forumRoomPasswordInput"
+        )
+        ?.addEventListener(
+            "keydown",
+            event => {
+                if (
+                    event.key ===
+                    "Enter"
+                ) {
+                    event.preventDefault();
+
+                    submitForumPasswordDemo();
+                }
+            }
+        );
+
+
+    document
+        .getElementById(
+            "forumCreateRoomPassword"
+        )
+        ?.addEventListener(
+            "keydown",
+            event => {
+                if (
+                    event.key ===
+                    "Enter"
+                ) {
+                    event.preventDefault();
+
+                    submitForumCreateRoomDemo();
+                }
+            }
+        );
+
+
+    document
+        .getElementById(
+            "forumCreateRoomModal"
+        )
+        ?.addEventListener(
+            "click",
+            event => {
+                if (
+                    event.target ===
+                    event.currentTarget
+                ) {
+                    closeForumCreateRoomModalDemo();
+                }
+            }
+        );
+
+
+    document
+        .getElementById(
+            "forumPasswordModal"
+        )
+        ?.addEventListener(
+            "click",
+            event => {
+                if (
+                    event.target ===
+                    event.currentTarget
+                ) {
+                    closeForumPasswordModalDemo();
+                }
+            }
+        );
+}
+
+
+/*
+=====================================================
+Initialize Forum Page
+=====================================================
+*/
+
+function initializeForumPage() {
+    if (
+        !isForumPageDemo() ||
+        forumPageInitialized
+    ) {
+        return;
+    }
+
+    forumPageInitialized = true;
+
+    bindForumPageEventsDemo();
+
+    setForumCurrentRoomDemo(
+        null
+    );
+
+    connectForumSocketDemo();
+}

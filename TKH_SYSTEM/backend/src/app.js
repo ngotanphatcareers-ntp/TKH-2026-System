@@ -31,6 +31,9 @@ const examRoutes = require("./routes/exam.routes");
 
 const documentRoutes = require("./routes/document.routes");
 
+const forumRoutes =
+  require("./routes/forum.routes");
+
 const adminDocumentRoutes = require(
   "./routes/admin-document.routes"
 );
@@ -59,6 +62,11 @@ app.use(
 app.use(
   "/api/documents",
   documentRoutes
+);
+
+app.use(
+  "/api/forum",
+  forumRoutes
 );
 
 app.use(

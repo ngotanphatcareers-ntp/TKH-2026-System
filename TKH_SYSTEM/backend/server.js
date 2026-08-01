@@ -13,6 +13,16 @@ const registerExamSocketHandlers =
     "./src/sockets/register-exam-socket-handlers"
   );
 
+const authenticateForumSocket =
+  require(
+    "./src/sockets/authenticate-forum-socket"
+  );
+
+const registerForumSocketHandlers =
+  require(
+    "./src/sockets/register-forum-socket-handlers"
+  );
+
 const PORT = process.env.PORT || 5000;
 
 /*
@@ -92,6 +102,51 @@ examsNamespace.on(
 
 /*
 =====================================================
+Forum Namespace
+=====================================================
+*/
+
+const forumNamespace =
+  io.of("/forum");
+
+
+forumNamespace.use(
+  authenticateForumSocket
+);
+
+
+app.set(
+  "forumNamespace",
+  forumNamespace
+);
+
+
+forumNamespace.on(
+  "connection",
+  socket => {
+    console.log(
+      `Forum socket connected: ${socket.id}`
+    );
+
+    registerForumSocketHandlers({
+      forumNamespace,
+      socket,
+    });
+
+    socket.on(
+      "disconnect",
+      reason => {
+        console.log(
+          `Forum socket disconnected: ${socket.id} (${reason})`
+        );
+      }
+    );
+  }
+);
+
+
+/*
+=====================================================
 Start Server
 =====================================================
 */
@@ -104,7 +159,7 @@ httpServer.listen(
     );
 
     console.log(
-      "Socket.IO namespace ready: /exams"
+      "Socket.IO namespaces ready: /exams, /forum"
     );
   }
 );
