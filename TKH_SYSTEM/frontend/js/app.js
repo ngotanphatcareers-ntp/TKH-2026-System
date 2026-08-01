@@ -16668,6 +16668,38 @@ function getStudentExamSocket() {
                 Number(payload?.examId);
 
             if (
+                !Number.isInteger(payloadExamId) ||
+                payloadExamId <= 0
+            ) {
+                return;
+            }
+
+            const examStatus =
+                String(
+                    payload?.realtimeState
+                        ?.examStatus || ""
+                ).toUpperCase();
+
+            clearTimeout(
+                studentExamSyncTimer
+            );
+
+            if (examStatus === "COMPLETED") {
+                studentExamSyncTimer =
+                    setTimeout(
+                        () => {
+                            loadStudentExamCompletedResult(
+                                payloadExamId,
+                                0
+                            );
+                        },
+                        150
+                    );
+
+                return;
+            }
+
+            if (
                 !activeStudentExamId ||
                 payloadExamId !==
                     activeStudentExamId
@@ -16675,15 +16707,11 @@ function getStudentExamSocket() {
                 return;
             }
 
-            clearTimeout(
-                studentExamSyncTimer
-            );
-
             studentExamSyncTimer =
                 setTimeout(
                     () => {
                         enterStudentExamRealtime(
-                            activeStudentExamId
+                            payloadExamId
                         );
                     },
                     100
@@ -16712,9 +16740,8 @@ function getStudentExamSocket() {
                 Number(payload?.examId);
 
             if (
-                !activeStudentExamId ||
-                payloadExamId !==
-                    activeStudentExamId
+                !Number.isInteger(payloadExamId) ||
+                payloadExamId <= 0
             ) {
                 return;
             }
@@ -16727,7 +16754,8 @@ function getStudentExamSocket() {
                 setTimeout(
                     () => {
                         loadStudentExamCompletedResult(
-                            activeStudentExamId
+                            payloadExamId,
+                            0
                         );
                     },
                     150
@@ -17710,7 +17738,8 @@ function renderStudentExamCompletedResult(
 
 
 async function loadStudentExamCompletedResult(
-    examId
+    examId,
+    retryCount = 0
 ) {
     const normalizedExamId =
         Number(examId);
@@ -17786,6 +17815,20 @@ async function loadStudentExamCompletedResult(
             ).toUpperCase() !==
                 "COMPLETED"
         ) {
+            if (retryCount < 5) {
+                setTimeout(
+                    () => {
+                        loadStudentExamCompletedResult(
+                            normalizedExamId,
+                            retryCount + 1
+                        );
+                    },
+                    500
+                );
+
+                return;
+            }
+
             throw new Error(
                 "Kết quả đang được đồng bộ. Vui lòng thử lại."
             );
