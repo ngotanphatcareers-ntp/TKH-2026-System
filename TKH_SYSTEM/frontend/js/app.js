@@ -175,8 +175,8 @@ const attendanceCheckinConfigDemo = {
             mode: "auto",
             startTime: "05:30",
             endTime: "06:00",
-            points: 2,
-            note: "Điểm challenge tĩnh nguyện"
+            points: 0,
+            note: "Điểm danh tĩnh nguyện"
         },
         morning: {
             label: "Đầu giờ",
@@ -9369,18 +9369,104 @@ async function setManualCheckinWindowDemo(windowKey) {
     }
 }
 
-function closeManualCheckinWindowsDemo() {
-    saveManualCheckinWindowDemo("");
+async function closeManualCheckinWindowsDemo() {
+    const message =
+        document.getElementById(
+            "adminCheckinWindowMessage"
+        );
 
-    const message = document.getElementById("adminCheckinWindowMessage");
+    const token =
+        localStorage.getItem("accessToken");
+
+    if (!token) {
+        logoutDemo();
+        return;
+    }
 
     if (message) {
         message.style.color = "#6b7280";
-        message.innerText = "Đã đóng tất cả khung điểm danh buổi học.";
+        message.innerText =
+            "Đang đóng tất cả khung điểm danh...";
     }
 
-    loadAdminCheckinWindowStatusDemo();
-    loadActiveCheckinWindowDemo();
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/attendance/admin/current-session/window`,
+            {
+                method: "PATCH",
+                headers: {
+                    Authorization:
+                        `Bearer ${token}`,
+                    "Content-Type":
+                        "application/json"
+                },
+                body: JSON.stringify({
+                    windowType: null
+                })
+            }
+        );
+
+        const result =
+            await response.json();
+
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
+
+        if (response.status === 403) {
+            window.location.href =
+                "dashboard.html";
+            return;
+        }
+
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+            throw new Error(
+                result?.error?.message ||
+                "Không thể đóng khung điểm danh."
+            );
+        }
+
+        /*
+         * Chỉ cập nhật localStorage sau khi
+         * Backend đã đóng khung thành công.
+         */
+        saveManualCheckinWindowDemo("");
+
+        if (message) {
+            message.style.color = "green";
+            message.innerText =
+                "Đã đóng tất cả khung điểm danh buổi học.";
+        }
+
+        /*
+         * Làm mới trạng thái trên trang Admin.
+         */
+        loadAdminCheckinWindowStatusDemo();
+        loadActiveCheckinWindowDemo();
+
+        /*
+         * Đồng bộ lại dữ liệu phiên hiện tại
+         * nếu hàm này đang chạy trên trang có thông tin phiên.
+         */
+        await loadAttendancePageData();
+
+    } catch (error) {
+        console.error(
+            "Close attendance windows error:",
+            error
+        );
+
+        if (message) {
+            message.style.color = "#dc2626";
+            message.innerText =
+                error.message ||
+                "Không thể kết nối Backend.";
+        }
+    }
 }
 
 function getCheckinWindowLabelDemo(windowKey) {
