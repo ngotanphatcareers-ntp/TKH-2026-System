@@ -3097,3 +3097,77 @@ body.bc-presentation-mode .bc-presentation-toggle {
         width: 100%;
     }
 }
+
+/* =========================================
+   STUDENT EXAM — QUESTION TEXT POLISH
+   ========================================= */
+
+.student-exam-question-text {
+    width: 100%;
+    margin: 16px 0 20px;
+    padding: 22px 20px;
+
+    text-align: left !important;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.6;
+
+    color: #1f2937;
+    background: #f8fafc;
+
+    border-left: 5px solid #2563eb;
+    border-radius: 14px;
+
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+
+/* Nội dung đáp án cũng căn trái thống nhất */
+.student-exam-answer-text {
+    flex: 1;
+    text-align: left;
+    line-height: 1.45;
+}
+
+/* Countdown gọn và rõ hơn */
+.student-exam-countdown {
+    min-width: 88px;
+    padding: 10px 12px;
+    text-align: center;
+}
+
+.student-exam-countdown strong {
+    display: block;
+    font-size: 32px;
+    line-height: 1;
+    margin: 4px 0;
+}
+
+/* Còn 5 giây thì cảnh báo nhẹ */
+.student-exam-countdown-warning {
+    animation: studentExamCountdownPulse 0.8s ease-in-out infinite;
+}
+
+@keyframes studentExamCountdownPulse {
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+@media (max-width: 768px) {
+    .student-exam-question-text {
+        padding: 20px 18px;
+        font-size: 19px;
+        line-height: 1.55;
+    }
+
+    .student-exam-answer-text {
+        font-size: 17px;
+    }
+}
