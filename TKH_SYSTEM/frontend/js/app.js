@@ -1,5 +1,5 @@
 const API_BASE_URL =
-    "https://blast-humans-giants-ware.trycloudflare.com";
+    "https://thesaurus-diary-flame-stickers.trycloudflare.com";
 
 const demoUsers = [
     {
@@ -9929,45 +9929,319 @@ function updateAttendanceSearchResultDemo() {
 //hàm export
 function exportAttendanceExcelDemo() {
     if (typeof XLSX === "undefined") {
-        alert("Không thể tải file Excel vì thư viện XLSX chưa được nạp.");
+        alert(
+            "Không thể tải file Excel vì thư viện XLSX chưa được nạp."
+        );
+
         return;
     }
 
-    const workbook = XLSX.utils.book_new();
+    const roster =
+        Array.isArray(
+            adminAttendanceRosterApiCache
+        )
+            ? adminAttendanceRosterApiCache
+            : [];
 
-    // =========================
-    // SHEET 1: ĐIỂM DANH
-    // =========================
-    const attendanceRows = [
-        [
-            "Họ tên",
-            "Nhóm",
-            "Khung",
-            "Giờ điểm danh",
-            "Khoảng cách",
-            "Điểm",
-            "Trạng thái"
-        ]
-    ];
+    if (roster.length === 0) {
+        alert(
+            "Chưa có dữ liệu điểm danh để xuất Excel."
+        );
 
-    const attendanceTableRows = document.querySelectorAll(
-        "#adminAttendanceTableBody tr[data-username]"
-    );
+        return;
+    }
 
-    attendanceTableRows.forEach(row => {
-        attendanceRows.push([
-            row.cells[0]?.innerText || "",
-            row.cells[1]?.innerText || "",
-            row.cells[2]?.innerText || "",
-            row.cells[3]?.innerText || "",
-            row.cells[4]?.innerText || "",
-            row.cells[5]?.innerText || "",
-            row.cells[6]?.innerText || ""
-        ]);
+    const currentSession =
+        adminAttendanceCurrentSessionApi ||
+        null;
+
+    const sessionStartDate =
+        currentSession?.scheduledStartAt
+            ? parseSqlLocalDateTime(
+                currentSession.scheduledStartAt
+            )
+            : null;
+
+    const sessionDateText =
+        sessionStartDate
+            ? sessionStartDate
+                .toLocaleDateString("vi-VN")
+            : "—";
+
+    const sessionName =
+        currentSession?.name ||
+        "Buổi học hiện tại";
+
+    const attendanceRows = [];
+
+    roster.forEach(item => {
+        const records =
+            Array.isArray(
+                item.attendanceRecords
+            )
+                ? item.attendanceRecords
+                : [];
+
+        const groupName =
+            item.group?.name ||
+            "Chưa phân nhóm";
+
+        /*
+         * Học viên chưa có lần điểm danh nào:
+         * vẫn xuất một dòng để BTC nhìn thấy trạng thái vắng.
+         */
+        if (records.length === 0) {
+            attendanceRows.push({
+                "Buổi học":
+                    sessionName,
+
+                "Ngày học":
+                    sessionDateText,
+
+                "Mã TKH":
+                    item.tkhCode || "—",
+
+                "Họ và tên":
+                    item.fullName || "—",
+
+                "Nhóm":
+                    groupName,
+
+                "Khung điểm danh":
+                    "—",
+
+                "Giờ điểm danh":
+                    "—",
+
+                "Phương thức":
+                    "—",
+
+                "Khoảng cách":
+                    "—",
+
+                "Độ chính xác GPS":
+                    "—",
+
+                "Điểm":
+                    0,
+
+                "Trạng thái":
+                    "Chưa điểm danh"
+            });
+
+            return;
+        }
+
+        /*
+         * Mỗi bản ghi điểm danh tạo thành một dòng Excel riêng.
+         *
+         * Ví dụ một học viên đã điểm danh:
+         * - Đầu giờ
+         * - Cuối giờ
+         *
+         * thì file Excel sẽ có hai dòng.
+         */
+        records.forEach(record => {
+            const checkedInDate =
+                record.checkedInAt
+                    ? parseSqlLocalDateTime(
+                        record.checkedInAt
+                    )
+                    : null;
+
+            const checkedInText =
+                checkedInDate
+                    ? checkedInDate
+                        .toLocaleString("vi-VN")
+                    : "—";
+
+            const methodLabels = {
+                GPS:
+                    "GPS",
+
+                MANUAL:
+                    "Thủ công",
+
+                QR:
+                    "QR"
+            };
+
+            const method =
+                methodLabels[
+                    String(
+                        record.method || ""
+                    ).toUpperCase()
+                ] ||
+                record.method ||
+                "—";
+
+            const statusLabels = {
+                PRESENT:
+                    "Có mặt",
+
+                LATE:
+                    "Đi trễ",
+
+                ABSENT:
+                    "Vắng",
+
+                EXCUSED:
+                    "Có phép"
+            };
+
+            const status =
+                statusLabels[
+                    String(
+                        record.status || ""
+                    ).toUpperCase()
+                ] ||
+                record.status ||
+                "Có mặt";
+
+            const distanceText =
+                record.distanceM !== null &&
+                record.distanceM !== undefined
+                    ? formatDistance(
+                        Number(record.distanceM)
+                    )
+                    : "—";
+
+            const accuracyText =
+                record.accuracyM !== null &&
+                record.accuracyM !== undefined
+                    ? `${Number(
+                        record.accuracyM
+                    ).toFixed(1)} m`
+                    : "—";
+
+            attendanceRows.push({
+                "Buổi học":
+                    sessionName,
+
+                "Ngày học":
+                    sessionDateText,
+
+                "Mã TKH":
+                    item.tkhCode || "—",
+
+                "Họ và tên":
+                    item.fullName || "—",
+
+                "Nhóm":
+                    groupName,
+
+                "Khung điểm danh":
+                    getAttendanceWindowLabel(
+                        record.windowType
+                    ),
+
+                "Giờ điểm danh":
+                    checkedInText,
+
+                "Phương thức":
+                    method,
+
+                "Khoảng cách":
+                    distanceText,
+
+                "Độ chính xác GPS":
+                    accuracyText,
+
+                "Điểm":
+                    Number(record.points) || 0,
+
+                "Trạng thái":
+                    status
+            });
+        });
     });
 
+    /*
+     * Sắp xếp:
+     * Nhóm → mã TKH → thứ tự khung điểm danh.
+     */
+    const windowOrder = {
+        MORNING: 1,
+        BREAK: 2,
+        END: 3,
+        DEVOTION: 4
+    };
+
+    attendanceRows.sort((a, b) => {
+        const groupCompare =
+            String(a["Nhóm"])
+                .localeCompare(
+                    String(b["Nhóm"]),
+                    "vi"
+                );
+
+        if (groupCompare !== 0) {
+            return groupCompare;
+        }
+
+        const memberCompare =
+            String(a["Mã TKH"])
+                .localeCompare(
+                    String(b["Mã TKH"]),
+                    "vi",
+                    {
+                        numeric: true
+                    }
+                );
+
+        if (memberCompare !== 0) {
+            return memberCompare;
+        }
+
+        const labelToType = {
+            "Đầu giờ": "MORNING",
+            "Giờ ra chơi": "BREAK",
+            "Cuối giờ": "END",
+            "Tĩnh nguyện": "DEVOTION"
+        };
+
+        return (
+            windowOrder[
+                labelToType[
+                    a["Khung điểm danh"]
+                ]
+            ] || 99
+        ) - (
+            windowOrder[
+                labelToType[
+                    b["Khung điểm danh"]
+                ]
+            ] || 99
+        );
+    });
+
+    const workbook =
+        XLSX.utils.book_new();
+
     const attendanceSheet =
-        XLSX.utils.aoa_to_sheet(attendanceRows);
+        XLSX.utils.json_to_sheet(
+            attendanceRows
+        );
+
+    attendanceSheet["!cols"] = [
+        { wch: 24 }, // Buổi học
+        { wch: 14 }, // Ngày học
+        { wch: 12 }, // Mã TKH
+        { wch: 30 }, // Họ tên
+        { wch: 20 }, // Nhóm
+        { wch: 20 }, // Khung
+        { wch: 24 }, // Giờ điểm danh
+        { wch: 14 }, // Phương thức
+        { wch: 16 }, // Khoảng cách
+        { wch: 20 }, // Độ chính xác
+        { wch: 10 }, // Điểm
+        { wch: 18 }  // Trạng thái
+    ];
+
+    attendanceSheet["!autofilter"] = {
+        ref:
+            `A1:L${attendanceRows.length + 1}`
+    };
 
     XLSX.utils.book_append_sheet(
         workbook,
@@ -9975,13 +10249,13 @@ function exportAttendanceExcelDemo() {
         "Điểm danh"
     );
 
-    // =========================
-    // SHEET 2: CẢNH BÁO THIẾT BỊ
-    // =========================
+    /*
+     * SHEET 2: Cảnh báo thiết bị
+     */
     const warningRows = [
         [
             "Mã thiết bị",
-            "Mã TKH",
+            "Mã thành viên",
             "Họ tên",
             "Nhóm",
             "Lý do"
@@ -9989,44 +10263,66 @@ function exportAttendanceExcelDemo() {
     ];
 
     const suspiciousDevices =
-    Array.isArray(
-        adminAttendanceDeviceWarningsApiCache
-    )
-        ? adminAttendanceDeviceWarningsApiCache
-        : [];
+        Array.isArray(
+            adminAttendanceDeviceWarningsApiCache
+        )
+            ? adminAttendanceDeviceWarningsApiCache
+            : [];
 
     if (suspiciousDevices.length === 0) {
         warningRows.push([
-            "-",
-            "-",
-            "-",
-            "-",
+            "—",
+            "—",
+            "—",
+            "—",
             "Không có cảnh báo thiết bị"
         ]);
     } else {
-        suspiciousDevices.forEach(warning => {
-            const deviceId =
-                warning.deviceId || "";
+        suspiciousDevices.forEach(
+            warning => {
+                const deviceId =
+                    warning.deviceId || "";
 
-            const members =
-                Array.isArray(warning.members)
-                    ? warning.members
-                    : [];
+                const members =
+                    Array.isArray(
+                        warning.members
+                    )
+                        ? warning.members
+                        : [];
 
-            members.forEach(member => {
-                warningRows.push([
-                    deviceId,
-                    member.seasonMembershipId || "",
-                    member.fullName || "",
-                    member.groupName || "",
-                    "Thiết bị này đã được sử dụng để điểm danh từ 2 tài khoản trở lên"
-                ]);
-            });
-        });
+                members.forEach(member => {
+                    warningRows.push([
+                        deviceId,
+
+                        member.tkhCode ||
+                        member.seasonMembershipId ||
+                        "",
+
+                        member.fullName ||
+                        "",
+
+                        member.groupName ||
+                        "",
+
+                        "Thiết bị này đã được sử dụng để điểm danh từ 2 tài khoản trở lên"
+                    ]);
+                });
+            }
+        );
     }
 
     const warningSheet =
-        XLSX.utils.aoa_to_sheet(warningRows);
+        XLSX.utils.aoa_to_sheet(
+            warningRows
+        );
+
+    warningSheet["!cols"] = [
+        { wch: 40 },
+        { wch: 16 },
+        { wch: 30 },
+        { wch: 20 },
+        { wch: 65 }
+    ];
 
     XLSX.utils.book_append_sheet(
         workbook,
@@ -10034,32 +10330,50 @@ function exportAttendanceExcelDemo() {
         "Cảnh báo thiết bị"
     );
 
-    // =========================
-    // TÊN FILE THEO BUỔI HỌC
-    // =========================
-    const currentSession = getOpenSessionDemo();
+    /*
+     * Tên file theo buổi học.
+     */
+    const safeSessionName =
+        String(sessionName)
+            .normalize("NFD")
+            .replace(
+                /[\u0300-\u036f]/g,
+                ""
+            )
+            .replace(/đ/g, "d")
+            .replace(/Đ/g, "D")
+            .replace(
+                /[^a-zA-Z0-9]+/g,
+                "-"
+            )
+            .replace(
+                /^-+|-+$/g,
+                ""
+            ) ||
+        "BuoiHoc";
 
-    let fileName = "TKH2026_Attendance.xlsx";
+    const safeDate =
+        sessionStartDate
+            ? [
+                sessionStartDate
+                    .getFullYear(),
 
-    if (currentSession) {
-        const sessionDate =
-            String(currentSession.date || "");
+                String(
+                    sessionStartDate
+                        .getMonth() + 1
+                ).padStart(2, "0"),
 
-        const safeDate =
-            sessionDate.replaceAll("-", "");
+                String(
+                    sessionStartDate
+                        .getDate()
+                ).padStart(2, "0")
+            ].join("")
+            : "KhongRoNgay";
 
-        const safeSessionName =
-            String(currentSession.name || "BuoiHoc")
-                .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "")
-                .replace(/đ/g, "d")
-                .replace(/Đ/g, "D")
-                .replace(/[^a-zA-Z0-9]+/g, "-")
-                .replace(/^-+|-+$/g, "");
-
-        fileName =
-            `TKH2026_Attendance_${safeSessionName}_${safeDate}.xlsx`;
-    }
+    const fileName =
+        `TKH2026_Attendance_` +
+        `${safeSessionName}_` +
+        `${safeDate}.xlsx`;
 
     XLSX.writeFile(
         workbook,
@@ -16467,6 +16781,88 @@ Student Exam answer submission
 */
 
 let studentExamAnswerLockTimer = null;
+let studentExamCountdownTimer = null;
+let studentExamServerOffsetMilliseconds = 0;
+
+function stopStudentExamCountdown() {
+    if (studentExamCountdownTimer) {
+        clearInterval(studentExamCountdownTimer);
+        studentExamCountdownTimer = null;
+    }
+}
+
+function startStudentExamCountdown({
+    questionEndsAt,
+    serverTime
+}) {
+    stopStudentExamCountdown();
+
+    const endsAtMilliseconds =
+        Date.parse(questionEndsAt);
+
+    const serverTimeMilliseconds =
+        Date.parse(serverTime);
+
+    if (Number.isFinite(serverTimeMilliseconds)) {
+        studentExamServerOffsetMilliseconds =
+            serverTimeMilliseconds - Date.now();
+    } else {
+        studentExamServerOffsetMilliseconds = 0;
+    }
+
+    const countdownElement =
+        document.getElementById(
+            "studentExamCountdownValue"
+        );
+
+    if (
+        !countdownElement ||
+        !Number.isFinite(endsAtMilliseconds)
+    ) {
+        return;
+    }
+
+    const updateCountdown = () => {
+        const estimatedServerNow =
+            Date.now() +
+            studentExamServerOffsetMilliseconds;
+
+        const remainingMilliseconds =
+            endsAtMilliseconds - estimatedServerNow;
+
+        const remainingSeconds = Math.max(
+            0,
+            Math.ceil(
+                remainingMilliseconds / 1000
+            )
+        );
+
+        countdownElement.innerText =
+            String(remainingSeconds);
+
+        const countdownBox =
+            countdownElement.closest(
+                ".student-exam-countdown"
+            );
+
+        if (countdownBox) {
+            countdownBox.classList.toggle(
+                "student-exam-countdown-warning",
+                remainingSeconds <= 5
+            );
+        }
+
+        if (remainingMilliseconds <= 0) {
+            stopStudentExamCountdown();
+            lockStudentExamAnswerButtons();
+        }
+    };
+
+    updateCountdown();
+
+    studentExamCountdownTimer =
+        setInterval(updateCountdown, 250);
+}
 
 
 function getStudentExamAnswerStorageKey(
@@ -16878,6 +17274,7 @@ function renderStudentExamRealtimeView(
         `;
 
         scheduleStudentExamAnswerLock("");
+        stopStudentExamCountdown();
 
         return;
     }
@@ -16926,6 +17323,7 @@ function renderStudentExamRealtimeView(
             </article>
         `;
 
+        stopStudentExamCountdown();
         return;
     }
 
@@ -16957,6 +17355,18 @@ function renderStudentExamRealtimeView(
             questionId
         );
 
+    const questionText =
+        String(
+            realtimeState.questionText ||
+            "Nội dung câu hỏi đang được cập nhật."
+        );
+
+    const answerContents =
+        realtimeState.answers || {};
+
+    const serverTime =
+        realtimeState.serverTime || "";
+
     list.innerHTML = `
         <article class="student-exam-card student-exam-card-open">
             <div class="student-exam-card-header">
@@ -16973,16 +17383,31 @@ function renderStudentExamRealtimeView(
                 </span>
             </div>
 
-            <h3>
-                Câu hỏi số ${questionIndex}
-            </h3>
+            <div class="student-exam-question-header">
+                <div>
+                    <h3>
+                        Câu hỏi số ${questionIndex}
+                    </h3>
+                </div>
 
-            <p class="empty-note">
-                Nội dung câu hỏi được trình chiếu
-                trên màn hình chung.
-            </p>
+                <div class="student-exam-countdown ${
+                    canSubmitAnswer
+                        ? ""
+                        : "student-exam-countdown-locked"
+                }">
+                    <span>Còn lại</span>
+                    <strong id="studentExamCountdownValue">
+                        ${canSubmitAnswer ? "..." : "0"}
+                    </strong>
+                    <small>giây</small>
+                </div>
+            </div>
 
-            <div class="student-exam-grid">
+            <div class="student-exam-question-text">
+                ${escapeStudentExamHtml(questionText)}
+            </div>
+
+            <div class="student-exam-grid student-exam-answer-grid">
                 ${["A", "B", "C", "D"]
                     .map(answer => `
                         <button
@@ -17002,7 +17427,16 @@ function renderStudentExamRealtimeView(
                                     : ""
                             }
                         >
-                            ${answer}
+                            <span class="student-exam-answer-letter">
+                                ${answer}
+                            </span>
+
+                            <span class="student-exam-answer-text">
+                                ${escapeStudentExamHtml(
+                                    answerContents[answer] ||
+                                    `Đáp án ${answer}`
+                                )}
+                            </span>
                         </button>
                     `)
                     .join("")}
@@ -17028,6 +17462,15 @@ function renderStudentExamRealtimeView(
             ? questionEndsAt
             : ""
     );
+
+    if (canSubmitAnswer) {
+        startStudentExamCountdown({
+            questionEndsAt,
+            serverTime
+        });
+    } else {
+        stopStudentExamCountdown();
+    }
 }
 
 

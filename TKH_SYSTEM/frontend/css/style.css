@@ -2614,3 +2614,168 @@ body.bc-presentation-mode .bc-presentation-toggle {
     color: #dc2626;
     font-weight: 700;
 }
+
+/* =====================================================
+   STUDENT EXAM — QUESTION, COUNTDOWN AND ANSWERS
+   ===================================================== */
+
+.student-exam-question-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin: 18px 0;
+}
+
+.student-exam-question-header h3 {
+    margin: 0;
+    color: #111827;
+    font-size: 24px;
+}
+
+.student-exam-countdown {
+    min-width: 112px;
+    padding: 10px 14px;
+    border: 2px solid #2563eb;
+    border-radius: 16px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.student-exam-countdown span,
+.student-exam-countdown small {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.student-exam-countdown strong {
+    display: block;
+    margin: 2px 0;
+    font-size: 38px;
+    line-height: 1;
+}
+
+.student-exam-countdown-warning {
+    border-color: #dc2626;
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.student-exam-countdown-locked {
+    border-color: #94a3b8;
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.student-exam-question-text {
+    margin-bottom: 20px;
+    padding: 20px;
+    border-left: 5px solid #2563eb;
+    border-radius: 14px;
+    background: #f8fafc;
+    color: #111827;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+.student-exam-answer-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.student-exam-answer-button {
+    width: 100%;
+    min-height: 82px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border: 2px solid #cbd5e1;
+    border-radius: 16px;
+    background: #ffffff;
+    color: #111827;
+    text-align: left;
+    cursor: pointer;
+}
+
+.student-exam-answer-button:hover:not(:disabled) {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.student-exam-answer-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.student-exam-answer-letter {
+    width: 46px;
+    height: 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 22px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.student-exam-answer-text {
+    color: inherit;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.45;
+}
+
+@media (max-width: 768px) {
+    .student-exam-question-header {
+        align-items: flex-start;
+    }
+
+    .student-exam-question-header h3 {
+        font-size: 21px;
+    }
+
+    .student-exam-countdown {
+        min-width: 94px;
+        padding: 9px 10px;
+    }
+
+    .student-exam-countdown strong {
+        font-size: 34px;
+    }
+
+    .student-exam-question-text {
+        padding: 17px;
+        font-size: 18px;
+        line-height: 1.55;
+    }
+
+    .student-exam-answer-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .student-exam-answer-button {
+        min-height: 84px;
+        padding: 15px;
+    }
+
+    .student-exam-answer-letter {
+        width: 48px;
+        height: 48px;
+        font-size: 22px;
+    }
+
+    .student-exam-answer-text {
+        font-size: 17px;
+    }
+}

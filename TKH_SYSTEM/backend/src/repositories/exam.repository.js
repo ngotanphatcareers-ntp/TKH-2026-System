@@ -1883,6 +1883,12 @@ async function findExamRealtimeStateById(
           els.updated_at
             AS live_state_updated_at,
 
+          eq.question_text,
+          eq.answer_a,
+          eq.answer_b,
+          eq.answer_c,
+          eq.answer_d,
+
           (
             SELECT COUNT(*)
             FROM dbo.exam_questions AS eq
@@ -1909,6 +1915,12 @@ async function findExamRealtimeStateById(
         LEFT JOIN dbo.exam_live_states
           AS els
           ON els.exam_id = e.id
+
+        LEFT JOIN dbo.exam_questions
+          AS eq
+          ON eq.id =
+              els.current_question_id
+          AND eq.exam_id = e.id
 
         WHERE e.id = @examId;
       `);

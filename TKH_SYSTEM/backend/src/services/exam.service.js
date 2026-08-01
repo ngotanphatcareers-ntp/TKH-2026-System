@@ -195,6 +195,16 @@ function mapExamRealtimeState(state) {
     liveStateUpdatedAt:
       state.live_state_updated_at,
 
+    questionText:
+      state.question_text || "",
+
+    answers: {
+      A: state.answer_a || "",
+      B: state.answer_b || "",
+      C: state.answer_c || "",
+      D: state.answer_d || "",
+    },
+
     totalQuestions:
       Number(state.total_questions) || 0,
 
