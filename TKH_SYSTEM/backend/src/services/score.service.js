@@ -1333,26 +1333,26 @@ function buildIndividualRankings(rows) {
   });
 
   let currentRanking = 0;
-  let previousPoints = null;
+let previousPoints = null;
 
-  return rankingRows.map(
-    (item, index) => {
-      if (
-        index === 0 ||
-        item.totalPoints !== previousPoints
-      ) {
-        currentRanking = index + 1;
-      }
-
-      previousPoints =
-        item.totalPoints;
-
-      return {
-        ranking: currentRanking,
-        ...item,
-      };
+return rankingRows.map(
+  (item, index) => {
+    if (
+      index === 0 ||
+      item.totalPoints !== previousPoints
+    ) {
+      currentRanking += 1;
     }
-  );
+
+    previousPoints =
+      item.totalPoints;
+
+    return {
+      ranking: currentRanking,
+      ...item,
+    };
+  }
+);
 }
 
 
