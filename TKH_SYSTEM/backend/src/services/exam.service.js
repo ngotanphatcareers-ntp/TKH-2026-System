@@ -128,6 +128,12 @@ function mapExamAttempt(attempt) {
     totalQuestions:
       Number(attempt.total_questions) || 0,
 
+    maximumScore:
+      attempt.maximum_score === null ||
+      attempt.maximum_score === undefined
+        ? null
+        : Number(attempt.maximum_score),
+
     isLateJoin:
       Boolean(attempt.is_late_join),
 
@@ -338,13 +344,25 @@ async function getExams({
     const examsWithWaitingRoomState =
     await Promise.all(
       visibleExams.map(async (exam) => {
-        const waitingRoom =
-          await findWaitingRoomEntry({
-            examId: exam.id,
+        const lookupParams = {
+          examId: exam.id,
 
-            seasonMembershipId:
-              context.membership.id,
-          });
+          seasonMembershipId:
+            context.membership.id,
+        };
+
+        const [
+          waitingRoom,
+          latestAttempt,
+        ] = await Promise.all([
+          findWaitingRoomEntry(
+            lookupParams
+          ),
+
+          findLatestAttemptByExamAndMembership(
+            lookupParams
+          ),
+        ]);
 
         return {
           ...mapExam(exam),
@@ -356,6 +374,13 @@ async function getExams({
             waitingRoom
               ? mapWaitingRoomEntry(
                   waitingRoom
+                )
+              : null,
+
+          latestAttempt:
+            latestAttempt
+              ? mapExamAttempt(
+                  latestAttempt
                 )
               : null,
         };

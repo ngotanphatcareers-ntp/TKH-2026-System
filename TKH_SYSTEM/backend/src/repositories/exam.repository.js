@@ -301,7 +301,17 @@ async function findLatestAttemptByExamAndMembership(
         ea.is_late_join,
         ea.joined_question_index,
         ea.created_at,
-        ea.updated_at
+        ea.updated_at,
+
+        (
+          SELECT
+            COALESCE(
+              SUM(eq.points),
+              0
+            )
+          FROM dbo.exam_questions AS eq
+          WHERE eq.exam_id = ea.exam_id
+        ) AS maximum_score
 
       FROM dbo.exam_attempts AS ea
 

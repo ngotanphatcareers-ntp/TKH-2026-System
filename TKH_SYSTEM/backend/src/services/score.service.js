@@ -959,6 +959,11 @@ function mapScoreTransactionHistoryItem(item) {
     scoreType:
       item.scoreType,
 
+    scoreTypeLabel:
+      getScoreTypeLabel(
+        item.scoreType
+      ),
+
     sourceType:
       item.sourceType,
 

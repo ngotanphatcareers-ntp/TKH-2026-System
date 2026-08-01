@@ -583,8 +583,8 @@ async function findScoreTransactionsBySeasonMembershipId(
             @seasonMembershipId
 
       ORDER BY
-        st.created_at ASC,
-        st.id ASC;
+        st.created_at DESC,
+        st.id DESC;
     `);
 
   return result.recordset;

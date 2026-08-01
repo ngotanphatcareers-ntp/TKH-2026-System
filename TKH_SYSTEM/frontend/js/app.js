@@ -8002,27 +8002,37 @@ async function loadScoreStudentOptionsDemo() {
 
 //hàm tên loại điểm và lịch sử điểm
 function getScoreTypeLabelDemo(scoreType) {
-    if (scoreType === "bible_challenge") {
-        return "Trả bài cũ / Bible Challenge";
-    }
+    const normalizedType =
+        String(scoreType || "")
+            .trim()
+            .toUpperCase();
 
-    if (scoreType === "attendance") {
-        return "Điểm danh";
-    }
+    const labels = {
+        BIBLE_CHALLENGE:
+            "Trả bài cũ / Bible Challenge",
+        ATTENDANCE:
+            "Điểm danh",
+        ATTENDANCE_ADJUSTMENT:
+            "Điểm danh thủ công",
+        MEMORY_VERSE:
+            "Thuộc câu gốc",
+        GAME:
+            "Trò chơi",
+        LATE:
+            "Đi trễ",
+        PARTICIPATION:
+            "Phát biểu",
+        PRE_TEST:
+            "Pre-test",
+        FINAL_TEST:
+            "Final Test"
+    };
 
-    if (scoreType === "memory_verse") {
-        return "Thuộc câu gốc";
-    }
-
-    if (scoreType === "game") {
-        return "Trò chơi";
-    }
-
-    if (scoreType === "late") {
-        return "Đi trễ";
-    }
-
-    return "Thủ công";
+    return (
+        labels[normalizedType] ||
+        scoreType ||
+        "Thủ công"
+    );
 }
 
 async function getAdminScoreHistoryApiData(
@@ -8447,8 +8457,15 @@ async function loadMyScoreDemo() {
                 const points =
                     Number(item.points) || 0;
 
+                const scoreTypeLabel =
+                    item.scoreTypeLabel ||
+                    getScoreTypeLabelDemo(
+                        item.scoreType
+                    );
+
                 const description =
                     item.description ||
+                    scoreTypeLabel ||
                     item.sourceTypeLabel ||
                     "Cập nhật điểm";
 
@@ -8461,6 +8478,7 @@ async function loadMyScoreDemo() {
                             <br>
                             <small>
                                 ${
+                                    scoreTypeLabel ||
                                     item.sourceTypeLabel ||
                                     item.sourceType ||
                                     ""
@@ -16682,6 +16700,41 @@ function getStudentExamSocket() {
         synchronizeActiveExam
     );
 
+    studentExamSocket.on(
+        "exam:question-started",
+        synchronizeActiveExam
+    );
+
+    studentExamSocket.on(
+        "exam:finished",
+        payload => {
+            const payloadExamId =
+                Number(payload?.examId);
+
+            if (
+                !activeStudentExamId ||
+                payloadExamId !==
+                    activeStudentExamId
+            ) {
+                return;
+            }
+
+            clearTimeout(
+                studentExamSyncTimer
+            );
+
+            studentExamSyncTimer =
+                setTimeout(
+                    () => {
+                        loadStudentExamCompletedResult(
+                            activeStudentExamId
+                        );
+                    },
+                    150
+                );
+        }
+    );
+
     return studentExamSocket;
 }
 
@@ -17535,6 +17588,249 @@ async function enterStudentExamRealtime(
     }
 }
 
+
+function formatStudentExamScore(value) {
+    const numberValue =
+        Number(value);
+
+    if (!Number.isFinite(numberValue)) {
+        return "0";
+    }
+
+    return Number.isInteger(numberValue)
+        ? String(numberValue)
+        : String(
+            Number(
+                numberValue.toFixed(2)
+            )
+        );
+}
+
+
+function renderStudentExamCompletedResult(
+    exam
+) {
+    const list =
+        document.getElementById(
+            "studentExamList"
+        );
+
+    if (!list) {
+        return;
+    }
+
+    const attempt =
+        exam?.latestAttempt || {};
+
+    const correctCount =
+        Number(attempt.correctCount) || 0;
+
+    const totalQuestions =
+        Number(
+            attempt.totalQuestions ??
+            exam?.totalQuestions
+        ) || 0;
+
+    const score =
+        Number(attempt.score) || 0;
+
+    const maximumScore =
+        Number(attempt.maximumScore);
+
+    const maximumScoreText =
+        Number.isFinite(maximumScore)
+            ? formatStudentExamScore(
+                maximumScore
+            )
+            : (
+                String(exam?.type || "")
+                    .toUpperCase() === "FINAL_TEST"
+                    ? "60"
+                    : "10"
+            );
+
+    list.innerHTML = `
+        <article class="student-exam-result-card">
+            <div class="student-exam-result-icon">
+                ✓
+            </div>
+
+            <span class="student-exam-result-badge">
+                Đã hoàn tất
+            </span>
+
+            <h2>
+                Hoàn thành bài kiểm tra
+            </h2>
+
+            <p class="student-exam-result-name">
+                ${escapeStudentExamHtml(
+                    exam?.name ||
+                    getStudentExamTypeLabel(
+                        exam?.type
+                    )
+                )}
+            </p>
+
+            <div class="student-exam-result-grid">
+                <div class="student-exam-result-item">
+                    <span>Số câu đúng</span>
+                    <strong>
+                        ${correctCount}/${totalQuestions}
+                    </strong>
+                    <small>câu</small>
+                </div>
+
+                <div class="student-exam-result-item">
+                    <span>Điểm bài thi</span>
+                    <strong>
+                        ${formatStudentExamScore(score)}/${maximumScoreText}
+                    </strong>
+                    <small>điểm</small>
+                </div>
+            </div>
+
+            <p class="student-exam-result-note">
+                Kết quả đã được lưu vào hồ sơ điểm cá nhân của bạn.
+            </p>
+
+            <button
+                type="button"
+                class="student-exam-back-button"
+                onclick="loadStudentExamsFromApi()"
+            >
+                Quay lại danh sách bài kiểm tra
+            </button>
+        </article>
+    `;
+
+    scheduleStudentExamAnswerLock("");
+    stopStudentExamCountdown();
+}
+
+
+async function loadStudentExamCompletedResult(
+    examId
+) {
+    const normalizedExamId =
+        Number(examId);
+
+    if (
+        !Number.isInteger(normalizedExamId) ||
+        normalizedExamId <= 0
+    ) {
+        return;
+    }
+
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
+
+    if (!token) {
+        logoutDemo();
+        return;
+    }
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/exams`,
+            {
+                headers: {
+                    Authorization:
+                        `Bearer ${token}`
+                }
+            }
+        );
+
+        const result =
+            await response.json();
+
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
+
+        if (
+            !response.ok ||
+            result?.success !== true
+        ) {
+            throw new Error(
+                result?.error?.message ||
+                "Không thể tải kết quả bài kiểm tra."
+            );
+        }
+
+        const exams =
+            Array.isArray(result.exams)
+                ? result.exams
+                : Array.isArray(
+                    result.data?.exams
+                )
+                    ? result.data.exams
+                    : [];
+
+        const completedExam =
+            exams.find(
+                exam =>
+                    Number(exam?.id) ===
+                    normalizedExamId
+            );
+
+        if (
+            !completedExam ||
+            String(
+                completedExam
+                    ?.latestAttempt
+                    ?.status || ""
+            ).toUpperCase() !==
+                "COMPLETED"
+        ) {
+            throw new Error(
+                "Kết quả đang được đồng bộ. Vui lòng thử lại."
+            );
+        }
+
+        renderStudentExamCompletedResult(
+            completedExam
+        );
+    } catch (error) {
+        console.error(
+            "Load completed Exam result error:",
+            error
+        );
+
+        const list =
+            document.getElementById(
+                "studentExamList"
+            );
+
+        if (list) {
+            list.innerHTML = `
+                <article class="student-exam-card student-exam-card-completed">
+                    <h3>Bài kiểm tra đã kết thúc</h3>
+
+                    <p class="empty-note">
+                        ${escapeStudentExamHtml(
+                            error.message ||
+                            "Không thể tải kết quả bài kiểm tra."
+                        )}
+                    </p>
+
+                    <button
+                        type="button"
+                        class="student-exam-back-button"
+                        onclick="loadStudentExamCompletedResult(${normalizedExamId})"
+                    >
+                        Tải lại kết quả
+                    </button>
+                </article>
+            `;
+        }
+    }
+}
+
+
 function renderStudentExams(exams) {
     const list =
         document.getElementById(
@@ -17620,6 +17916,15 @@ function renderStudentExams(exams) {
                 const isInProgress =
                     status === "IN_PROGRESS";
 
+                const isCompleted =
+                    status === "COMPLETED" ||
+                    String(
+                        exam
+                            ?.latestAttempt
+                            ?.status || ""
+                    ).toUpperCase() ===
+                        "COMPLETED";
+
                 const canOpenExam =
                     canJoin ||
                     isWaitingForStart ||
@@ -17628,11 +17933,15 @@ function renderStudentExams(exams) {
                 return `
                     <article
                         class="student-exam-card ${
-                            isWaitingForStart
-                                ? "student-exam-card-joined"
-                                : canOpenExam
-                                    ? "student-exam-card-open"
-                                    : "student-exam-card-disabled"
+                            isCompleted
+                                ? "student-exam-card-completed"
+                                : isWaitingForStart
+                                    ? "student-exam-card-waiting"
+                                    : canJoin
+                                        ? "student-exam-card-ready"
+                                        : isInProgress
+                                            ? "student-exam-card-progress"
+                                            : "student-exam-card-disabled"
                         }"
                     >
                         <div class="student-exam-card-header">
@@ -17686,21 +17995,76 @@ function renderStudentExams(exams) {
                             </p>
                         </div>
 
+                        ${
+                            isCompleted &&
+                            exam.latestAttempt
+                                ? `
+                                    <div class="student-exam-card-result">
+                                        <span>
+                                            Đúng
+                                            <strong>
+                                                ${Number(
+                                                    exam.latestAttempt.correctCount
+                                                ) || 0}/${
+                                                    Number(
+                                                        exam.latestAttempt.totalQuestions
+                                                    ) ||
+                                                    Number(
+                                                        exam.totalQuestions
+                                                    ) ||
+                                                    0
+                                                }
+                                            </strong>
+                                            câu
+                                        </span>
+
+                                        <span>
+                                            Điểm
+                                            <strong>
+                                                ${formatStudentExamScore(
+                                                    exam.latestAttempt.score
+                                                )}/${
+                                                    Number.isFinite(
+                                                        Number(
+                                                            exam.latestAttempt.maximumScore
+                                                        )
+                                                    )
+                                                        ? formatStudentExamScore(
+                                                            exam.latestAttempt.maximumScore
+                                                        )
+                                                        : String(exam.type || "").toUpperCase() === "FINAL_TEST"
+                                                            ? "60"
+                                                            : "10"
+                                                }
+                                            </strong>
+                                        </span>
+                                    </div>
+                                `
+                                : ""
+                        }
+
                         <button
                             type="button"
                             class="student-exam-join-button"
                             data-exam-id="${examId}"
                             data-exam-status="${escapeStudentExamHtml(status)}"
-                            ${canOpenExam ? "" : "disabled"}
+                            ${
+                                canOpenExam ||
+                                isCompleted
+                                    ? ""
+                                    : "disabled"
+                            }
                         >
                             ${escapeStudentExamHtml(
-                                isInProgress
-                                    ? "Vào làm bài"
-                                    : isWaitingForStart
-                                        ? "Trở lại phòng chờ"
-                                        : getStudentExamActionLabel(
-                                            status
-                                        )
+                                isCompleted
+                                    ? "Xem kết quả"
+                                    : isInProgress
+                                        ? "Vào làm bài"
+                                        : isWaitingForStart
+                                            ? "Trở lại phòng chờ"
+                                            : getStudentExamActionLabel(
+                                                status
+                                            )
                             )}
                         </button>
                     </article>
@@ -17717,6 +18081,23 @@ function renderStudentExams(exams) {
             button.addEventListener(
                 "click",
                 () => {
+                    const buttonStatus =
+                        String(
+                            button.dataset
+                                .examStatus || ""
+                        ).toUpperCase();
+
+                    if (
+                        buttonStatus ===
+                        "COMPLETED"
+                    ) {
+                        loadStudentExamCompletedResult(
+                            button.dataset.examId
+                        );
+
+                        return;
+                    }
+
                     enterStudentExamRealtime(
                         button.dataset.examId,
                         button
