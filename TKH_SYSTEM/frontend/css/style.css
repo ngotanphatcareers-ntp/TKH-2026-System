@@ -3188,7 +3188,7 @@ body.bc-presentation-mode .bc-presentation-toggle {
     font-weight: 700 !important;
     line-height: 1.6 !important;
 
-    white-space: pre-wrap !important;
+    white-space: normal !important;
     overflow-wrap: break-word !important;
     word-break: normal !important;
 }

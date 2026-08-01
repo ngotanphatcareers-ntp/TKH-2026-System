@@ -17484,9 +17484,7 @@ function renderStudentExamRealtimeView(
                 </div>
             </div>
 
-            <div class="student-exam-question-text">
-                ${escapeStudentExamHtml(questionText)}
-            </div>
+            <div class="student-exam-question-text">${escapeStudentExamHtml(questionText)}</div>
 
             <div class="student-exam-grid student-exam-answer-grid">
                 ${["A", "B", "C", "D"]
