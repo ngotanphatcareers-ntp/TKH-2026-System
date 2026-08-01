@@ -3171,3 +3171,33 @@ body.bc-presentation-mode .bc-presentation-toggle {
         font-size: 17px;
     }
 }
+
+/* =========================================
+   FINAL FIX — LEFT ALIGN EXAM QUESTION
+   ========================================= */
+
+.student-exam-question-text {
+    display: block !important;
+    width: 100% !important;
+
+    text-align: left !important;
+
+    padding: 24px !important;
+
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    line-height: 1.6 !important;
+
+    white-space: pre-wrap !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+}
+
+@media (max-width: 768px) {
+    .student-exam-question-text {
+        padding: 20px 18px !important;
+        font-size: 19px !important;
+        line-height: 1.55 !important;
+        text-align: left !important;
+    }
+}
