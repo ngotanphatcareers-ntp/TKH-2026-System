@@ -397,6 +397,22 @@ async function getRecentMessages({
 
 /*
 =====================================================
+Get Forum mention recipients
+=====================================================
+*/
+
+async function getMentionRecipients() {
+  const recipients =
+    await forumRepository
+      .findMentionRecipients();
+
+  return {
+    recipients,
+  };
+}
+
+/*
+=====================================================
 Create Forum Message
 
 Hàm này sẽ được Socket.IO gọi sau này.
@@ -485,6 +501,7 @@ async function createForumMessage({
 }
 
 
+
 module.exports = {
   getActiveRooms,
   createCustomRoom,
@@ -492,4 +509,5 @@ module.exports = {
   verifyRoomAccess,
   getRecentMessages,
   createForumMessage,
+  getMentionRecipients,
 };

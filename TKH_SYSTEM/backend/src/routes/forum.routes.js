@@ -26,6 +26,10 @@ router.use(
   authenticateToken
 );
 
+router.get(
+  "/mention-recipients",
+  forumController.getMentionRecipients
+);
 
 /*
 =====================================================

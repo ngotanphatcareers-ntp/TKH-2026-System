@@ -19884,9 +19884,16 @@ function renderForumMessagesDemo() {
 
                             <div
                                 class="forum-message-bubble"
-                            >${forumEscapeHtmlDemo(
-                                message.messageText
-                            )}</div>
+                            >${
+                                typeof window.renderForumMentionText ===
+                                "function"
+                                    ? window.renderForumMentionText(
+                                        message.messageText
+                                    )
+                                    : forumEscapeHtmlDemo(
+                                        message.messageText
+                                    )
+                            }</div>
                         </div>
                     </article>
                 `;

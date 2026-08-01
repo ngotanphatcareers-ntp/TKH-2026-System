@@ -80,6 +80,37 @@ async function getRooms(
   }
 }
 
+/*
+=====================================================
+GET /api/forum/mention-recipients
+=====================================================
+*/
+
+async function getMentionRecipients(
+  req,
+  res,
+  next
+) {
+  try {
+    const data =
+      await forumService
+        .getMentionRecipients();
+
+    return res
+      .status(200)
+      .json({
+        success: true,
+        data,
+      });
+  } catch (error) {
+    return sendForumError(
+      error,
+      req,
+      res,
+      next
+    );
+  }
+}
 
 /*
 =====================================================
@@ -215,4 +246,5 @@ module.exports = {
   getRooms,
   createRoom,
   accessRoom,
+  getMentionRecipients,
 };

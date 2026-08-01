@@ -574,6 +574,91 @@ async function findMessageById(
 }
 
 
+/*
+=====================================================
+Find active Forum mention recipients
+=====================================================
+*/
+
+async function findMentionRecipients() {
+  const pool =
+    await getPool();
+
+  const result =
+    await pool
+      .request()
+      .query(`
+        SELECT
+          m.id AS member_id,
+          m.tkh_code,
+          m.full_name,
+          m.avatar_filename,
+
+          u.id AS user_id,
+          u.username,
+
+          g.id AS group_id,
+          g.name AS group_name
+
+        FROM dbo.seasons AS s
+
+        INNER JOIN dbo.season_memberships AS sm
+          ON sm.season_id = s.id
+          AND sm.status = 'ACTIVE'
+
+        INNER JOIN dbo.members AS m
+          ON m.id = sm.member_id
+          AND m.status = 'ACTIVE'
+
+        INNER JOIN dbo.users AS u
+          ON u.member_id = m.id
+          AND u.role = 'STUDENT'
+          AND u.is_active = 1
+
+        LEFT JOIN dbo.groups AS g
+          ON g.id = sm.group_id
+
+        WHERE s.status = 'ACTIVE'
+
+        ORDER BY
+          m.full_name,
+          m.tkh_code;
+      `);
+
+  return result.recordset.map(
+    record => ({
+      memberId:
+        Number(record.member_id),
+
+      userId:
+        Number(record.user_id),
+
+      username:
+        record.username,
+
+      tkhCode:
+        record.tkh_code,
+
+      fullName:
+        record.full_name,
+
+      avatarFilename:
+        record.avatar_filename,
+
+      group:
+        record.group_id
+          ? {
+              id:
+                Number(record.group_id),
+
+              name:
+                record.group_name,
+            }
+          : null,
+    })
+  );
+}
+
 module.exports = {
   findAllActiveRooms,
   findRoomById,
@@ -582,4 +667,5 @@ module.exports = {
   findRecentMessages,
   createMessage,
   findMessageById,
+  findMentionRecipients,
 };
