@@ -10499,28 +10499,44 @@ function exportAttendanceExcelDemo() {
 
 function loadAdminAttendanceStatsDemo() {
     const totalElement =
-        document.getElementById("adminTotalStudents");
+        document.getElementById(
+            "adminTotalStudents"
+        );
 
     const checkedElement =
-        document.getElementById("adminCheckedInStudents");
+        document.getElementById(
+            "adminCheckedInStudents"
+        );
 
     const absentElement =
-        document.getElementById("adminAbsentStudents");
+        document.getElementById(
+            "adminAbsentStudents"
+        );
 
     const percentElement =
-        document.getElementById("adminCheckedInPercent");
+        document.getElementById(
+            "adminCheckedInPercent"
+        );
 
     const morningElement =
-        document.getElementById("morningCheckinCount");
+        document.getElementById(
+            "morningCheckinCount"
+        );
 
     const breakElement =
-        document.getElementById("breakCheckinCount");
+        document.getElementById(
+            "breakCheckinCount"
+        );
 
     const endElement =
-        document.getElementById("endCheckinCount");
+        document.getElementById(
+            "endCheckinCount"
+        );
 
     const devotionElement =
-        document.getElementById("devotionCheckinCount");
+        document.getElementById(
+            "devotionCheckinCount"
+        );
 
     if (!totalElement) {
         return;
@@ -10535,27 +10551,100 @@ function loadAdminAttendanceStatsDemo() {
         };
 
     totalElement.innerText =
-        summary.totalStudents || 0;
+        Number(summary.totalStudents) || 0;
 
-    checkedElement.innerText =
-        summary.checkedInCount || 0;
+    if (checkedElement) {
+        checkedElement.innerText =
+            Number(summary.checkedInCount) || 0;
+    }
 
-    absentElement.innerText =
-        summary.absentCount || 0;
+    if (absentElement) {
+        absentElement.innerText =
+            Number(summary.absentCount) || 0;
+    }
 
-    percentElement.innerText =
-        `${Number(
-            summary.checkedInPercent || 0
-        ).toFixed(1)}%`;
+    if (percentElement) {
+        percentElement.innerText =
+            `${Number(
+                summary.checkedInPercent || 0
+            ).toFixed(1)}%`;
+    }
 
     /*
-     * Database Beta hiện hỗ trợ 1 lần điểm danh / buổi.
-     * Chưa tách các khung morning, break, end, devotion.
+     * Đếm số học viên đã điểm danh
+     * theo từng khung giờ.
+     *
+     * Mỗi học viên chỉ được tính tối đa 1 lần
+     * trong cùng một khung giờ.
      */
-    morningElement.innerText = 0;
-    breakElement.innerText = 0;
-    endElement.innerText = 0;
-    devotionElement.innerText = 0;
+    const windowCounts = {
+        MORNING: 0,
+        BREAK: 0,
+        END: 0,
+        DEVOTION: 0
+    };
+
+    const roster =
+        Array.isArray(
+            adminAttendanceRosterApiCache
+        )
+            ? adminAttendanceRosterApiCache
+            : [];
+
+    roster.forEach(item => {
+        const records =
+            Array.isArray(
+                item.attendanceRecords
+            )
+                ? item.attendanceRecords
+                : [];
+
+        const studentWindowTypes =
+            new Set(
+                records
+                    .map(record =>
+                        String(
+                            record.windowType || ""
+                        )
+                            .trim()
+                            .toUpperCase()
+                    )
+                    .filter(Boolean)
+            );
+
+        studentWindowTypes.forEach(
+            windowType => {
+                if (
+                    Object.prototype.hasOwnProperty.call(
+                        windowCounts,
+                        windowType
+                    )
+                ) {
+                    windowCounts[windowType] += 1;
+                }
+            }
+        );
+    });
+
+    if (morningElement) {
+        morningElement.innerText =
+            windowCounts.MORNING;
+    }
+
+    if (breakElement) {
+        breakElement.innerText =
+            windowCounts.BREAK;
+    }
+
+    if (endElement) {
+        endElement.innerText =
+            windowCounts.END;
+    }
+
+    if (devotionElement) {
+        devotionElement.innerText =
+            windowCounts.DEVOTION;
+    }
 }
 
 async function loadAdminDashboardSummaryDemo() {
