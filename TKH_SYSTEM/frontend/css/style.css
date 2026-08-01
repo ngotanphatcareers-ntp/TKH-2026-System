@@ -1515,25 +1515,52 @@ body {
 
 }
 
-.program-header-card h1{
+.program-header-card h1 {
+    margin: 0;
 
-    margin:0;
+    text-align: center;
 
-    text-align:center;
+    color: #0f172a;
 
-    font-size:34px;
+    font-family:
+        "Phudu",
+        Arial,
+        sans-serif;
 
+    font-size: 38px;
+    font-weight: 900;
+    line-height: 1.18;
+
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
 }
 
-.program-header-card h2{
+.program-header-card h2 {
+    margin: 10px 0 0;
 
-    margin-top:10px;
+    text-align: center;
 
-    text-align:center;
+    color: #2563eb;
 
-    color:#2563eb;
-    font-size:26px;
+    font-family:
+        "Phudu",
+        Arial,
+        sans-serif;
 
+    font-size: 31px;
+    font-weight: 900;
+    line-height: 1.18;
+
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
 }
 
 .program-verse{
@@ -1552,119 +1579,98 @@ body {
 
 }
 
-.week-badge-container{
+/* =====================================================
+   DASHBOARD PROGRAM HEADER
+   ===================================================== */
 
-    display:flex;
+.week-badge-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
 
-    justify-content:center;
+    margin-top: 18px;
+    padding-top: 14px;
 
-    gap:16px;
-
-    margin-top:20px;
-
-    flex-wrap:wrap;
-
+    border-top: 1px solid #e5e7eb;
 }
 
-.week-badge{
+.week-badge {
+    width: auto;
 
-    background:#eff6ff;
+    display: inline-flex;
+    align-items: center;
 
-    border:1px solid #bfdbfe;
+    padding: 0;
 
-    border-radius:16px;
+    border: none;
+    border-radius: 0;
 
-    width:180px;
-
-    padding:14px;
-
-    text-align:center;
-
+    background: transparent;
 }
 
-.week-badge span{
-
-    display:block;
-
-    color:#2563eb;
-
-    font-size:13px;
-
-    font-weight:bold;
-
-    margin-bottom:8px;
-    font-size:12px;
-    margin-bottom:4px;
-
+.week-badge span {
+    display: none;
 }
 
-.week-badge strong{
-    font-size:15px;
-    font-weight:700;
+.week-badge strong {
+    color: #7f1d1d;
+
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.4;
+
+    letter-spacing: 0;
+
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
 }
 
-@media(max-width:768px){
+.week-badge:not(:last-child)::after {
+    content: "•";
 
-.program-header-card{
+    margin: 0 8px;
 
-padding:22px;
+    color: #7f1d1d;
 
+    font-size: 13px;
+    font-weight: 700;
 }
 
-.program-header-top{
 
-flex-direction:column;
-
-text-align:center;
-
-}
-
-.program-header-card h1{
-
-font-size:28px;
-
-}
-
-.program-header-card h2{
-
-font-size:22px;
-
-}
-
-.program-logo{
-
-width:64px;
-
-height:64px;
-
-}
-
-.week-badge{
-    width:100%;
-    padding:8px 12px;
-    border-radius:12px;
-}
-
-}
+/* =====================================================
+   DASHBOARD PROGRAM HEADER — MOBILE
+   ===================================================== */
 
 @media (max-width: 768px) {
     .program-header-card {
         margin: 20px 0 22px;
         padding: 22px;
+
         border-radius: 22px;
-        background: linear-gradient(180deg, #eff6ff 0%, #ffffff 38%);
+
+        background:
+            linear-gradient(
+                180deg,
+                #eff6ff 0%,
+                #ffffff 38%
+            );
     }
 
     .program-header-top {
         flex-direction: row;
         align-items: center;
-        text-align: left;
+
         gap: 14px;
+
+        text-align: left;
     }
 
     .program-logo {
         width: 54px;
         height: 54px;
+
         object-fit: contain;
     }
 
@@ -1678,13 +1684,31 @@ height:64px;
     }
 
     .program-header-card h1 {
-        font-size: 26px;
+        font-family:
+            "Phudu",
+            Arial,
+            sans-serif;
+
+        font-size: 29px;
+        font-weight: 900;
+        line-height: 1.2;
+
         text-align: center;
+        letter-spacing: 0.2px;
     }
 
     .program-header-card h2 {
-        font-size: 22px;
+        font-family:
+            "Phudu",
+            Arial,
+            sans-serif;
+
+        font-size: 25px;
+        font-weight: 900;
+        line-height: 1.2;
+
         text-align: center;
+        letter-spacing: 0.2px;
     }
 
     .program-verse {
@@ -1693,178 +1717,24 @@ height:64px;
     }
 
     .week-badge-container {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 10px;
-    }
-
-    .week-badge {
-        width: 100%;
-        padding: 12px;
-    }
-}
-@media (max-width: 768px) {
-    .week-badge-container {
-        display: block;
-        margin-top: 14px;
-        padding-top: 12px;
-        border-top: 1px solid #e5e7eb;
-    }
-
-    .week-badge {
-        width: 100%;
-        background: transparent;
-        border: none;
-        border-radius: 0;
-        padding: 4px 0;
-        text-align: left;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .week-badge span {
-        display: inline;
-        min-width: 58px;
-        margin: 0;
-        font-size: 13px;
-        color: #2563eb;
-        font-weight: 700;
-    }
-
-    .week-badge strong {
-        font-size: 14px;
-        color: #111827;
-        font-weight: 700;
-    }
-
-    .week-badge span::before {
-        content: "• ";
-    }
-}
-
-@media (max-width: 768px) {
-    .week-badge-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 4px;
-        margin-top: 14px;
-        padding-top: 12px;
-        border-top: 1px solid #e5e7eb;
-    }
-
-    .week-badge {
-        width: auto;
-        background: transparent;
-        border: none;
-        padding: 0;
-        display: inline;
-    }
-
-    .week-badge span {
-        display: none;
-    }
-
-    .week-badge strong {
-        font-size: 15px;
-        color: #7f1d1d;
-        font-weight: 800;
-    }
-
-    .week-badge:not(:last-child)::after {
-        content: "•";
-        color: #7f1d1d;
-        font-weight: 800;
-        margin: 0 6px;
-    }
-}
-@media (max-width: 768px) {
-    .week-badge-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-wrap: wrap;
         gap: 3px;
+
         margin-top: 12px;
         padding-top: 10px;
-        border-top: 1px solid #e5e7eb;
+
         line-height: 1.4;
-    }
-
-    .week-badge {
-        width: auto;
-        background: transparent;
-        border: none;
-        padding: 0;
-        display: inline-flex;
-        align-items: center;
-    }
-
-    .week-badge span {
-        display: none;
     }
 
     .week-badge strong {
         font-size: 13px;
-        color: #7f1d1d;
         font-weight: 700;
-        letter-spacing: 0;
-        line-height: 1.4;
-        -webkit-font-smoothing: antialiased;
-        text-rendering: optimizeLegibility;
     }
 
     .week-badge:not(:last-child)::after {
-        content: "•";
-        color: #7f1d1d;
-        font-weight: 700;
-        font-size: 12px;
         margin: 0 5px;
+
+        font-size: 12px;
     }
-}
-.week-badge-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 4px;
-    margin-top: 18px;
-    padding-top: 14px;
-    border-top: 1px solid #e5e7eb;
-}
-
-.week-badge {
-    width: auto;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-}
-
-.week-badge span {
-    display: none;
-}
-
-.week-badge strong {
-    font-size: 15px;
-    color: #7f1d1d;
-    font-weight: 700;
-    letter-spacing: 0;
-    line-height: 1.4;
-    -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
-}
-
-.week-badge:not(:last-child)::after {
-    content: "•";
-    color: #7f1d1d;
-    font-weight: 700;
-    font-size: 13px;
-    margin: 0 8px;
 }
 
 .session-row {
@@ -4134,5 +4004,35 @@ body.bc-presentation-mode .bc-presentation-toggle {
     .forum-connection-status {
         align-self: flex-start;
         justify-self: auto;
+    }
+}
+
+/* =====================================================
+   DASHBOARD PROGRAM TITLE — PHUDU
+   ===================================================== */
+
+@media (max-width: 768px) {
+    .program-header-card h1 {
+        font-family:
+            "Phudu",
+            Arial,
+            sans-serif;
+
+        font-size: 29px;
+        font-weight: 900;
+        line-height: 1.2;
+        letter-spacing: 0.2px;
+    }
+
+    .program-header-card h2 {
+        font-family:
+            "Phudu",
+            Arial,
+            sans-serif;
+
+        font-size: 25px;
+        font-weight: 900;
+        line-height: 1.2;
+        letter-spacing: 0.2px;
     }
 }
