@@ -1,0 +1,14 @@
+{
+  "watch": [
+    "server.js",
+    "src"
+  ],
+  "ext": "js,json",
+  "ignore": [
+    "node_modules",
+    "../frontend",
+    "test-forum-socket.js",
+    "*.log"
+  ],
+  "delay": "300"
+}
