@@ -4633,16 +4633,20 @@ async function loadMyQuestionsDemo() {
                     ? "Đã trả lời"
                     : "Đang chờ phản hồi";
 
+            const createdDate =
+                parseSqlLocalDateTime(q.createdAt);
+
+            const answeredDate =
+                parseSqlLocalDateTime(q.respondedAt);
+
             const createdAt =
-                q.createdAt
-                    ? new Date(q.createdAt)
-                        .toLocaleString("vi-VN")
+                createdDate
+                    ? createdDate.toLocaleString("vi-VN")
                     : "Chưa có thông tin";
 
             const answeredAt =
-                q.respondedAt
-                    ? new Date(q.respondedAt)
-                        .toLocaleString("vi-VN")
+                answeredDate
+                    ? answeredDate.toLocaleString("vi-VN")
                     : "Chưa có thông tin";
 
             return `
@@ -4796,16 +4800,20 @@ async function loadAdminQuestionsDemo() {
                     ? "Đã trả lời"
                     : "Đang chờ phản hồi";
 
+            const createdDate =
+                parseSqlLocalDateTime(q.createdAt);
+
+            const answeredDate =
+                parseSqlLocalDateTime(q.respondedAt);
+
             const createdAt =
-                q.createdAt
-                    ? new Date(q.createdAt)
-                        .toLocaleString("vi-VN")
+                createdDate
+                    ? createdDate.toLocaleString("vi-VN")
                     : "Chưa có thông tin";
 
             const answeredAt =
-                q.respondedAt
-                    ? new Date(q.respondedAt)
-                        .toLocaleString("vi-VN")
+                answeredDate
+                    ? answeredDate.toLocaleString("vi-VN")
                     : "Chưa có thông tin";
 
             return `
@@ -11126,18 +11134,28 @@ function downloadQuestionsByTypeDemo(questionType) {
     ];
 
     const rows = questions.map(item => {
+        const createdDate =
+            parseSqlLocalDateTime(
+                item.createdAt
+            );
+
+        const respondedDate =
+            parseSqlLocalDateTime(
+                item.respondedAt
+            );
+
         const createdAt =
-            item.createdAt
-                ? new Date(
-                    item.createdAt
-                ).toLocaleString("vi-VN")
+            createdDate
+                ? createdDate.toLocaleString(
+                    "vi-VN"
+                )
                 : "";
 
         const respondedAt =
-            item.respondedAt
-                ? new Date(
-                    item.respondedAt
-                ).toLocaleString("vi-VN")
+            respondedDate
+                ? respondedDate.toLocaleString(
+                    "vi-VN"
+                )
                 : "";
 
         const statusLabel =
