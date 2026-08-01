@@ -11277,9 +11277,18 @@ async function loadAdminGroupsDemo() {
     }
 
     totalGroupsElement.innerText = "...";
-    totalStudentsElement.innerText = "...";
-    topGroupElement.innerText = "Chưa có";
-    topGroupScoreElement.innerText = "0 điểm";
+
+    if (totalStudentsElement) {
+        totalStudentsElement.innerText = "...";
+    }
+
+    if (topGroupElement) {
+        topGroupElement.innerText = "...";
+    }
+
+    if (topGroupScoreElement) {
+        topGroupScoreElement.innerText = "...";
+    }
 
     tableBody.innerHTML = `
         <tr>
@@ -11290,64 +11299,129 @@ async function loadAdminGroupsDemo() {
     `;
 
     try {
-        const response = await fetch(
-            `${API_BASE_URL}/api/groups`,
-            {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`
+        /*
+         * Tải song song:
+         * - Danh sách nhóm và số thành viên.
+         * - Điểm và xếp hạng nhóm.
+         */
+        const [
+            groupResponse,
+            rankingGroups
+        ] = await Promise.all([
+            fetch(
+                `${API_BASE_URL}/api/groups`,
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization:
+                            `Bearer ${token}`
+                    }
                 }
-            }
-        );
+            ),
+            getGroupRankingApiData()
+        ]);
 
-        const result = await response.json();
+        const groupResult =
+            await groupResponse.json();
 
-        if (response.status === 401) {
+        if (groupResponse.status === 401) {
             logoutDemo();
             return;
         }
 
-        if (response.status === 403) {
+        if (groupResponse.status === 403) {
             window.location.href =
                 "dashboard.html";
             return;
         }
 
-        if (!response.ok || !result.success) {
+        if (
+            !groupResponse.ok ||
+            !groupResult.success
+        ) {
             throw new Error(
-                result?.error?.message ||
+                groupResult?.error?.message ||
                 "Không thể tải dữ liệu nhóm."
             );
         }
 
         const groups =
-            Array.isArray(result.data?.groups)
-                ? result.data.groups
+            Array.isArray(
+                groupResult.data?.groups
+            )
+                ? groupResult.data.groups
                 : [];
+
+        const rankings =
+            Array.isArray(rankingGroups)
+                ? rankingGroups
+                : [];
+
+        /*
+         * Tạo Map để ghép nhanh theo group.id.
+         */
+        const rankingByGroupId =
+            new Map();
+
+        rankings.forEach(item => {
+            const groupId =
+                Number(item.group?.id);
+
+            if (
+                Number.isInteger(groupId) &&
+                groupId > 0
+            ) {
+                rankingByGroupId.set(
+                    groupId,
+                    item
+                );
+            }
+        });
 
         const totalStudents =
             groups.reduce(
                 (total, group) =>
                     total +
-                    Number(group.memberCount || 0),
+                    Number(
+                        group.memberCount || 0
+                    ),
                 0
             );
 
         totalGroupsElement.innerText =
             groups.length;
 
-        totalStudentsElement.innerText =
-            totalStudents;
+        if (totalStudentsElement) {
+            totalStudentsElement.innerText =
+                totalStudents;
+        }
 
         /*
-         * Module Score chưa chuyển Backend.
-         * Chưa xác định nhóm dẫn đầu thật.
+         * API xếp hạng đã trả theo thứ tự điểm.
+         * Tìm chính xác nhóm hạng 1.
          */
-        topGroupElement.innerText =
-            "Chưa có dữ liệu";
+        const topRanking =
+            rankings.find(
+                item =>
+                    Number(item.ranking) === 1
+            ) ||
+            rankings[0] ||
+            null;
 
-        topGroupScoreElement.innerText =
-            "0 điểm";
+        if (topGroupElement) {
+            topGroupElement.innerText =
+                topRanking?.group?.name ||
+                "Chưa có dữ liệu";
+        }
+
+        if (topGroupScoreElement) {
+            topGroupScoreElement.innerText =
+                topRanking
+                    ? `${Number(
+                        topRanking.totalPoints
+                    ) || 0} điểm`
+                    : "0 điểm";
+        }
 
         if (groups.length === 0) {
             tableBody.innerHTML = `
@@ -11357,27 +11431,70 @@ async function loadAdminGroupsDemo() {
                     </td>
                 </tr>
             `;
+
             return;
         }
 
         tableBody.innerHTML =
-            groups.map(group => `
-                <tr>
-                    <td>${group.code || "-"}</td>
+            groups.map(group => {
+                const rankingItem =
+                    rankingByGroupId.get(
+                        Number(group.id)
+                    ) ||
+                    null;
 
-                    <td>${group.name || "-"}</td>
+                const totalPoints =
+                    Number(
+                        rankingItem?.totalPoints
+                    );
 
-                    <td>
-                        ${Number(
-                            group.memberCount || 0
-                        )}
-                    </td>
+                const ranking =
+                    Number(
+                        rankingItem?.ranking
+                    );
 
-                    <td>0</td>
+                const totalPointsText =
+                    Number.isFinite(totalPoints)
+                        ? totalPoints.toFixed(2)
+                        : "0.00";
 
-                    <td>-</td>
-                </tr>
-            `).join("");
+                const rankingText =
+                    Number.isInteger(ranking) &&
+                    ranking > 0
+                        ? `#${ranking}`
+                        : "-";
+
+                return `
+                    <tr>
+                        <td>
+                            ${escapeHtml(
+                                group.code || "-"
+                            )}
+                        </td>
+
+                        <td>
+                            ${escapeHtml(
+                                group.name || "-"
+                            )}
+                        </td>
+
+                        <td>
+                            ${Number(
+                                group.memberCount || 0
+                            )}
+                        </td>
+
+                        <td>
+                            ${totalPointsText}
+                        </td>
+
+                        <td>
+                            ${rankingText}
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+
     } catch (error) {
         console.error(
             "Load admin groups error:",
@@ -11385,12 +11502,21 @@ async function loadAdminGroupsDemo() {
         );
 
         totalGroupsElement.innerText = "0";
-        totalStudentsElement.innerText = "0";
-        topGroupElement.innerText =
-            "Không thể tải";
 
-        topGroupScoreElement.innerText =
-            "0 điểm";
+        if (totalStudentsElement) {
+            totalStudentsElement.innerText =
+                "0";
+        }
+
+        if (topGroupElement) {
+            topGroupElement.innerText =
+                "Không thể tải";
+        }
+
+        if (topGroupScoreElement) {
+            topGroupScoreElement.innerText =
+                "0 điểm";
+        }
 
         tableBody.innerHTML = `
             <tr>
