@@ -4250,3 +4250,49 @@ body.bc-presentation-mode .bc-presentation-toggle {
         height: 40px;
     }
 }
+
+/* =====================================================
+   STUDY MATERIALS — MOBILE HEADER FIX
+   ===================================================== */
+
+.material-session-header > div {
+    flex: 1;
+    min-width: 0;
+}
+
+@media (max-width: 768px) {
+    .material-session-card {
+        padding: 20px 16px;
+    }
+
+    .material-session-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+    }
+
+    .material-session-badge {
+        display: inline-block;
+        max-width: 100%;
+        white-space: normal;
+        line-height: 1.35;
+    }
+
+    .material-session-header > div {
+        width: 100%;
+    }
+
+    .material-session-header h2 {
+        margin: 0 0 8px;
+        font-size: 24px;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+    }
+
+    .material-session-header p {
+        margin: 0;
+        font-size: 16px;
+        line-height: 1.55;
+        overflow-wrap: break-word;
+    }
+}
