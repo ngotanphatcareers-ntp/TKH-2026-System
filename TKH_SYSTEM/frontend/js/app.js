@@ -202,32 +202,65 @@ const attendanceCheckinConfigDemo = {
 
 let currentCheckinRadiusMeters = 200;
 let currentAttendanceSessionApi = null;
+let attendanceCheckinInProgress = false;
 
 
 async function loadAttendancePageData() {
     const sessionText =
-        document.getElementById("currentAttendanceSessionText");
+        document.getElementById(
+            "currentAttendanceSessionText"
+        );
 
     const radiusText =
-        document.getElementById("checkinRadiusText");
+        document.getElementById(
+            "checkinRadiusText"
+        );
 
     const activeWindow =
-        document.getElementById("activeCheckinWindow");
+        document.getElementById(
+            "activeCheckinWindow"
+        );
 
     const checkinButton =
         document.getElementById(
             "attendanceCheckinButton"
         );
 
+    const distanceElement =
+        document.getElementById(
+            "distance"
+        );
+
+    /*
+     * Trạng thái mặc định khi vừa mở trang
+     * hoặc khi đang tải lại dữ liệu từ Backend.
+     */
     if (checkinButton) {
         checkinButton.disabled = true;
+        checkinButton.innerText =
+            "Điểm danh";
     }
 
-    if (!sessionText && !radiusText && !activeWindow) {
+    if (
+        distanceElement &&
+        !distanceElement.innerText.trim()
+    ) {
+        distanceElement.innerText =
+            "Chưa kiểm tra";
+    }
+
+    if (
+        !sessionText &&
+        !radiusText &&
+        !activeWindow
+    ) {
         return;
     }
 
-    const token = localStorage.getItem("accessToken");
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
 
     if (!token) {
         logoutDemo();
@@ -250,17 +283,20 @@ async function loadAttendancePageData() {
     }
 
     try {
-        const response = await fetch(
-            `${API_BASE_URL}/api/attendance/current-session`,
-            {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`
+        const response =
+            await fetch(
+                `${API_BASE_URL}/api/attendance/current-session`,
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization:
+                            `Bearer ${token}`
+                    }
                 }
-            }
-        );
+            );
 
-        const result = await response.json();
+        const result =
+            await response.json();
 
         if (response.status === 401) {
             logoutDemo();
@@ -274,7 +310,8 @@ async function loadAttendancePageData() {
         }
 
         if (response.status === 404) {
-            currentAttendanceSessionApi = null;
+            currentAttendanceSessionApi =
+                null;
 
             if (sessionText) {
                 sessionText.innerText =
@@ -292,11 +329,23 @@ async function loadAttendancePageData() {
                     "Chưa có buổi học đang mở điểm danh.";
             }
 
+            if (checkinButton) {
+                checkinButton.disabled = true;
+                checkinButton.innerText =
+                    "Điểm danh";
+                checkinButton.title =
+                    "Hiện chưa có buổi học đang mở.";
+            }
+
             return;
         }
 
-        if (!response.ok || !result.success) {
-            currentAttendanceSessionApi = null;
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+            currentAttendanceSessionApi =
+                null;
 
             if (sessionText) {
                 sessionText.innerText =
@@ -309,30 +358,53 @@ async function loadAttendancePageData() {
                     "Không thể tải cấu hình điểm danh.";
             }
 
+            if (activeWindow) {
+                activeWindow.innerText =
+                    "Không thể tải trạng thái điểm danh.";
+            }
+
+            if (checkinButton) {
+                checkinButton.disabled = true;
+                checkinButton.innerText =
+                    "Điểm danh";
+            }
+
             return;
         }
 
-        const session = result.data.session;
+        const session =
+            result.data.session;
 
-        currentAttendanceSessionApi = session;
+        currentAttendanceSessionApi =
+            session;
 
         currentCheckinRadiusMeters =
-            Number(session.attendanceRadiusM) || 200;
+            Number(
+                session.attendanceRadiusM
+            ) || 200;
 
         if (
-            session.location?.latitude !== null &&
-            session.location?.latitude !== undefined
+            session.location?.latitude !==
+                null &&
+            session.location?.latitude !==
+                undefined
         ) {
             CHURCH_LOCATION.lat =
-                Number(session.location.latitude);
+                Number(
+                    session.location.latitude
+                );
         }
 
         if (
-            session.location?.longitude !== null &&
-            session.location?.longitude !== undefined
+            session.location?.longitude !==
+                null &&
+            session.location?.longitude !==
+                undefined
         ) {
             CHURCH_LOCATION.lng =
-                Number(session.location.longitude);
+                Number(
+                    session.location.longitude
+                );
         }
 
         const startDate =
@@ -340,21 +412,32 @@ async function loadAttendancePageData() {
                 session.scheduledStartAt
             );
 
-        const dateText = startDate
-            ? startDate.toLocaleDateString("vi-VN")
-            : "Chưa có ngày học";
+        const dateText =
+            startDate
+                ? startDate.toLocaleDateString(
+                    "vi-VN"
+                )
+                : "Chưa có ngày học";
 
-        const startTime = startDate
-            ? startDate.toLocaleTimeString("vi-VN", {
-                hour: "2-digit",
-                minute: "2-digit"
-            })
-            : "";
+        const startTime =
+            startDate
+                ? startDate.toLocaleTimeString(
+                    "vi-VN",
+                    {
+                        hour: "2-digit",
+                        minute: "2-digit"
+                    }
+                )
+                : "";
 
         if (sessionText) {
             sessionText.innerText =
                 `${session.name} · ${dateText}` +
-                (startTime ? ` · ${startTime}` : "");
+                (
+                    startTime
+                        ? ` · ${startTime}`
+                        : ""
+                );
         }
 
         if (radiusText) {
@@ -362,13 +445,16 @@ async function loadAttendancePageData() {
                 "Chỉ điểm danh được khi bạn ở trong bán kính " +
                 currentCheckinRadiusMeters +
                 " m từ " +
-                (session.location?.name ||
-                    "Nhà Thờ Nguyễn Tri Phương") +
+                (
+                    session.location?.name ||
+                    "Nhà Thờ Nguyễn Tri Phương"
+                ) +
                 ".";
         }
 
         const activeAttendanceWindow =
-            session.activeAttendanceWindow || null;
+            session.activeAttendanceWindow ||
+            null;
 
         if (activeAttendanceWindow) {
             const activeWindowLabel =
@@ -383,8 +469,14 @@ async function loadAttendancePageData() {
             }
 
             if (checkinButton) {
-                checkinButton.disabled = false;
-                checkinButton.title = "";
+                checkinButton.disabled =
+                    false;
+
+                checkinButton.innerText =
+                    "Điểm danh";
+
+                checkinButton.title =
+                    "";
             }
         } else {
             if (activeWindow) {
@@ -393,7 +485,12 @@ async function loadAttendancePageData() {
             }
 
             if (checkinButton) {
-                checkinButton.disabled = true;
+                checkinButton.disabled =
+                    true;
+
+                checkinButton.innerText =
+                    "Điểm danh";
+
                 checkinButton.title =
                     "Hiện chưa mở khung điểm danh";
             }
@@ -404,7 +501,8 @@ async function loadAttendancePageData() {
             error
         );
 
-        currentAttendanceSessionApi = null;
+        currentAttendanceSessionApi =
+            null;
 
         if (sessionText) {
             sessionText.innerText =
@@ -419,6 +517,14 @@ async function loadAttendancePageData() {
         if (activeWindow) {
             activeWindow.innerText =
                 "Không thể tải trạng thái điểm danh.";
+        }
+
+        if (checkinButton) {
+            checkinButton.disabled =
+                true;
+
+            checkinButton.innerText =
+                "Điểm danh";
         }
     }
 }
@@ -537,142 +643,371 @@ function retryGpsAfterHelp() {
     checkInDemo();
 }
 
+function getBestGpsPositionDemo({
+    timeoutMs = 12000,
+    desiredAccuracyM = 50
+} = {}) {
+    return new Promise((resolve, reject) => {
+        let bestPosition = null;
+        let watchId = null;
+        let finished = false;
+
+        const finish = (position, error = null) => {
+            if (finished) {
+                return;
+            }
+
+            finished = true;
+
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+            }
+
+            clearTimeout(timeoutId);
+
+            if (position) {
+                resolve(position);
+            } else {
+                reject(
+                    error ||
+                    new Error(
+                        "Không thể lấy vị trí GPS."
+                    )
+                );
+            }
+        };
+
+        const timeoutId = setTimeout(() => {
+            if (bestPosition) {
+                finish(bestPosition);
+                return;
+            }
+
+            const timeoutError = new Error(
+                "Quá thời gian lấy vị trí GPS."
+            );
+
+            timeoutError.code = 3;
+
+            finish(null, timeoutError);
+        }, timeoutMs);
+
+        watchId =
+            navigator.geolocation.watchPosition(
+                position => {
+                    const accuracy =
+                        Number(
+                            position.coords.accuracy
+                        );
+
+                    if (
+                        !bestPosition ||
+                        accuracy <
+                            Number(
+                                bestPosition.coords.accuracy
+                            )
+                    ) {
+                        bestPosition = position;
+                    }
+
+                    if (
+                        Number.isFinite(accuracy) &&
+                        accuracy <= desiredAccuracyM
+                    ) {
+                        finish(position);
+                    }
+                },
+                error => {
+                    /*
+                     * Nếu đã có ít nhất một mẫu GPS,
+                     * vẫn có thể dùng mẫu tốt nhất.
+                     */
+                    if (bestPosition) {
+                        finish(bestPosition);
+                        return;
+                    }
+
+                    finish(null, error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    maximumAge: 0,
+                    timeout: timeoutMs
+                }
+            );
+    });
+}
+
 async function checkInDemo() {
-    const gpsMessage = document.getElementById("gpsMessage");
-    const statusCard = document.getElementById("attendanceStatus");
+    if (attendanceCheckinInProgress) {
+        return;
+    }
 
-    if (!currentAttendanceSessionApi) {
-        statusCard.className =
-            "status-card status-fail";
+    attendanceCheckinInProgress = true;
 
-        statusCard.innerText =
-            "Chưa mở điểm danh";
+    const gpsMessage =
+        document.getElementById(
+            "gpsMessage"
+        );
 
-        gpsMessage.style.color = "red";
+    const statusCard =
+        document.getElementById(
+            "attendanceStatus"
+        );
+
+    const checkinButton =
+        document.getElementById(
+            "attendanceCheckinButton"
+        );
+
+    if (checkinButton) {
+        checkinButton.disabled = true;
+        checkinButton.innerText =
+            "Đang kiểm tra vị trí...";
+    }
+
+    try {
+        if (!currentAttendanceSessionApi) {
+            statusCard.className =
+                "status-card status-fail";
+
+            statusCard.innerText =
+                "Chưa mở điểm danh";
+
+            gpsMessage.style.color =
+                "red";
+
+            gpsMessage.innerText =
+                "Hiện chưa có buổi học nào đang mở điểm danh.";
+
+            return;
+        }
+
+        gpsMessage.style.color =
+            "#374151";
 
         gpsMessage.innerText =
-            "Hiện chưa có buổi học nào đang mở điểm danh.";
+            "Đang lấy vị trí GPS của bạn...";
 
-        return;
-    }
+        if (!window.isSecureContext) {
+            gpsMessage.style.color =
+                "red";
 
-    gpsMessage.style.color = "#374151";
-    gpsMessage.innerText = "Đang lấy vị trí GPS của bạn...";
-    if (!window.isSecureContext) {
-    gpsMessage.style.color = "red";
-    gpsMessage.innerText =
-        "Trình duyệt đang chặn GPS vì website chưa chạy bằng HTTPS. Vui lòng dùng link HTTPS khi chạy thật.";
-    return;
-    }
+            gpsMessage.innerText =
+                "Trình duyệt đang chặn GPS vì website chưa chạy bằng HTTPS. Vui lòng dùng link HTTPS khi chạy thật.";
 
-    if (!navigator.geolocation) {
-        gpsMessage.style.color = "red";
-        gpsMessage.innerText = "Trình duyệt của bạn không hỗ trợ GPS.";
-        return;
-    }
+            return;
+        }
 
-    navigator.geolocation.getCurrentPosition(
-        async function(position) {
-            const currentLat = position.coords.latitude;
-            const currentLng = position.coords.longitude;
-            const accuracy = position.coords.accuracy;
+        if (!navigator.geolocation) {
+            gpsMessage.style.color =
+                "red";
 
-            const distance = calculateDistance(
+            gpsMessage.innerText =
+                "Trình duyệt của bạn không hỗ trợ GPS.";
+
+            return;
+        }
+
+        gpsMessage.style.color =
+            "#374151";
+
+        gpsMessage.innerText =
+            "Đang dò vị trí GPS chính xác...";
+
+        const position =
+        await getBestGpsPositionDemo({
+            timeoutMs: 7000,
+            desiredAccuracyM: 60
+        });
+
+        const currentLat =
+            Number(
+                position.coords.latitude
+            );
+
+        const currentLng =
+            Number(
+                position.coords.longitude
+            );
+
+        const accuracy =
+            Number(
+                position.coords.accuracy
+            );
+
+        const distance =
+            calculateDistance(
                 currentLat,
                 currentLng,
                 CHURCH_LOCATION.lat,
                 CHURCH_LOCATION.lng
             );
 
-            
-            document.getElementById("distance").innerText =
+        const distanceElement =
+            document.getElementById(
+                "distance"
+            );
+
+        if (distanceElement) {
+            distanceElement.innerText =
                 formatDistance(distance);
-
-            if (accuracy > 100) {
-                statusCard.className = "status-card status-fail";
-                statusCard.innerText = "GPS chưa đủ chính xác";
-
-                gpsMessage.style.color = "red";
-                gpsMessage.innerText = "Nếu bạn đang dùng máy tính, vui lòng điểm danh bằng điện thoại để hệ thống lấy vị trí chính xác hơn.";
-                return;
-            }
-
-            if (distance <= currentCheckinRadiusMeters) {
-                statusCard.className = "status-card status-success";
-                statusCard.innerText = "Điểm danh thành công";
-
-                gpsMessage.style.color = "green";
-                gpsMessage.innerText = "✅ Bạn đang trong khu vực điểm danh.";
-
-                const checkinResult = await saveAttendanceDemo({
-                    latitude: currentLat,
-                    longitude: currentLng,
-                    accuracyM: accuracy,
-                    distanceM: distance
-                });
-
-                if (!checkinResult.success) {
-                    statusCard.className =
-                        "status-card status-fail";
-
-                    statusCard.innerText =
-                        checkinResult.code ===
-                        "ATTENDANCE_ALREADY_RECORDED"
-                            ? "Đã điểm danh"
-                            : "Không thể điểm danh";
-
-                    gpsMessage.style.color = "red";
-
-                    gpsMessage.innerText =
-                        checkinResult.message;
-
-                    return;
-                }
-
-                statusCard.className =
-                    "status-card status-success";
-
-                statusCard.innerText =
-                    "Điểm danh thành công";
-
-                gpsMessage.style.color = "green";
-
-                gpsMessage.innerText =
-                    "✅ " + checkinResult.message;
-
-                loadAttendanceHistoryDemo();
-            }
-             else {
-                statusCard.className = "status-card status-fail";
-                statusCard.innerText = "Ngoài khu vực điểm danh";
-
-                gpsMessage.style.color = "red";
-                gpsMessage.innerText = "❌ Bạn chưa ở trong khu vực điểm danh tại Nhà Thờ.";
-            }
-        },
-        function(error) {
-            gpsMessage.style.color = "red";
-
-            if (error.code === error.PERMISSION_DENIED) {
-                gpsMessage.innerHTML = `
-                    ❌ Không thể truy cập vị trí.<br>
-                    Bạn có thể đã từ chối quyền GPS trước đó.<br>
-                    Vui lòng bấm “Hướng dẫn bật quyền vị trí” để xem cách bật lại.
-                `;
-
-                openGpsHelpModal();
-            } else if (error.code === error.POSITION_UNAVAILABLE) {
-                gpsMessage.innerText =
-                    "Không thể xác định vị trí hiện tại. Vui lòng bật GPS và thử lại.";
-            } else if (error.code === error.TIMEOUT) {
-                gpsMessage.innerText =
-                    "Quá thời gian lấy vị trí. Vui lòng kiểm tra GPS hoặc kết nối mạng rồi thử lại.";
-            } else {
-                gpsMessage.innerText =
-                    "Không thể lấy vị trí. Vui lòng thử lại.";
-            }
         }
-    );
+
+        if (!Number.isFinite(accuracy)) {
+            statusCard.className =
+                "status-card status-fail";
+
+            statusCard.innerText =
+                "GPS không hợp lệ";
+
+            gpsMessage.style.color =
+                "red";
+
+            gpsMessage.innerText =
+                "Điện thoại không trả về độ chính xác GPS hợp lệ. Vui lòng bật vị trí chính xác và thử lại.";
+
+            return;
+        }
+
+        if (accuracy > 100) {
+            statusCard.className =
+                "status-card status-fail";
+
+            statusCard.innerText =
+                "GPS chưa đủ chính xác";
+
+            gpsMessage.style.color =
+                "red";
+
+            gpsMessage.innerText =
+                `Độ chính xác hiện tại khoảng ${Math.round(
+                    accuracy
+                )} m. Hãy bật Vị trí chính xác, đứng gần cửa hoặc ngoài trời rồi thử lại.`;
+
+            return;
+        }
+
+        if (
+            distance >
+            currentCheckinRadiusMeters
+        ) {
+            statusCard.className =
+                "status-card status-fail";
+
+            statusCard.innerText =
+                "Ngoài khu vực điểm danh";
+
+            gpsMessage.style.color =
+                "red";
+
+            gpsMessage.innerText =
+                `Hệ thống đang xác định bạn cách địa điểm khoảng ${formatDistance(
+                    distance
+                )}, với độ chính xác khoảng ${Math.round(
+                    accuracy
+                )} m. Hãy kiểm tra GPS và thử lại.`;
+
+            return;
+        }
+
+        statusCard.className =
+            "status-card status-success";
+
+        statusCard.innerText =
+            "Đang lưu điểm danh";
+
+        gpsMessage.style.color =
+            "#374151";
+
+        gpsMessage.innerText =
+            "Đã xác định đúng khu vực. Đang lưu điểm danh...";
+
+        const checkinResult =
+            await saveAttendanceDemo({
+                latitude: currentLat,
+                longitude: currentLng,
+                accuracyM: accuracy,
+                distanceM: distance
+            });
+
+        if (!checkinResult.success) {
+            statusCard.className =
+                "status-card status-fail";
+
+            statusCard.innerText =
+                checkinResult.code ===
+                "ATTENDANCE_ALREADY_RECORDED"
+                    ? "Đã điểm danh"
+                    : "Không thể điểm danh";
+
+            gpsMessage.style.color =
+                "red";
+
+            gpsMessage.innerText =
+                checkinResult.message;
+
+            return;
+        }
+
+        statusCard.className =
+            "status-card status-success";
+
+        statusCard.innerText =
+            "Điểm danh thành công";
+
+        gpsMessage.style.color =
+            "green";
+
+        gpsMessage.innerText =
+            "✅ " +
+            checkinResult.message;
+
+        await loadAttendanceHistoryDemo();
+    } catch (error) {
+        console.error(
+            "Get GPS position error:",
+            error
+        );
+
+        gpsMessage.style.color =
+            "red";
+
+        if (error.code === 1) {
+            gpsMessage.innerHTML = `
+                ❌ Không thể truy cập vị trí.<br>
+                Vui lòng cho phép quyền vị trí chính xác rồi thử lại.
+            `;
+
+            openGpsHelpModal();
+        } else if (error.code === 2) {
+            gpsMessage.innerText =
+                "Không thể xác định vị trí. Hãy bật GPS, Wi-Fi hoặc dữ liệu di động rồi thử lại.";
+        } else if (error.code === 3) {
+            gpsMessage.innerText =
+                "GPS mất quá nhiều thời gian để xác định vị trí. Hãy đứng gần cửa hoặc ngoài trời rồi thử lại.";
+        } else {
+            gpsMessage.innerText =
+                error.message ||
+                "Không thể lấy vị trí. Vui lòng thử lại.";
+        }
+    } finally {
+        attendanceCheckinInProgress =
+            false;
+
+        /*
+         * Hỏi lại Backend để cập nhật:
+         * - Buổi học hiện tại
+         * - Khung điểm danh đang mở
+         * - Trạng thái bật/tắt của nút
+         */
+        await loadAttendancePageData();
+
+        if (checkinButton) {
+            checkinButton.innerText =
+                "Điểm danh";
+        }
+    }
 }
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
