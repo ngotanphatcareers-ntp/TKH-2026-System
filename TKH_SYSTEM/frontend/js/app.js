@@ -111,7 +111,7 @@ async function loginDemo() {
             if (currentUser.role === "admin") {
                 window.location.href = "admin-dashboard.html";
             } else {
-                window.location.href = "dashboard.html";
+                window.location.href = "attendance.html";
             }
         }, 500);
     } catch (error) {
@@ -840,7 +840,7 @@ async function changePasswordDemo() {
                     "admin-dashboard.html";
             } else {
                 window.location.href =
-                    "dashboard.html";
+                    "attendance.html";
             }
         }, 700);
     } catch (error) {
@@ -4263,9 +4263,11 @@ async function initializePage() {
     if (changePasswordPage) {
         if (!currentUser.mustChangePassword) {
             if (currentUser.role === "admin") {
-                window.location.href = "admin-dashboard.html";
+                window.location.href =
+                    "admin-dashboard.html";
             } else {
-                window.location.href = "dashboard.html";
+                window.location.href =
+                    "attendance.html";
             }
 
             return;
