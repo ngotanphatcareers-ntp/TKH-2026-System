@@ -283,8 +283,14 @@ async function findGroupScoreHistory(groupId) {
              st.created_by_user_id
 
         WHERE sm.group_id = @groupId
-          AND sm.status = 'ACTIVE'
-          AND st.status = 'ACTIVE'
+            AND sm.status = 'ACTIVE'
+            AND st.status = 'ACTIVE'
+
+            /*
+            * Pre-test vẫn giữ trong lịch sử và tổng điểm cá nhân,
+            * nhưng không hiển thị trong lịch sử điểm nhóm.
+            */
+            AND st.score_type <> 'PRE_TEST'
       ) AS history
 
       ORDER BY
