@@ -368,7 +368,6 @@ async function getCurrentChallenge() {
   const currentRoundNo =
     await findCurrentRoundNumber({
       seasonId,
-      sessionId,
     });
 
   const [
@@ -386,13 +385,11 @@ async function getCurrentChallenge() {
 
     findUsedGroupsInRound({
       seasonId,
-      sessionId,
       roundNo: currentRoundNo,
     }),
 
     findLatestRoundSelection({
       seasonId,
-      sessionId,
     }),
 
     countCheckedInMembers({
@@ -502,7 +499,6 @@ async function drawGroup({
   let roundNo =
     await findCurrentRoundNumber({
       seasonId,
-      sessionId,
     });
 
   let eligibleGroups =
@@ -662,7 +658,6 @@ async function drawMember({
   const latestSelection =
     await findLatestRoundSelection({
       seasonId,
-      sessionId,
     });
 
   if (
@@ -801,7 +796,6 @@ async function submitResult({
   const latestSelection =
     await findLatestRoundSelection({
       seasonId,
-      sessionId,
     });
 
   if (

@@ -3,23 +3,22 @@ const { getPool, sql } = require("../config/database");
 
 async function findCurrentRoundNumber({
   seasonId,
-  sessionId,
 }) {
   const pool = await getPool();
 
   const result = await pool
     .request()
     .input("seasonId", sql.Int, seasonId)
-    .input("sessionId", sql.Int, sessionId)
     .query(`
       SELECT
         COALESCE(MAX(round_no), 1) AS round_no
       FROM dbo.bible_challenge_rounds
-      WHERE season_id = @seasonId
-        AND session_id = @sessionId;
+      WHERE season_id = @seasonId;
     `);
 
-  return Number(result.recordset[0]?.round_no || 1);
+  return Number(
+    result.recordset[0]?.round_no || 1
+  );
 }
 
 
@@ -80,7 +79,6 @@ async function findEligibleGroups({
           SELECT 1
           FROM dbo.bible_challenge_rounds AS bcr
           WHERE bcr.season_id = @seasonId
-            AND bcr.session_id = @sessionId
             AND bcr.round_no = @roundNo
             AND bcr.group_id = g.id
         )
@@ -171,7 +169,6 @@ async function findAllGroupsWithEligibleMembers({
 
 async function findUsedGroupsInRound({
   seasonId,
-  sessionId,
   roundNo,
 }) {
   const pool = await getPool();
@@ -179,7 +176,7 @@ async function findUsedGroupsInRound({
   const result = await pool
     .request()
     .input("seasonId", sql.Int, seasonId)
-    .input("sessionId", sql.Int, sessionId)
+  
     .input("roundNo", sql.Int, roundNo)
     .query(`
       SELECT
@@ -201,7 +198,6 @@ async function findUsedGroupsInRound({
         ON g.id = bcr.group_id
 
       WHERE bcr.season_id = @seasonId
-        AND bcr.session_id = @sessionId
         AND bcr.round_no = @roundNo
 
       ORDER BY
@@ -266,14 +262,12 @@ async function createRoundSelection({
 
 async function findLatestRoundSelection({
   seasonId,
-  sessionId,
 }) {
   const pool = await getPool();
 
   const result = await pool
     .request()
     .input("seasonId", sql.Int, seasonId)
-    .input("sessionId", sql.Int, sessionId)
     .query(`
       SELECT TOP 1
         bcr.id,
@@ -294,7 +288,6 @@ async function findLatestRoundSelection({
         ON g.id = bcr.group_id
 
       WHERE bcr.season_id = @seasonId
-        AND bcr.session_id = @sessionId
 
       ORDER BY
         bcr.created_at DESC,
@@ -374,10 +367,19 @@ async function findEligibleMembersByGroup({
        AND g.season_id = sm.season_id
        AND g.is_active = 1
 
-      INNER JOIN dbo.attendance_records AS ar
-        ON ar.session_id = @sessionId
-       AND ar.season_membership_id = sm.id
-       AND ar.status = 'PRESENT'
+      CROSS APPLY
+      (
+        SELECT TOP 1
+          ar_inner.id,
+          ar_inner.checked_in_at
+        FROM dbo.attendance_records AS ar_inner
+        WHERE ar_inner.session_id = @sessionId
+          AND ar_inner.season_membership_id = sm.id
+          AND ar_inner.status = 'PRESENT'
+        ORDER BY
+          ar_inner.checked_in_at ASC,
+          ar_inner.id ASC
+      ) AS ar
 
       WHERE sm.season_id = @seasonId
         AND sm.group_id = @groupId
@@ -397,7 +399,16 @@ async function findEligibleMembersByGroup({
         sm.id ASC;
     `);
 
-  return result.recordset;
+  const uniqueMembers = Array.from(
+    new Map(
+      result.recordset.map(member => [
+        Number(member.season_membership_id),
+        member
+      ])
+    ).values()
+  );
+
+  return uniqueMembers;
 }
 
 
@@ -459,10 +470,19 @@ async function findMembershipForChallenge({
         ON g.id = sm.group_id
        AND g.season_id = sm.season_id
 
-      INNER JOIN dbo.attendance_records AS ar
-        ON ar.session_id = @sessionId
-       AND ar.season_membership_id = sm.id
-       AND ar.status = 'PRESENT'
+      CROSS APPLY
+      (
+        SELECT TOP 1
+          ar_inner.id,
+          ar_inner.checked_in_at
+        FROM dbo.attendance_records AS ar_inner
+        WHERE ar_inner.session_id = @sessionId
+          AND ar_inner.season_membership_id = sm.id
+          AND ar_inner.status = 'PRESENT'
+        ORDER BY
+          ar_inner.checked_in_at ASC,
+          ar_inner.id ASC
+      ) AS ar
 
       WHERE sm.id = @seasonMembershipId
         AND sm.season_id = @seasonId
