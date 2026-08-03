@@ -794,6 +794,7 @@ async function submitExamAnswerController(
         ATTEMPT_NOT_FOUND: 404,
         QUESTION_NOT_ACTIVE: 409,
         ANSWER_TOO_LATE: 409,
+        ANSWER_NOT_ACCEPTED: 409,
       };
 
       const httpStatus =

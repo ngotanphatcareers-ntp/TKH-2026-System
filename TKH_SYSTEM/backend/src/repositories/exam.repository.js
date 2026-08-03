@@ -2296,15 +2296,17 @@ async function saveStudentExamAnswer({
 
   try {
     await transaction.begin(
-      sql.ISOLATION_LEVEL.SERIALIZABLE
+      sql.ISOLATION_LEVEL.READ_COMMITTED
     );
 
     transactionStarted = true;
 
     /*
-    Lock Exam, active Attempt and live state so
-    Admin cannot change the question halfway through
-    this answer transaction.
+    Read the shared Exam state without update locks.
+    Different students must not serialize on the same
+    exams or exam_live_states row. The answer row is
+    still protected below by its own unique key and
+    row/range lock.
     */
 
     const contextResult =
@@ -2342,10 +2344,8 @@ async function saveStudentExamAnswer({
             SYSDATETIME() AS server_now
 
           FROM dbo.exams AS e
-            WITH (UPDLOCK, HOLDLOCK)
 
           LEFT JOIN dbo.exam_attempts AS ea
-            WITH (UPDLOCK, HOLDLOCK)
             ON ea.exam_id = e.id
             AND ea.season_membership_id =
                 @seasonMembershipId
@@ -2356,7 +2356,6 @@ async function saveStudentExamAnswer({
             AND eq.id = @questionId
 
           LEFT JOIN dbo.exam_live_states AS els
-            WITH (UPDLOCK, HOLDLOCK)
             ON els.exam_id = e.id
 
           WHERE e.id = @examId;
@@ -2456,12 +2455,17 @@ async function saveStudentExamAnswer({
     */
 
     const answerResult =
-      await new sql.Request(transaction)
-        .input(
-          "attemptId",
-          sql.Int,
-          context.attempt_id
-        )
+        await new sql.Request(transaction)
+            .input(
+            "examId",
+            sql.Int,
+            examId
+            )
+            .input(
+            "attemptId",
+            sql.Int,
+            context.attempt_id
+            )
         .input(
           "questionId",
           sql.Int,
@@ -2487,6 +2491,31 @@ async function saveStudentExamAnswer({
                 THEN 1
               ELSE 0
             END;
+
+          IF NOT EXISTS
+          (
+            SELECT 1
+            FROM dbo.exams AS e
+            INNER JOIN dbo.exam_attempts AS ea
+              ON ea.exam_id = e.id
+             AND ea.id = @attemptId
+             AND ea.status = 'IN_PROGRESS'
+            INNER JOIN dbo.exam_live_states AS els
+              ON els.exam_id = e.id
+            INNER JOIN dbo.exam_questions AS eq
+              ON eq.exam_id = e.id
+             AND eq.id = @questionId
+            WHERE e.id = @examId
+              AND e.status = 'IN_PROGRESS'
+              AND els.state = 'ACTIVE'
+              AND els.current_question_id = @questionId
+              AND els.question_ends_at > @acceptedAt
+          )
+          BEGIN
+            SELECT CAST(NULL AS INT) AS id
+            WHERE 1 = 0;
+            RETURN;
+          END;
 
           IF EXISTS
           (
@@ -2543,6 +2572,15 @@ async function saveStudentExamAnswer({
 
     const savedAnswer =
       answerResult.recordset[0] || null;
+
+    if (!savedAnswer) {
+      await transaction.rollback();
+      transactionStarted = false;
+
+      return {
+        status: "ANSWER_NOT_ACCEPTED",
+      };
+    }
 
     await transaction.commit();
     transactionStarted = false;

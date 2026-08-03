@@ -2154,6 +2154,50 @@ async function touchWaitingRoomPresence({
 }
 
 
+async function touchWaitingRoomPresenceByMembership({
+  examId,
+  seasonMembershipId,
+}) {
+  const normalizedExamId = Number(examId);
+  const normalizedMembershipId =
+    Number(seasonMembershipId);
+
+  if (
+    !Number.isInteger(normalizedExamId) ||
+    normalizedExamId <= 0 ||
+    !Number.isInteger(normalizedMembershipId) ||
+    normalizedMembershipId <= 0
+  ) {
+    return {
+      success: false,
+      code: "INVALID_WAITING_ROOM_CONTEXT",
+    };
+  }
+
+  const waitingRoomEntry =
+    await updateWaitingRoomLastSeen({
+      examId: normalizedExamId,
+      seasonMembershipId:
+        normalizedMembershipId,
+    });
+
+  if (!waitingRoomEntry) {
+    return {
+      success: false,
+      code: "WAITING_ROOM_ENTRY_NOT_FOUND",
+    };
+  }
+
+  return {
+    success: true,
+    data: {
+      waitingRoom:
+        mapWaitingRoomEntry(waitingRoomEntry),
+    },
+  };
+}
+
+
 /*
 =====================================================
 Submit or update Student Exam answer
@@ -2277,6 +2321,7 @@ module.exports = {
   getExamRealtimeState,
   joinExamRealtime,
   touchWaitingRoomPresence,
+  touchWaitingRoomPresenceByMembership,
 
   finishExam,
   advanceExamQuestion,

@@ -2,6 +2,7 @@ const {
   getExamRealtimeState,
   joinExamRealtime,
   touchWaitingRoomPresence,
+  touchWaitingRoomPresenceByMembership,
 } = require(
   "../services/exam.service"
 );
@@ -80,6 +81,7 @@ function registerExamSocketHandlers({
   socket,
 }) {
   let joinedExamId = null;
+  let joinedSeasonMembershipId = null;
 
   const heartbeatLastWrittenAt =
     new Map();
@@ -109,6 +111,7 @@ function registerExamSocketHandlers({
     );
 
     joinedExamId = null;
+    joinedSeasonMembershipId = null;
   }
 
 
@@ -233,6 +236,12 @@ function registerExamSocketHandlers({
         );
 
         joinedExamId = examId;
+        joinedSeasonMembershipId = Number(
+          result.data?.waitingRoom
+            ?.seasonMembershipId ||
+          result.data?.attempt
+            ?.seasonMembershipId
+        ) || null;
 
         /*
         Update the admin waiting-room view after a
@@ -422,12 +431,17 @@ function registerExamSocketHandlers({
         }
 
         const result =
-          await touchWaitingRoomPresence({
-            examId,
-
-            memberId:
-              socket.user?.memberId,
-          });
+          joinedSeasonMembershipId
+            ? await touchWaitingRoomPresenceByMembership({
+                examId,
+                seasonMembershipId:
+                  joinedSeasonMembershipId,
+              })
+            : await touchWaitingRoomPresence({
+                examId,
+                memberId:
+                  socket.user?.memberId,
+              });
 
         if (result.success) {
           heartbeatLastWrittenAt.set(
@@ -500,6 +514,7 @@ function registerExamSocketHandlers({
 
         if (joinedExamId === examId) {
           joinedExamId = null;
+          joinedSeasonMembershipId = null;
         }
 
         sendAcknowledgement(

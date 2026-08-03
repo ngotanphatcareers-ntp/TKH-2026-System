@@ -20,10 +20,12 @@ const connectionString = [
 const databaseConfig = {
   connectionString,
   pool: {
-    max: 10,
-    min: 0,
+    max: 20,
+    min: 2,
     idleTimeoutMillis: 30000,
   },
+  connectionTimeout: 15000,
+  requestTimeout: 30000,
 };
 
 let poolPromise = null;
