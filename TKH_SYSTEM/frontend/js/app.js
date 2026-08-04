@@ -5533,6 +5533,240 @@ async function sendEncouragementFromApi() {
     }
 }
 
+let encouragementInboxMessagesApi = [];
+
+let currentOpenedEncouragementId = null;
+
+
+function getEncouragementSenderNameDemo(item) {
+    if (
+        item?.isAnonymous ||
+        !item?.sender
+    ) {
+        return "Ẩn danh";
+    }
+
+    return (
+        item.sender.fullName ||
+        item.sender.username ||
+        "Một thành viên"
+    );
+}
+
+
+function formatEncouragementDateDemo(createdAt) {
+    if (!createdAt) {
+        return "";
+    }
+
+    const createdDate =
+        new Date(createdAt);
+
+    if (
+        Number.isNaN(
+            createdDate.getTime()
+        )
+    ) {
+        return "";
+    }
+
+    return createdDate.toLocaleString(
+        "vi-VN"
+    );
+}
+
+
+function openEncouragementLetterFromApi(
+    encouragementId
+) {
+    const normalizedId =
+        Number(encouragementId);
+
+    const item =
+        encouragementInboxMessagesApi.find(
+            message =>
+                Number(message.id) ===
+                normalizedId
+        );
+
+    if (!item) {
+        alert(
+            "Không tìm thấy lời khích lệ này."
+        );
+
+        return;
+    }
+
+    const modal =
+        document.getElementById(
+            "encouragementLetterModal"
+        );
+
+    const animation =
+        document.getElementById(
+            "encouragementEnvelopeAnimation"
+        );
+
+    const messageElement =
+        document.getElementById(
+            "encouragementLetterMessage"
+        );
+
+    const senderElement =
+        document.getElementById(
+            "encouragementLetterSender"
+        );
+
+    const dateElement =
+        document.getElementById(
+            "encouragementLetterDate"
+        );
+
+    const pinButton =
+        document.getElementById(
+            "encouragementLetterPinButton"
+        );
+
+    if (
+        !modal ||
+        !animation ||
+        !messageElement ||
+        !senderElement ||
+        !dateElement ||
+        !pinButton
+    ) {
+        return;
+    }
+
+    currentOpenedEncouragementId =
+        normalizedId;
+
+    messageElement.textContent =
+        item.message || "";
+
+    senderElement.textContent =
+        `— ${getEncouragementSenderNameDemo(
+            item
+        )}`;
+
+    dateElement.textContent =
+        formatEncouragementDateDemo(
+            item.createdAt
+        );
+
+    pinButton.textContent =
+        item.isPinned
+            ? "Bỏ ghim"
+            : "📌 Ghim";
+
+    pinButton.onclick =
+        async function () {
+            pinButton.disabled = true;
+
+            try {
+                await togglePinEncouragementFromApi(
+                    normalizedId
+                );
+
+                closeEncouragementLetterModal();
+            } finally {
+                pinButton.disabled = false;
+            }
+        };
+
+    /*
+     * Xóa trạng thái animation cũ trước khi mở,
+     * để mỗi lần bấm phong bì animation đều chạy lại.
+     */
+    animation.classList.remove(
+        "is-opening"
+    );
+
+    modal.classList.remove(
+        "hidden"
+    );
+
+    document.body.classList.add(
+        "encouragement-modal-open"
+    );
+
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            animation.classList.add(
+                "is-opening"
+            );
+        });
+    });
+}
+
+
+function closeEncouragementLetterModal() {
+    const modal =
+        document.getElementById(
+            "encouragementLetterModal"
+        );
+
+    const animation =
+        document.getElementById(
+            "encouragementEnvelopeAnimation"
+        );
+
+    if (modal) {
+        modal.classList.add(
+            "hidden"
+        );
+    }
+
+    if (animation) {
+        animation.classList.remove(
+            "is-opening"
+        );
+    }
+
+    document.body.classList.remove(
+        "encouragement-modal-open"
+    );
+
+    currentOpenedEncouragementId =
+        null;
+}
+
+
+function handleEncouragementLetterOverlayClick(
+    event
+) {
+    if (
+        event.target.id ===
+        "encouragementLetterModal"
+    ) {
+        closeEncouragementLetterModal();
+    }
+}
+
+
+document.addEventListener(
+    "keydown",
+    event => {
+        if (event.key !== "Escape") {
+            return;
+        }
+
+        const modal =
+            document.getElementById(
+                "encouragementLetterModal"
+            );
+
+        if (
+            modal &&
+            !modal.classList.contains(
+                "hidden"
+            )
+        ) {
+            closeEncouragementLetterModal();
+        }
+    }
+);
+
 async function loadEncouragementListFromApi() {
     const list =
         document.getElementById(
@@ -5630,6 +5864,8 @@ async function loadEncouragementListFromApi() {
                 : [];
 
         if (messages.length === 0) {
+            encouragementInboxMessagesApi = [];
+
             list.innerHTML = `
                 <p class="empty-note">
                     Chưa có lời khích lệ nào.
@@ -5653,6 +5889,9 @@ async function loadEncouragementListFromApi() {
                 );
             });
 
+        encouragementInboxMessagesApi =
+            sortedMessages;
+
         const escapeHtml = (value) => {
             return String(value ?? "")
                 .replaceAll("&", "&amp;")
@@ -5662,70 +5901,103 @@ async function loadEncouragementListFromApi() {
                 .replaceAll("'", "&#039;");
         };
 
-        list.innerHTML =
+                list.innerHTML =
             sortedMessages.map(item => {
                 const senderName =
-                    item.isAnonymous ||
-                    !item.sender
-                        ? "Ẩn danh"
-                        : item.sender.fullName;
+                    getEncouragementSenderNameDemo(
+                        item
+                    );
 
                 const avatarText =
                     item.isAnonymous ||
                     !item.sender
-                        ? "🕵️‍♂️"
+                        ? "💌"
                         : String(
                             item.sender.fullName ||
+                            item.sender.username ||
                             "?"
                         )
                             .charAt(0)
                             .toUpperCase();
 
                 const createdDate =
-                    item.createdAt
-                        ? new Date(
-                            item.createdAt
-                        ).toLocaleString(
-                            "vi-VN"
-                        )
-                        : "";
+                    formatEncouragementDateDemo(
+                        item.createdAt
+                    );
+
+                const encouragementId =
+                    Number(item.id);
 
                 return `
-                    <div class="encouragement-card encouragement-card-with-avatar ${
-                        item.isPinned
-                            ? "pinned-encouragement-card"
-                            : ""
-                    }">
-                        <div class="encouragement-avatar">
-                            ${escapeHtml(avatarText)}
-                        </div>
+                    <article
+                        class="
+                            encouragement-envelope-card
+                            ${
+                                item.isPinned
+                                    ? "pinned-encouragement-envelope-card"
+                                    : ""
+                            }
+                        "
+                    >
+                        <button
+                            type="button"
+                            class="encouragement-envelope-preview"
+                            onclick="openEncouragementLetterFromApi(${encouragementId})"
+                            aria-label="Mở lời khích lệ từ ${escapeHtml(senderName)}"
+                        >
+                            <span
+                                class="encouragement-envelope-preview-flap"
+                                aria-hidden="true"
+                            ></span>
 
-                        <div class="encouragement-content">
-                            <p>
-                                ${
-                                    item.isPinned
-                                        ? "📌 "
-                                        : "🌟 "
-                                }${escapeHtml(item.message)}
-                            </p>
-
-                            <p class="encouragement-author">
-                                — ${escapeHtml(senderName)}<br>
-                                ${escapeHtml(createdDate)}
-                            </p>
-
-                            <button
-                                class="pin-encouragement-btn"
-                                onclick="togglePinEncouragementFromApi(${Number(item.id)})"
+                            <span
+                                class="encouragement-envelope-preview-paper"
+                                aria-hidden="true"
                             >
-                                ${
-                                    item.isPinned
-                                        ? "Bỏ ghim"
-                                        : "📌 Ghim"
-                                }
-                            </button>
-                        </div>
-                    </div>
+                                💛
+                            </span>
+
+                            <span class="encouragement-envelope-preview-body">
+                                <span class="encouragement-envelope-preview-icon">
+                                    ${escapeHtml(avatarText)}
+                                </span>
+
+                                <span class="encouragement-envelope-preview-information">
+                                    <strong>
+                                        ${
+                                            item.isPinned
+                                                ? "📌 Lời khích lệ đã ghim"
+                                                : "💌 Bạn có một lời khích lệ"
+                                        }
+                                    </strong>
+
+                                    <small>
+                                        Từ ${escapeHtml(senderName)}
+                                    </small>
+
+                                    <small>
+                                        ${escapeHtml(createdDate)}
+                                    </small>
+
+                                    <span class="encouragement-open-label">
+                                        Chạm để mở thư
+                                    </span>
+                                </span>
+                            </span>
+                        </button>
+
+                        <button
+                            type="button"
+                            class="pin-encouragement-btn encouragement-preview-pin-button"
+                            onclick="togglePinEncouragementFromApi(${encouragementId})"
+                        >
+                            ${
+                                item.isPinned
+                                    ? "Bỏ ghim"
+                                    : "📌 Ghim"
+                            }
+                        </button>
+                    </article>
                 `;
             }).join("");
     } catch (error) {
