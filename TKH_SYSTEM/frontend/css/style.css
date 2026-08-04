@@ -5365,3 +5365,244 @@ p:last-child {
 
     pointer-events: none;
 }
+
+
+/* =====================================================
+   BIBLE CHALLENGE — PRIVATE ROUND STATUS
+   ===================================================== */
+
+.bc-group-actions {
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+}
+
+.bc-round-status-button {
+    background: #475569 !important;
+}
+
+.bc-round-status-button:hover {
+    background: #334155 !important;
+}
+
+
+/*
+ * Popup trạng thái vòng chỉ dành cho Admin.
+ */
+.bc-round-status-modal-box {
+    max-width: 680px;
+    max-height: 88vh;
+
+    padding: 26px;
+
+    overflow-y: auto;
+    text-align: left;
+}
+
+.bc-round-status-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+
+    margin-bottom: 20px;
+}
+
+.bc-round-status-header h3 {
+    margin: 0 0 7px;
+
+    color: #111827;
+    font-size: 22px;
+}
+
+.bc-round-status-header p {
+    margin: 0;
+
+    color: #64748b;
+    line-height: 1.5;
+}
+
+.bc-round-status-close {
+    width: 38px;
+    height: 38px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: none;
+    border-radius: 50%;
+
+    background: #f1f5f9;
+    color: #475569;
+
+    font-size: 26px;
+    line-height: 1;
+
+    cursor: pointer;
+}
+
+.bc-round-status-close:hover {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.bc-round-status-content {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.bc-round-status-section {
+    min-width: 0;
+
+    padding: 17px;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+
+    background: #f8fafc;
+}
+
+.bc-round-status-section h4 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    margin: 0 0 14px;
+
+    color: #1e293b;
+    font-size: 16px;
+}
+
+.bc-round-status-section h4 span {
+    min-width: 31px;
+
+    padding: 5px 9px;
+
+    border-radius: 999px;
+
+    background: #e2e8f0;
+    color: #334155;
+
+    text-align: center;
+    font-size: 13px;
+}
+
+.bc-round-status-list {
+    display: grid;
+    gap: 9px;
+}
+
+.bc-round-status-item {
+    min-width: 0;
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 11px 12px;
+
+    border-radius: 12px;
+
+    font-weight: 700;
+}
+
+.bc-round-status-item-used {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.bc-round-status-item-available {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.bc-round-status-icon {
+    width: 25px;
+    height: 25px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background:
+        rgba(255, 255, 255, 0.72);
+
+    font-weight: 900;
+}
+
+.bc-round-status-name {
+    min-width: 0;
+    flex: 1;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bc-round-status-item small {
+    flex-shrink: 0;
+
+    color: inherit;
+    opacity: 0.75;
+}
+
+.bc-round-status-empty {
+    margin: 0;
+
+    color: #94a3b8;
+    font-size: 14px;
+}
+
+.bc-round-status-error {
+    margin: 0;
+
+    color: #b91c1c;
+    font-weight: 700;
+}
+
+
+/*
+ * Khi đang ở chế độ trình chiếu,
+ * ẩn nút xem trạng thái vòng để tránh bấm nhầm.
+ */
+body.bc-presentation-mode
+.bc-round-status-button {
+    display: none;
+}
+
+body.bc-presentation-mode
+.bc-group-actions {
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+}
+
+
+@media (max-width: 768px) {
+    .bc-group-actions,
+    body.bc-presentation-mode
+    .bc-group-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .bc-round-status-modal-box {
+        max-height: 90vh;
+        padding: 20px 16px;
+    }
+
+    .bc-round-status-content {
+        grid-template-columns: 1fr;
+    }
+
+    .bc-round-status-header h3 {
+        font-size: 20px;
+    }
+}

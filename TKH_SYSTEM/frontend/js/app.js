@@ -13774,119 +13774,202 @@ function escapeBibleChallengeHtml(value) {
 
 
 async function loadBibleChallengeDemo() {
-    const groupGrid = document.getElementById("bcGroupGrid");
+    const groupGrid =
+        document.getElementById(
+            "bcGroupGrid"
+        );
 
     if (!groupGrid) {
         return;
     }
 
     groupGrid.innerHTML = `
-        <p class="empty-note">Đang tải danh sách nhóm...</p>
+        <p class="empty-note">
+            Đang tải danh sách nhóm...
+        </p>
     `;
 
     try {
-        const data = await getBibleChallengeCurrentApi();
+        const data =
+            await getBibleChallengeCurrentApi();
 
         const eligibleGroups =
-            Array.isArray(data.eligibleGroups)
+            Array.isArray(
+                data.eligibleGroups
+            )
                 ? data.eligibleGroups
                 : [];
 
         const usedSelections =
-            Array.isArray(data.usedGroups)
+            Array.isArray(
+                data.usedGroups
+            )
                 ? data.usedGroups
                 : [];
 
-        const groupMap = new Map();
+        const groupMap =
+            new Map();
 
+        /*
+         * Các nhóm chưa quay trong vòng hiện tại.
+         */
         eligibleGroups.forEach(item => {
-            const group = item.group || item;
+            const group =
+                item.group || item;
 
             if (!group?.id) {
                 return;
             }
 
-            groupMap.set(Number(group.id), {
-                id: Number(group.id),
-                code: group.code || "",
-                name: group.name || "Không xác định",
-                logoPath: group.logoPath || null,
-                used: false,
-                roundNo: null
-            });
+            groupMap.set(
+                Number(group.id),
+                {
+                    id:
+                        Number(group.id),
+
+                    code:
+                        group.code || "",
+
+                    name:
+                        group.name ||
+                        "Không xác định",
+
+                    logoPath:
+                        group.logoPath ||
+                        null,
+
+                    used:
+                        false,
+
+                    roundNo:
+                        null
+                }
+            );
         });
 
-        usedSelections.forEach(selection => {
-            const group = selection.group || selection;
+        /*
+         * Các nhóm đã quay.
+         *
+         * Vẫn giữ trạng thái used trong dữ liệu,
+         * nhưng không làm mờ hoặc tiết lộ trên giao diện.
+         */
+        usedSelections.forEach(
+            selection => {
+                const group =
+                    selection.group ||
+                    selection;
 
-            if (!group?.id) {
-                return;
+                if (!group?.id) {
+                    return;
+                }
+
+                groupMap.set(
+                    Number(group.id),
+                    {
+                        id:
+                            Number(group.id),
+
+                        code:
+                            group.code || "",
+
+                        name:
+                            group.name ||
+                            "Không xác định",
+
+                        logoPath:
+                            group.logoPath ||
+                            null,
+
+                        used:
+                            true,
+
+                        roundNo:
+                            selection.roundNo ||
+                            null
+                    }
+                );
             }
+        );
 
-            groupMap.set(Number(group.id), {
-                id: Number(group.id),
-                code: group.code || "",
-                name: group.name || "Không xác định",
-                logoPath: group.logoPath || null,
-                used: true,
-                roundNo: selection.roundNo || null
-            });
-        });
-
-        const groups = Array.from(groupMap.values())
-            .sort((a, b) => a.id - b.id);
+        const groups =
+            Array.from(
+                groupMap.values()
+            ).sort(
+                (a, b) =>
+                    a.id - b.id
+            );
 
         if (groups.length === 0) {
             groupGrid.innerHTML = `
                 <p class="empty-note">
-                    Hiện không có nhóm nào đủ điều kiện để random.
+                    Hiện không có nhóm nào trong Bible Challenge.
                 </p>
             `;
+
             return;
         }
 
-        groupGrid.innerHTML = groups.map(group => `
-            <div
-                class="bc-card ${group.used ? "used" : ""}"
-                data-group-id="${group.id}"
-                data-group-name="${escapeBibleChallengeHtml(group.name)}"
-            >
-                <div class="bc-avatar">
-                    ${
-                        group.logoPath
-                            ? `
-                                <img
-                                    src="${escapeBibleChallengeHtml(group.logoPath)}"
-                                    alt="Logo nhóm ${escapeBibleChallengeHtml(group.name)}"
-                                    class="bc-group-logo-image"
-                                    onerror="
-                                        this.onerror = null;
-                                        this.parentElement.innerHTML =
-                                            '${escapeBibleChallengeHtml(
-                                                group.name.charAt(0)
-                                            )}';
-                                    "
-                                >
-                            `
-                            : escapeBibleChallengeHtml(
-                                group.name.charAt(0)
-                            )
-                    }
-                </div>
-
-                <div>
-                    ${escapeBibleChallengeHtml(group.name)}
-                </div>
-
-                <small>
-                    ${
+        /*
+         * Quan trọng:
+         * - Không gắn class "used" lên thẻ nhóm.
+         * - Không hiện "Đã random".
+         * - Trạng thái thật chỉ nằm trong data-used.
+         */
+        groupGrid.innerHTML =
+            groups.map(group => `
+                <div
+                    class="bc-card"
+                    data-group-id="${group.id}"
+                    data-group-name="${escapeBibleChallengeHtml(
+                        group.name
+                    )}"
+                    data-used="${
                         group.used
-                            ? `Đã random${group.roundNo ? ` · Vòng ${group.roundNo}` : ""}`
-                            : "Đủ điều kiện"
-                    }
-                </small>
-            </div>
-        `).join("");
+                            ? "true"
+                            : "false"
+                    }"
+                    data-round-no="${
+                        group.roundNo || ""
+                    }"
+                >
+                    <div class="bc-avatar">
+                        ${
+                            group.logoPath
+                                ? `
+                                    <img
+                                        src="${escapeBibleChallengeHtml(
+                                            group.logoPath
+                                        )}"
+                                        alt="Logo nhóm ${escapeBibleChallengeHtml(
+                                            group.name
+                                        )}"
+                                        class="bc-group-logo-image"
+                                        onerror="
+                                            this.onerror = null;
+                                            this.parentElement.innerHTML =
+                                                '${escapeBibleChallengeHtml(
+                                                    group.name.charAt(0)
+                                                )}';
+                                        "
+                                    >
+                                `
+                                : escapeBibleChallengeHtml(
+                                    group.name.charAt(0)
+                                )
+                        }
+                    </div>
+
+                    <div>
+                        ${escapeBibleChallengeHtml(
+                            group.name
+                        )}
+                    </div>
+
+                    <small>
+                        Sẵn sàng
+                    </small>
+                </div>
+            `).join("");
     } catch (error) {
         console.error(
             "Load Bible Challenge groups error:",
@@ -13895,9 +13978,314 @@ async function loadBibleChallengeDemo() {
 
         groupGrid.innerHTML = `
             <p class="empty-note">
-                ${escapeBibleChallengeHtml(error.message)}
+                ${escapeBibleChallengeHtml(
+                    error.message
+                )}
             </p>
         `;
+    }
+}
+
+/*
+ * =========================================================
+ * BIBLE CHALLENGE — ADMIN ROUND STATUS
+ * =========================================================
+ */
+
+function getBibleChallengeRoundStatusData(
+    currentData
+) {
+    const eligibleGroups =
+        Array.isArray(
+            currentData?.eligibleGroups
+        )
+            ? currentData.eligibleGroups
+            : [];
+
+    const usedSelections =
+        Array.isArray(
+            currentData?.usedGroups
+        )
+            ? currentData.usedGroups
+            : [];
+
+    const availableGroups =
+        eligibleGroups
+            .map(item =>
+                item.group || item
+            )
+            .filter(group =>
+                group?.id
+            );
+
+    const usedGroups =
+        usedSelections
+            .map(selection => {
+                const group =
+                    selection.group ||
+                    selection;
+
+                if (!group?.id) {
+                    return null;
+                }
+
+                return {
+                    ...group,
+
+                    roundNo:
+                        selection.roundNo ||
+                        group.roundNo ||
+                        null
+                };
+            })
+            .filter(Boolean);
+
+    const allGroupsMap =
+        new Map();
+
+    availableGroups.forEach(group => {
+        allGroupsMap.set(
+            Number(group.id),
+            group
+        );
+    });
+
+    usedGroups.forEach(group => {
+        allGroupsMap.set(
+            Number(group.id),
+            group
+        );
+    });
+
+    const totalGroups =
+        allGroupsMap.size;
+
+    return {
+        availableGroups,
+        usedGroups,
+        totalGroups
+    };
+}
+
+
+function renderBibleChallengeRoundGroupList(
+    groups,
+    type
+) {
+    const normalizedGroups =
+        Array.isArray(groups)
+            ? groups
+            : [];
+
+    if (normalizedGroups.length === 0) {
+        return `
+            <p class="bc-round-status-empty">
+                Không có nhóm.
+            </p>
+        `;
+    }
+
+    return `
+        <div class="bc-round-status-list">
+            ${
+                normalizedGroups
+                    .map(group => {
+                        const isUsed =
+                            type === "used";
+
+                        return `
+                            <div
+                                class="
+                                    bc-round-status-item
+                                    ${
+                                        isUsed
+                                            ? "bc-round-status-item-used"
+                                            : "bc-round-status-item-available"
+                                    }
+                                "
+                            >
+                                <span
+                                    class="bc-round-status-icon"
+                                >
+                                    ${
+                                        isUsed
+                                            ? "✓"
+                                            : "•"
+                                    }
+                                </span>
+
+                                <span
+                                    class="bc-round-status-name"
+                                >
+                                    ${escapeBibleChallengeHtml(
+                                        group.name ||
+                                        "Không xác định"
+                                    )}
+                                </span>
+
+                                ${
+                                    isUsed &&
+                                    group.roundNo
+                                        ? `
+                                            <small>
+                                                Vòng ${Number(
+                                                    group.roundNo
+                                                )}
+                                            </small>
+                                        `
+                                        : ""
+                                }
+                            </div>
+                        `;
+                    })
+                    .join("")
+            }
+        </div>
+    `;
+}
+
+
+async function openBibleChallengeRoundStatus() {
+    const modal =
+        document.getElementById(
+            "bcRoundStatusModal"
+        );
+
+    const summaryElement =
+        document.getElementById(
+            "bcRoundStatusSummary"
+        );
+
+    const contentElement =
+        document.getElementById(
+            "bcRoundStatusContent"
+        );
+
+    if (
+        !modal ||
+        !summaryElement ||
+        !contentElement
+    ) {
+        return;
+    }
+
+    modal.classList.remove(
+        "hidden"
+    );
+
+    summaryElement.innerText =
+        "Đang tải trạng thái vòng...";
+
+    contentElement.innerHTML = `
+        <p class="empty-note">
+            Đang tải dữ liệu...
+        </p>
+    `;
+
+    try {
+        /*
+         * Dùng forceRefresh để admin luôn thấy
+         * trạng thái mới nhất từ Backend.
+         */
+        const currentData =
+            await getBibleChallengeCurrentApi(
+                true
+            );
+
+        const status =
+            getBibleChallengeRoundStatusData(
+                currentData
+            );
+
+        const usedCount =
+            status.usedGroups.length;
+
+        const totalGroups =
+            status.totalGroups;
+
+        summaryElement.innerText =
+            `Đã random ${usedCount} / ${totalGroups} nhóm trong vòng hiện tại.`;
+
+        contentElement.innerHTML = `
+            <section
+                class="bc-round-status-section"
+            >
+                <h4>
+                    Đã random
+                    <span>
+                        ${usedCount}
+                    </span>
+                </h4>
+
+                ${
+                    renderBibleChallengeRoundGroupList(
+                        status.usedGroups,
+                        "used"
+                    )
+                }
+            </section>
+
+            <section
+                class="bc-round-status-section"
+            >
+                <h4>
+                    Chưa random
+                    <span>
+                        ${status.availableGroups.length}
+                    </span>
+                </h4>
+
+                ${
+                    renderBibleChallengeRoundGroupList(
+                        status.availableGroups,
+                        "available"
+                    )
+                }
+            </section>
+        `;
+    } catch (error) {
+        console.error(
+            "Load Bible Challenge round status error:",
+            error
+        );
+
+        summaryElement.innerText =
+            "Không thể tải trạng thái vòng.";
+
+        contentElement.innerHTML = `
+            <p class="bc-round-status-error">
+                ${escapeBibleChallengeHtml(
+                    error.message ||
+                    "Vui lòng thử lại."
+                )}
+            </p>
+        `;
+    }
+}
+
+
+function closeBibleChallengeRoundStatus() {
+    const modal =
+        document.getElementById(
+            "bcRoundStatusModal"
+        );
+
+    if (modal) {
+        modal.classList.add(
+            "hidden"
+        );
+    }
+}
+
+
+function handleBibleChallengeRoundStatusBackdrop(
+    event
+) {
+    if (
+        event.target?.id ===
+        "bcRoundStatusModal"
+    ) {
+        closeBibleChallengeRoundStatus();
     }
 }
 
@@ -14552,13 +14940,40 @@ async function bcRandomGroupDemo() {
         return;
     }
 
-    const groupCards = Array.from(
-        document.querySelectorAll(
-            "#bcGroupGrid .bc-card"
-        )
-    ).filter(card =>
-        !card.classList.contains("used")
+    /*
+ * Tất cả thẻ nhóm đều sáng và giống nhau trên màn hình.
+ *
+ * Tuy nhiên, frontend vẫn đọc data-used để biết vòng
+ * hiện tại còn nhóm nào chưa quay.
+ */
+const allGroupCards = Array.from(
+    document.querySelectorAll(
+        "#bcGroupGrid .bc-card"
+    )
+);
+
+const availableGroupCards =
+    allGroupCards.filter(card =>
+        card.dataset.used !== "true"
     );
+
+if (availableGroupCards.length === 0) {
+    alert(
+        "Tất cả nhóm đã được random trong vòng hiện tại. " +
+        "Vui lòng reset Bible Challenge để bắt đầu vòng mới."
+    );
+
+    return;
+}
+
+/*
+ * Hiệu ứng chạy qua toàn bộ 8 nhóm để học viên
+ * không thể suy đoán nhóm nào đã được loại khỏi vòng.
+ *
+ * Nhóm thắng thật vẫn do Backend quyết định.
+ */
+const groupCards =
+    allGroupCards;
 
     if (groupCards.length === 0) {
         alert(

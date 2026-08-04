@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TKH 2026 - Bible Challenge</title>
 
-    <link rel="stylesheet" href="css/style.css?v=142">
+    <link rel="stylesheet" href="css/style.css?v=143">
 </head>
 
 <body class="app-page">
@@ -157,9 +157,17 @@ Random học viên trả bài Kinh Thánh theo buổi học.
             <p class="empty-note">Đang tải danh sách nhóm...</p>
         </div>
 
-        <div class="admin-actions">
+        <div class="admin-actions bc-group-actions">
             <button onclick="bcRandomGroupDemo()">
                 Random Group
+            </button>
+
+            <button
+                type="button"
+                onclick="openBibleChallengeRoundStatus()"
+                class="bc-round-status-button"
+            >
+                👁 Xem trạng thái vòng
             </button>
 
             <button
@@ -169,7 +177,6 @@ Random học viên trả bài Kinh Thánh theo buổi học.
             >
                 Reset Bible Challenge
             </button>
-
         </div>
 
     </div>
@@ -293,6 +300,53 @@ Random học viên trả bài Kinh Thánh theo buổi học.
         </div>
     </div>
 </div>
+
+<div
+    id="bcRoundStatusModal"
+    class="modal-overlay hidden"
+    onclick="handleBibleChallengeRoundStatusBackdrop(event)"
+>
+    <div class="modal-box bc-round-status-modal-box">
+        <div class="bc-round-status-header">
+            <div>
+                <h3>Trạng thái vòng Bible Challenge</h3>
+
+                <p id="bcRoundStatusSummary">
+                    Đang tải trạng thái vòng...
+                </p>
+            </div>
+
+            <button
+                type="button"
+                class="bc-round-status-close"
+                onclick="closeBibleChallengeRoundStatus()"
+                aria-label="Đóng"
+            >
+                ×
+            </button>
+        </div>
+
+        <div
+            id="bcRoundStatusContent"
+            class="bc-round-status-content"
+        >
+            <p class="empty-note">
+                Đang tải dữ liệu...
+            </p>
+        </div>
+
+        <div class="modal-actions">
+            <button
+                type="button"
+                class="btn-secondary"
+                onclick="closeBibleChallengeRoundStatus()"
+            >
+                Đóng
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 function setBibleChallengePresentation(enabled) {
     document.body.classList.toggle("bc-presentation-mode", enabled);
@@ -320,7 +374,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
-<script src="js/app.js?v=144"></script>
+<script src="js/app.js?v=145"></script>
 
 </body>
 </html>
