@@ -1,5 +1,5 @@
 const API_BASE_URL =
-    "https://thesaurus-diary-flame-stickers.trycloudflare.com";
+    "https://induction-selecting-beginners-ind.trycloudflare.com";
 
 const demoUsers = [
     {
