@@ -18,6 +18,14 @@ const authRoutes = require("./routes/auth.routes");
 const questionRoutes = require("./routes/question.routes");
 const adminQuestionRoutes = require("./routes/admin-question.routes");
 
+const surveyRoutes = require(
+  "./routes/survey.routes"
+);
+
+const adminSurveyRoutes = require(
+  "./routes/admin-survey.routes"
+);
+
 const encouragementRoutes = require(
   "./routes/encouragement.routes"
 );
@@ -48,6 +56,16 @@ app.use(morgan("dev"));
 app.use("/api/auth", authRoutes);
 app.use("/api/questions", questionRoutes);
 app.use("/api/admin/questions", adminQuestionRoutes);
+
+app.use(
+  "/api/surveys",
+  surveyRoutes
+);
+
+app.use(
+  "/api/admin/surveys",
+  adminSurveyRoutes
+);
 
 app.use(
   "/api/encouragements",

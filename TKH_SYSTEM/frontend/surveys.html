@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>TKH 2026 - Khảo sát</title>
+
+    <link
+        rel="stylesheet"
+        href="css/style.css"
+    >
+</head>
+
+<body class="app-page">
+
+    <aside class="sidebar">
+        <h2>TKH 2026</h2>
+
+        <button
+            class="mobile-menu-btn"
+            onclick="toggleMobileMenu()"
+        >
+            ☰ Menu
+        </button>
+
+        <a href="dashboard.html">
+            Tổng quan
+        </a>
+
+        <a href="attendance.html">
+            Điểm danh
+        </a>
+
+        <a href="my-score.html">
+            Điểm cá nhân
+        </a>
+
+        <a href="group-score.html">
+            Điểm nhóm
+        </a>
+
+        <a href="schedule.html">
+            Lịch học
+        </a>
+
+        <a href="student-directory.html">
+            Hộp thư khích lệ
+        </a>
+
+        <a href="forum.html">
+            💬 Diễn đàn
+        </a>
+
+        <a href="session-questions.html">
+            Câu hỏi buổi học
+        </a>
+
+        <a href="tests.html">
+            Bài kiểm tra
+        </a>
+
+        <a
+            href="surveys.html"
+            class="active"
+        >
+            📝 Khảo sát
+        </a>
+
+        <a href="study-materials.html">
+            Kho tài liệu
+        </a>
+
+        <a
+            href="admin-dashboard.html"
+            class="admin-only"
+        >
+            Trang Admin
+        </a>
+
+        <a href="change-password.html">
+            Đổi mật khẩu
+        </a>
+
+        <hr class="sidebar-divider">
+
+        <a
+            href="#"
+            onclick="confirmLogout(event)"
+            class="logout-menu"
+        >
+            ⏻ Đăng xuất
+        </a>
+    </aside>
+
+
+    <main class="main-content">
+
+        <div class="topbar survey-page-topbar">
+            <div>
+                <h1>Khảo sát</h1>
+
+                <p>
+                    Chia sẻ suy nghĩ và cách giải quyết của bạn
+                    cho các tình huống trong chương trình.
+                </p>
+            </div>
+        </div>
+
+
+        <!-- =================================================
+             DANH SÁCH KHẢO SÁT
+             ================================================= -->
+
+        <section
+            id="surveyListSection"
+            class="attendance-box"
+        >
+            <div class="survey-section-header">
+                <div>
+                    <h2>Danh sách khảo sát</h2>
+
+                    <p class="empty-note">
+                        Bạn có thể làm khảo sát bất cứ lúc nào
+                        khi khảo sát còn đang mở.
+                    </p>
+                </div>
+            </div>
+
+            <div
+                id="studentSurveyList"
+                class="student-survey-list"
+            >
+                <div class="survey-loading-card">
+                    Đang tải danh sách khảo sát...
+                </div>
+            </div>
+        </section>
+
+
+        <!-- =================================================
+             CHI TIẾT KHẢO SÁT
+             ================================================= -->
+
+        <section
+            id="surveyDetailSection"
+            class="attendance-box hidden"
+        >
+            <button
+                type="button"
+                class="survey-back-button"
+                onclick="backToSurveyListDemo()"
+            >
+                ← Quay lại danh sách
+            </button>
+
+
+            <div class="survey-case-header">
+
+                <div class="survey-case-label">
+                    CASE STUDY
+                </div>
+
+                <h2 id="surveyDetailTitle">
+                    Khảo sát
+                </h2>
+
+                <p
+                    id="surveyDetailDescription"
+                    class="survey-case-description"
+                ></p>
+
+                <div class="survey-case-scenario">
+                    <div class="survey-case-scenario-kicker">
+                        CASE STUDY
+                    </div>
+
+                    <div class="survey-case-scenario-label">
+                        ĐỀ BÀI
+                    </div>
+
+                    <p>
+                        Một bạn trẻ nhận được cơ hội có thu nhập cao hơn
+                        đáng kể. Tuy nhiên, công việc có những điểm chưa
+                        minh bạch, chiếm nhiều thời gian cho gia đình và
+                        đời sống thuộc linh, nhưng lại giúp bạn giải quyết
+                        áp lực tài chính hiện tại.
+                    </p>
+                </div>
+
+                <div class="survey-case-big-question">
+                    <span>CÂU HỎI LỚN</span>
+
+                    <strong>
+                        Bạn sẽ quyết định thế nào?
+                    </strong>
+                </div>
+
+                <div
+                    id="surveyDetailStatus"
+                    class="survey-status-badge"
+                >
+                    Đang tải trạng thái...
+                </div>
+
+            </div>
+
+
+            <div
+                id="surveySubmittedNotice"
+                class="survey-submitted-notice hidden"
+            >
+                <div class="survey-submitted-icon">
+                    ✓
+                </div>
+
+                <div>
+                    <h3>Bạn đã hoàn thành khảo sát này</h3>
+
+                    <p id="surveySubmittedTime">
+                        Bài khảo sát đã được ghi nhận.
+                    </p>
+                </div>
+            </div>
+
+
+            <form
+                id="studentSurveyForm"
+                onsubmit="submitStudentSurveyDemo(event)"
+            >
+                <div
+                    id="studentSurveyQuestions"
+                    class="student-survey-question-list"
+                >
+                    <div class="survey-loading-card">
+                        Đang tải nội dung khảo sát...
+                    </div>
+                </div>
+
+
+                <div
+                    id="studentSurveySubmitArea"
+                    class="survey-submit-area hidden"
+                >
+                    <div class="survey-submit-note">
+                        <strong>Lưu ý:</strong>
+                        Bạn cần nhập đầy đủ cả trường hợp
+                        <strong>ĐÚNG / YES</strong>
+                        và
+                        <strong>SAI / NO</strong>
+                        cho cả 5 hạng mục.
+                    </div>
+
+                    <button
+                        id="studentSurveySubmitButton"
+                        type="submit"
+                        class="survey-submit-button"
+                    >
+                        Gửi khảo sát
+                    </button>
+
+                    <p
+                        id="studentSurveyMessage"
+                        class="survey-form-message"
+                    ></p>
+                </div>
+            </form>
+
+        </section>
+
+    </main>
+
+
+    <!-- =====================================================
+         MODAL XÁC NHẬN ĐĂNG XUẤT
+         ===================================================== -->
+
+    <div
+        id="logoutModal"
+        class="modal-overlay hidden"
+    >
+        <div class="modal-box">
+            <h3>⏻ Đăng xuất</h3>
+
+            <p>
+                Bạn có chắc chắn muốn đăng xuất
+                khỏi hệ thống không?
+            </p>
+
+            <div class="modal-actions">
+                <button
+                    class="btn-secondary"
+                    onclick="closeLogoutModal()"
+                >
+                    Hủy
+                </button>
+
+                <button
+                    class="btn-danger"
+                    onclick="logoutDemo()"
+                >
+                    Đăng xuất
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="js/app.js?v=152"></script>
+
+</body>
+</html>

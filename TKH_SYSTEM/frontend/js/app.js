@@ -22228,3 +22228,3492 @@ function initializeForumPage() {
 
     connectForumSocketDemo();
 }
+
+/*
+ * =========================================================
+ * STUDENT SURVEY MODULE
+ * =========================================================
+ */
+
+let studentSurveyListApi = [];
+let currentStudentSurveyApi = null;
+let studentSurveySubmitInProgress = false;
+
+
+/*
+ * =========================================================
+ * HÀM GỌI API KHẢO SÁT HỌC VIÊN
+ * =========================================================
+ */
+
+async function studentSurveyApiRequestDemo(
+    path,
+    options = {}
+) {
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
+
+    if (!token) {
+        logoutDemo();
+
+        throw new Error(
+            "Phiên đăng nhập không hợp lệ."
+        );
+    }
+
+    const requestHeaders = {
+        Authorization:
+            `Bearer ${token}`,
+
+        ...(options.headers || {})
+    };
+
+    if (
+        options.body !== undefined &&
+        options.body !== null
+    ) {
+        requestHeaders["Content-Type"] =
+            "application/json";
+    }
+
+    const response = await fetch(
+        `${API_BASE_URL}${path}`,
+        {
+            ...options,
+            headers:
+                requestHeaders
+        }
+    );
+
+    let result = null;
+
+    try {
+        result =
+            await response.json();
+    } catch (error) {
+        result = null;
+    }
+
+    if (response.status === 401) {
+        logoutDemo();
+
+        throw new Error(
+            "Phiên đăng nhập đã hết hạn."
+        );
+    }
+
+    if (response.status === 403) {
+        const forbiddenError =
+            new Error(
+                result?.error?.message ||
+                "Bạn không có quyền sử dụng chức năng khảo sát."
+            );
+
+        forbiddenError.status =
+            response.status;
+
+        forbiddenError.code =
+            result?.error?.code ||
+            "FORBIDDEN";
+
+        throw forbiddenError;
+    }
+
+    if (
+        !response.ok ||
+        result?.success !== true
+    ) {
+        const apiError =
+            new Error(
+                result?.error?.message ||
+                "Không thể xử lý yêu cầu khảo sát."
+            );
+
+        apiError.status =
+            response.status;
+
+        apiError.code =
+            result?.error?.code ||
+            null;
+
+        apiError.details =
+            result?.error?.details ||
+            null;
+
+        throw apiError;
+    }
+
+    return result;
+}
+
+
+/*
+ * =========================================================
+ * ESCAPE HTML RIÊNG CHO SURVEY
+ *
+ * Nếu app.js đã có escapeHtml(), khối khảo sát vẫn có thể
+ * dùng hàm riêng này để tránh phụ thuộc vị trí khai báo.
+ * =========================================================
+ */
+
+function escapeSurveyHtmlDemo(
+    value
+) {
+    return String(
+        value ?? ""
+    )
+        .replaceAll(
+            "&",
+            "&amp;"
+        )
+        .replaceAll(
+            "<",
+            "&lt;"
+        )
+        .replaceAll(
+            ">",
+            "&gt;"
+        )
+        .replaceAll(
+            '"',
+            "&quot;"
+        )
+        .replaceAll(
+            "'",
+            "&#039;"
+        );
+}
+
+
+/*
+ * =========================================================
+ * FORMAT NGÀY GIỜ NỘP KHẢO SÁT
+ * =========================================================
+ */
+
+function formatSurveyDateTimeDemo(
+    value
+) {
+    if (!value) {
+        return "Không xác định";
+    }
+
+    /*
+     * Backend đang trả datetime SQL dưới dạng chuỗi ISO.
+     * parseSqlLocalDateTime() đã có sẵn trong app.js.
+     */
+    let date = null;
+
+    if (
+        typeof parseSqlLocalDateTime ===
+        "function"
+    ) {
+        date =
+            parseSqlLocalDateTime(
+                value
+            );
+    }
+
+    if (
+        !date ||
+        Number.isNaN(
+            date.getTime()
+        )
+    ) {
+        date =
+            new Date(value);
+    }
+
+    if (
+        Number.isNaN(
+            date.getTime()
+        )
+    ) {
+        return "Không xác định";
+    }
+
+    return date.toLocaleString(
+        "vi-VN"
+    );
+}
+
+
+/*
+ * =========================================================
+ * NHÃN TRẠNG THÁI KHẢO SÁT
+ * =========================================================
+ */
+
+function getStudentSurveyStatusDemo(
+    survey
+) {
+    if (survey?.hasSubmitted) {
+        return {
+            label:
+                "Đã hoàn thành",
+
+            className:
+                "survey-status-submitted"
+        };
+    }
+
+    if (
+        survey?.status ===
+        "OPEN"
+    ) {
+        return {
+            label:
+                "Đang mở",
+
+            className:
+                "survey-status-open"
+        };
+    }
+
+    if (
+        survey?.status ===
+        "CLOSED"
+    ) {
+        return {
+            label:
+                "Đã đóng",
+
+            className:
+                "survey-status-closed"
+        };
+    }
+
+    return {
+        label:
+            "Chưa mở",
+
+        className:
+            "survey-status-draft"
+    };
+}
+
+
+/*
+ * =========================================================
+ * HIỂN THỊ DANH SÁCH KHẢO SÁT
+ * =========================================================
+ */
+
+function renderStudentSurveyListDemo(
+    surveys
+) {
+    const container =
+        document.getElementById(
+            "studentSurveyList"
+        );
+
+    if (!container) {
+        return;
+    }
+
+    const normalizedSurveys =
+        Array.isArray(surveys)
+            ? surveys
+            : [];
+
+    if (
+        normalizedSurveys.length === 0
+    ) {
+        container.innerHTML = `
+            <div class="survey-empty-card">
+                <div class="survey-empty-icon">
+                    📝
+                </div>
+
+                <h3>
+                    Chưa có khảo sát
+                </h3>
+
+                <p>
+                    Hiện chưa có khảo sát nào
+                    dành cho bạn.
+                </p>
+            </div>
+        `;
+
+        return;
+    }
+
+    container.innerHTML =
+        normalizedSurveys
+            .map(survey => {
+                const status =
+                    getStudentSurveyStatusDemo(
+                        survey
+                    );
+
+                const submittedTime =
+                    survey.response
+                        ?.submittedAt
+                        ? formatSurveyDateTimeDemo(
+                            survey.response
+                                .submittedAt
+                        )
+                        : null;
+
+                let buttonLabel =
+                    "Xem khảo sát";
+
+                if (
+                    survey.canSubmit
+                ) {
+                    buttonLabel =
+                        "Làm khảo sát";
+                } else if (
+                    survey.hasSubmitted
+                ) {
+                    buttonLabel =
+                        "Xem bài đã gửi";
+                } else if (
+                    survey.status ===
+                    "CLOSED"
+                ) {
+                    buttonLabel =
+                        "Xem nội dung";
+                }
+
+                return `
+                    <article
+                        class="
+                            student-survey-card
+                            ${
+                                survey.hasSubmitted
+                                    ? "student-survey-card-submitted"
+                                    : ""
+                            }
+                            ${
+                                survey.status === "CLOSED" &&
+                                !survey.hasSubmitted
+                                    ? "student-survey-card-closed"
+                                    : ""
+                            }
+                        "
+                    >
+                        <div class="student-survey-card-header">
+                            <div class="student-survey-card-icon">
+                                📝
+                            </div>
+
+                            <span
+                                class="
+                                    survey-status-badge
+                                    ${status.className}
+                                "
+                            >
+                                ${escapeSurveyHtmlDemo(
+                                    status.label
+                                )}
+                            </span>
+                        </div>
+
+                        <div class="student-survey-card-content">
+                            <p class="student-survey-case-label">
+                                CASE STUDY
+                            </p>
+
+                            <h3>
+                                ${escapeSurveyHtmlDemo(
+                                    survey.title ||
+                                    "Khảo sát"
+                                )}
+                            </h3>
+
+                            <p class="student-survey-description">
+                                ${escapeSurveyHtmlDemo(
+                                    survey.description ||
+                                    ""
+                                )}
+                            </p>
+
+                            <div class="student-survey-meta">
+                                <span>
+                                    ${
+                                        Number(
+                                            survey.questionCount
+                                        ) || 0
+                                    }
+                                    hạng mục
+                                </span>
+
+                                ${
+                                    submittedTime
+                                        ? `
+                                            <span>
+                                                Đã gửi:
+                                                ${escapeSurveyHtmlDemo(
+                                                    submittedTime
+                                                )}
+                                            </span>
+                                        `
+                                        : ""
+                                }
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="
+                                student-survey-open-button
+                                ${
+                                    survey.canSubmit
+                                        ? "student-survey-open-button-primary"
+                                        : ""
+                                }
+                            "
+                            onclick="openStudentSurveyDemo(
+                                ${Number(survey.id)}
+                            )"
+                        >
+                            ${escapeSurveyHtmlDemo(
+                                buttonLabel
+                            )}
+                        </button>
+                    </article>
+                `;
+            })
+            .join("");
+}
+
+
+/*
+ * =========================================================
+ * TẢI DANH SÁCH KHẢO SÁT
+ * =========================================================
+ */
+
+async function loadStudentSurveysDemo() {
+    const container =
+        document.getElementById(
+            "studentSurveyList"
+        );
+
+    if (!container) {
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="survey-loading-card">
+            Đang tải danh sách khảo sát...
+        </div>
+    `;
+
+    try {
+        const result =
+            await studentSurveyApiRequestDemo(
+                "/api/surveys"
+            );
+
+        studentSurveyListApi =
+            Array.isArray(
+                result.data?.surveys
+            )
+                ? result.data.surveys
+                : [];
+
+        renderStudentSurveyListDemo(
+            studentSurveyListApi
+        );
+    } catch (error) {
+        console.error(
+            "Load student surveys error:",
+            error
+        );
+
+        container.innerHTML = `
+            <div class="survey-error-card">
+                <h3>
+                    Không thể tải khảo sát
+                </h3>
+
+                <p>
+                    ${escapeSurveyHtmlDemo(
+                        error.message ||
+                        "Vui lòng thử lại."
+                    )}
+                </p>
+
+                <button
+                    type="button"
+                    class="student-survey-retry-button"
+                    onclick="loadStudentSurveysDemo()"
+                >
+                    Thử lại
+                </button>
+            </div>
+        `;
+    }
+}
+
+
+/*
+ * =========================================================
+ * HIỂN THỊ TRẠNG THÁI TRÊN TRANG CHI TIẾT
+ * =========================================================
+ */
+
+function renderStudentSurveyDetailStatusDemo(
+    survey
+) {
+    const statusElement =
+        document.getElementById(
+            "surveyDetailStatus"
+        );
+
+    if (!statusElement) {
+        return;
+    }
+
+    const status =
+        getStudentSurveyStatusDemo(
+            survey
+        );
+
+    statusElement.className =
+        `survey-status-badge ${status.className}`;
+
+    statusElement.innerText =
+        status.label;
+}
+
+
+/*
+ * =========================================================
+ * TÌM CÂU TRẢ LỜI ĐÃ NỘP THEO QUESTION ID
+ * =========================================================
+ */
+
+function getStudentSurveyExistingAnswerDemo(
+    survey,
+    questionId
+) {
+    const answers =
+        Array.isArray(
+            survey?.response?.answers
+        )
+            ? survey.response.answers
+            : [];
+
+    return (
+        answers.find(
+            answer =>
+                Number(
+                    answer.questionId
+                ) ===
+                Number(questionId)
+        ) ||
+        null
+    );
+}
+
+
+/*
+ * =========================================================
+ * RENDER 5 HẠNG MỤC KHẢO SÁT
+ * =========================================================
+ */
+
+function renderStudentSurveyQuestionsDemo(
+    survey
+) {
+    const container =
+        document.getElementById(
+            "studentSurveyQuestions"
+        );
+
+    if (!container) {
+        return;
+    }
+
+    const questions =
+        Array.isArray(
+            survey?.questions
+        )
+            ? survey.questions
+            : [];
+
+    if (questions.length === 0) {
+        container.innerHTML = `
+            <div class="survey-empty-card">
+                Khảo sát chưa có hạng mục nào.
+            </div>
+        `;
+
+        return;
+    }
+
+    const canEdit =
+        survey.canSubmit === true;
+
+    container.innerHTML =
+        questions
+            .map(question => {
+                const existingAnswer =
+                    getStudentSurveyExistingAnswerDemo(
+                        survey,
+                        question.id
+                    );
+
+                const yesAnswer =
+                    existingAnswer
+                        ?.yesAnswer ||
+                    "";
+
+                const noAnswer =
+                    existingAnswer
+                        ?.noAnswer ||
+                    "";
+
+                return `
+                    <article
+                        class="student-survey-question-card"
+                        id="surveyQuestionCard-${
+                            Number(question.id)
+                        }"
+                    >
+                        <div class="student-survey-question-heading">
+                            <div class="student-survey-question-number">
+                                ${
+                                    Number(
+                                        question.displayOrder
+                                    ) || ""
+                                }
+                            </div>
+
+                            <div>
+                                <h3>
+                                    ${escapeSurveyHtmlDemo(
+                                        question.title ||
+                                        "Hạng mục"
+                                    )}
+                                </h3>
+
+                                <p>
+                                    ${escapeSurveyHtmlDemo(
+                                        question.questionText ||
+                                        ""
+                                    )}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="student-survey-answer-grid">
+
+                            <div class="student-survey-answer-field student-survey-answer-yes">
+                                <label
+                                    for="surveyYesAnswer-${
+                                        Number(question.id)
+                                    }"
+                                >
+                                    ${escapeSurveyHtmlDemo(
+                                        question.yesLabel ||
+                                        "ĐÚNG / YES – Khi nào?"
+                                    )}
+                                </label>
+
+                                <textarea
+                                    id="surveyYesAnswer-${
+                                        Number(question.id)
+                                    }"
+                                    class="student-survey-answer-textarea"
+                                    data-question-id="${
+                                        Number(question.id)
+                                    }"
+                                    data-answer-type="yes"
+                                    maxlength="4000"
+                                    placeholder="Nhập suy nghĩ của bạn..."
+                                    ${
+                                        canEdit
+                                            ? ""
+                                            : "disabled"
+                                    }
+                                >${escapeSurveyHtmlDemo(
+                                    yesAnswer
+                                )}</textarea>
+
+                                <small>
+                                    Tối đa 4.000 ký tự
+                                </small>
+                            </div>
+
+
+                            <div class="student-survey-answer-field student-survey-answer-no">
+                                <label
+                                    for="surveyNoAnswer-${
+                                        Number(question.id)
+                                    }"
+                                >
+                                    ${escapeSurveyHtmlDemo(
+                                        question.noLabel ||
+                                        "SAI / NO – Khi nào?"
+                                    )}
+                                </label>
+
+                                <textarea
+                                    id="surveyNoAnswer-${
+                                        Number(question.id)
+                                    }"
+                                    class="student-survey-answer-textarea"
+                                    data-question-id="${
+                                        Number(question.id)
+                                    }"
+                                    data-answer-type="no"
+                                    maxlength="4000"
+                                    placeholder="Nhập suy nghĩ của bạn..."
+                                    ${
+                                        canEdit
+                                            ? ""
+                                            : "disabled"
+                                    }
+                                >${escapeSurveyHtmlDemo(
+                                    noAnswer
+                                )}</textarea>
+
+                                <small>
+                                    Tối đa 4.000 ký tự
+                                </small>
+                            </div>
+
+                        </div>
+
+                        <p
+                            id="surveyQuestionError-${
+                                Number(question.id)
+                            }"
+                            class="student-survey-question-error hidden"
+                        ></p>
+                    </article>
+                `;
+            })
+            .join("");
+}
+
+
+/*
+ * =========================================================
+ * HIỂN THỊ THÔNG BÁO ĐÃ NỘP
+ * =========================================================
+ */
+
+function renderStudentSurveySubmittedNoticeDemo(
+    survey
+) {
+    const notice =
+        document.getElementById(
+            "surveySubmittedNotice"
+        );
+
+    const timeElement =
+        document.getElementById(
+            "surveySubmittedTime"
+        );
+
+    if (!notice) {
+        return;
+    }
+
+    if (!survey?.hasSubmitted) {
+        notice.classList.add(
+            "hidden"
+        );
+
+        return;
+    }
+
+    notice.classList.remove(
+        "hidden"
+    );
+
+    if (timeElement) {
+        const submittedAt =
+            survey.response
+                ?.submittedAt;
+
+        timeElement.innerText =
+            submittedAt
+                ? `Đã gửi lúc ${formatSurveyDateTimeDemo(
+                    submittedAt
+                )}.`
+                : "Bài khảo sát đã được ghi nhận.";
+    }
+}
+
+
+/*
+ * =========================================================
+ * HIỂN THỊ KHU VỰC SUBMIT
+ * =========================================================
+ */
+
+function renderStudentSurveySubmitAreaDemo(
+    survey
+) {
+    const submitArea =
+        document.getElementById(
+            "studentSurveySubmitArea"
+        );
+
+    if (!submitArea) {
+        return;
+    }
+
+    /*
+     * Luôn khôi phục cấu trúc mặc định trước khi
+     * hiển thị trạng thái của khảo sát mới.
+     */
+    submitArea.innerHTML = `
+        <div class="survey-submit-note">
+            <strong>Lưu ý:</strong>
+            Bạn cần nhập đầy đủ cả trường hợp
+            <strong>ĐÚNG / YES</strong>
+            và
+            <strong>SAI / NO</strong>
+            cho cả 5 hạng mục.
+        </div>
+
+        <button
+            id="studentSurveySubmitButton"
+            type="submit"
+            class="survey-submit-button"
+        >
+            Gửi khảo sát
+        </button>
+
+        <p
+            id="studentSurveyMessage"
+            class="survey-form-message"
+        ></p>
+    `;
+
+    if (survey?.canSubmit) {
+        submitArea.classList.remove(
+            "hidden"
+        );
+
+        return;
+    }
+
+    if (
+        survey?.status === "CLOSED" &&
+        !survey?.hasSubmitted
+    ) {
+        submitArea.classList.remove(
+            "hidden"
+        );
+
+        submitArea.innerHTML = `
+            <div class="survey-closed-notice">
+                <strong>
+                    Khảo sát đã đóng
+                </strong>
+
+                <p>
+                    Bạn có thể xem nội dung khảo sát,
+                    nhưng hiện không thể gửi câu trả lời.
+                </p>
+            </div>
+        `;
+
+        return;
+    }
+
+    submitArea.classList.add(
+        "hidden"
+    );
+}
+
+
+/*
+ * =========================================================
+ * MỞ CHI TIẾT KHẢO SÁT
+ * =========================================================
+ */
+
+async function openStudentSurveyDemo(
+    surveyId
+) {
+    const normalizedSurveyId =
+        Number(surveyId);
+
+    if (
+        !Number.isInteger(
+            normalizedSurveyId
+        ) ||
+        normalizedSurveyId <= 0
+    ) {
+        return;
+    }
+
+    const listSection =
+        document.getElementById(
+            "surveyListSection"
+        );
+
+    const detailSection =
+        document.getElementById(
+            "surveyDetailSection"
+        );
+
+    const questionContainer =
+        document.getElementById(
+            "studentSurveyQuestions"
+        );
+
+    if (
+        !listSection ||
+        !detailSection
+    ) {
+        return;
+    }
+
+    listSection.classList.add(
+        "hidden"
+    );
+
+    detailSection.classList.remove(
+        "hidden"
+    );
+
+    if (questionContainer) {
+        questionContainer.innerHTML = `
+            <div class="survey-loading-card">
+                Đang tải nội dung khảo sát...
+            </div>
+        `;
+    }
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+
+    try {
+        const result =
+            await studentSurveyApiRequestDemo(
+                `/api/surveys/${normalizedSurveyId}`
+            );
+
+        const survey =
+            result.data?.survey;
+
+        if (!survey) {
+            throw new Error(
+                "Không tìm thấy dữ liệu khảo sát."
+            );
+        }
+
+        currentStudentSurveyApi =
+            survey;
+
+        const titleElement =
+            document.getElementById(
+                "surveyDetailTitle"
+            );
+
+        const descriptionElement =
+            document.getElementById(
+                "surveyDetailDescription"
+            );
+
+        if (titleElement) {
+            titleElement.innerText =
+                survey.title ||
+                "Khảo sát";
+        }
+
+        if (descriptionElement) {
+            descriptionElement.innerText =
+                survey.description ||
+                "";
+        }
+
+        renderStudentSurveyDetailStatusDemo(
+            survey
+        );
+
+        renderStudentSurveySubmittedNoticeDemo(
+            survey
+        );
+
+        renderStudentSurveyQuestionsDemo(
+            survey
+        );
+
+        renderStudentSurveySubmitAreaDemo(
+            survey
+        );
+    } catch (error) {
+        console.error(
+            "Open student survey error:",
+            error
+        );
+
+        currentStudentSurveyApi =
+            null;
+
+        if (questionContainer) {
+            questionContainer.innerHTML = `
+                <div class="survey-error-card">
+                    <h3>
+                        Không thể tải khảo sát
+                    </h3>
+
+                    <p>
+                        ${escapeSurveyHtmlDemo(
+                            error.message ||
+                            "Vui lòng thử lại."
+                        )}
+                    </p>
+
+                    <button
+                        type="button"
+                        class="student-survey-retry-button"
+                        onclick="openStudentSurveyDemo(
+                            ${normalizedSurveyId}
+                        )"
+                    >
+                        Thử lại
+                    </button>
+                </div>
+            `;
+        }
+    }
+}
+
+
+/*
+ * =========================================================
+ * QUAY VỀ DANH SÁCH
+ * =========================================================
+ */
+
+function backToSurveyListDemo() {
+    const listSection =
+        document.getElementById(
+            "surveyListSection"
+        );
+
+    const detailSection =
+        document.getElementById(
+            "surveyDetailSection"
+        );
+
+    if (listSection) {
+        listSection.classList.remove(
+            "hidden"
+        );
+    }
+
+    if (detailSection) {
+        detailSection.classList.add(
+            "hidden"
+        );
+    }
+
+    currentStudentSurveyApi =
+        null;
+
+    loadStudentSurveysDemo();
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+}
+
+
+/*
+ * =========================================================
+ * XÓA THÔNG BÁO LỖI CỦA TỪNG HẠNG MỤC
+ * =========================================================
+ */
+
+function clearStudentSurveyValidationDemo() {
+    document
+        .querySelectorAll(
+            ".student-survey-question-card"
+        )
+        .forEach(card => {
+            card.classList.remove(
+                "student-survey-question-card-error"
+            );
+        });
+
+    document
+        .querySelectorAll(
+            ".student-survey-question-error"
+        )
+        .forEach(element => {
+            element.classList.add(
+                "hidden"
+            );
+
+            element.innerText = "";
+        });
+}
+
+
+/*
+ * =========================================================
+ * LẤY VÀ VALIDATE 10 Ô CÂU TRẢ LỜI
+ * =========================================================
+ */
+
+function collectStudentSurveyAnswersDemo() {
+    const survey =
+        currentStudentSurveyApi;
+
+    const questions =
+        Array.isArray(
+            survey?.questions
+        )
+            ? survey.questions
+            : [];
+
+    if (questions.length === 0) {
+        return {
+            success: false,
+
+            message:
+                "Khảo sát chưa có hạng mục nào."
+        };
+    }
+
+    clearStudentSurveyValidationDemo();
+
+    const answers = [];
+
+    for (const question of questions) {
+        const questionId =
+            Number(question.id);
+
+        const yesElement =
+            document.getElementById(
+                `surveyYesAnswer-${questionId}`
+            );
+
+        const noElement =
+            document.getElementById(
+                `surveyNoAnswer-${questionId}`
+            );
+
+        const yesAnswer =
+            String(
+                yesElement?.value ||
+                ""
+            ).trim();
+
+        const noAnswer =
+            String(
+                noElement?.value ||
+                ""
+            ).trim();
+
+        if (
+            !yesAnswer ||
+            !noAnswer
+        ) {
+            const card =
+                document.getElementById(
+                    `surveyQuestionCard-${questionId}`
+                );
+
+            const errorElement =
+                document.getElementById(
+                    `surveyQuestionError-${questionId}`
+                );
+
+            if (card) {
+                card.classList.add(
+                    "student-survey-question-card-error"
+                );
+            }
+
+            if (errorElement) {
+                errorElement.classList.remove(
+                    "hidden"
+                );
+
+                if (
+                    !yesAnswer &&
+                    !noAnswer
+                ) {
+                    errorElement.innerText =
+                        "Vui lòng nhập cả trường hợp ĐÚNG / YES và SAI / NO.";
+                } else if (
+                    !yesAnswer
+                ) {
+                    errorElement.innerText =
+                        "Vui lòng nhập trường hợp ĐÚNG / YES.";
+                } else {
+                    errorElement.innerText =
+                        "Vui lòng nhập trường hợp SAI / NO.";
+                }
+            }
+
+            const focusElement =
+                !yesAnswer
+                    ? yesElement
+                    : noElement;
+
+            if (focusElement) {
+                focusElement.focus();
+
+                focusElement.scrollIntoView({
+                    behavior:
+                        "smooth",
+
+                    block:
+                        "center"
+                });
+            }
+
+            return {
+                success: false,
+
+                message:
+                    `Bạn chưa hoàn thành hạng mục "${question.title}".`
+            };
+        }
+
+        if (
+            yesAnswer.length > 4000 ||
+            noAnswer.length > 4000
+        ) {
+            return {
+                success: false,
+
+                message:
+                    `Câu trả lời ở hạng mục "${question.title}" vượt quá 4.000 ký tự.`
+            };
+        }
+
+        answers.push({
+            questionId,
+            yesAnswer,
+            noAnswer
+        });
+    }
+
+    return {
+        success: true,
+        answers
+    };
+}
+
+
+/*
+ * =========================================================
+ * KHÓA / MỞ FORM TRONG LÚC SUBMIT
+ * =========================================================
+ */
+
+function setStudentSurveyFormBusyDemo(
+    isBusy
+) {
+    const submitButton =
+        document.getElementById(
+            "studentSurveySubmitButton"
+        );
+
+    document
+        .querySelectorAll(
+            ".student-survey-answer-textarea"
+        )
+        .forEach(textarea => {
+            textarea.disabled =
+                Boolean(isBusy);
+        });
+
+    if (submitButton) {
+        submitButton.disabled =
+            Boolean(isBusy);
+
+        submitButton.innerText =
+            isBusy
+                ? "Đang gửi khảo sát..."
+                : "Gửi khảo sát";
+    }
+}
+
+
+/*
+ * =========================================================
+ * NỘP KHẢO SÁT
+ * =========================================================
+ */
+
+async function submitStudentSurveyDemo(
+    event
+) {
+    event.preventDefault();
+
+    if (
+        studentSurveySubmitInProgress
+    ) {
+        return;
+    }
+
+    const survey =
+        currentStudentSurveyApi;
+
+    const message =
+        document.getElementById(
+            "studentSurveyMessage"
+        );
+
+    if (!survey) {
+        if (message) {
+            message.className =
+                "survey-form-message error";
+
+            message.innerText =
+                "Không tìm thấy khảo sát cần gửi.";
+        }
+
+        return;
+    }
+
+    if (!survey.canSubmit) {
+        if (message) {
+            message.className =
+                "survey-form-message error";
+
+            message.innerText =
+                survey.hasSubmitted
+                    ? "Bạn đã gửi khảo sát này trước đó."
+                    : "Khảo sát hiện đã đóng.";
+        }
+
+        return;
+    }
+
+    const validation =
+        collectStudentSurveyAnswersDemo();
+
+    if (!validation.success) {
+        if (message) {
+            message.className =
+                "survey-form-message error";
+
+            message.innerText =
+                validation.message;
+        }
+
+        return;
+    }
+
+    const confirmed =
+        confirm(
+            "Bạn có chắc muốn gửi khảo sát?\n\n" +
+            "Sau khi gửi, bạn sẽ không thể chỉnh sửa hoặc gửi lại."
+        );
+
+    if (!confirmed) {
+        return;
+    }
+
+    studentSurveySubmitInProgress =
+        true;
+
+    setStudentSurveyFormBusyDemo(
+        true
+    );
+
+    if (message) {
+        message.className =
+            "survey-form-message info";
+
+        message.innerText =
+            "Đang gửi khảo sát...";
+    }
+
+    try {
+        const result =
+            await studentSurveyApiRequestDemo(
+                `/api/surveys/${Number(
+                    survey.id
+                )}/submit`,
+                {
+                    method:
+                        "POST",
+
+                    body:
+                        JSON.stringify({
+                            answers:
+                                validation.answers
+                        })
+                }
+            );
+
+        if (message) {
+            message.className =
+                "survey-form-message success";
+
+            message.innerText =
+                result.message ||
+                "Bạn đã gửi khảo sát thành công.";
+        }
+
+        /*
+         * Tải lại chi tiết từ Backend để:
+         * - Khóa form.
+         * - Hiển thị bài vừa nộp.
+         * - Hiển thị thời gian gửi.
+         */
+        await openStudentSurveyDemo(
+            survey.id
+        );
+    } catch (error) {
+        console.error(
+            "Submit student survey error:",
+            error
+        );
+
+        if (message) {
+            message.className =
+                "survey-form-message error";
+
+            if (
+                error.code ===
+                "SURVEY_ALREADY_SUBMITTED"
+            ) {
+                message.innerText =
+                    "Bạn đã gửi khảo sát này trước đó.";
+
+                await openStudentSurveyDemo(
+                    survey.id
+                );
+
+                return;
+            }
+
+            if (
+                error.code ===
+                "SURVEY_NOT_OPEN"
+            ) {
+                message.innerText =
+                    "Khảo sát vừa được đóng. Bạn không thể gửi bài.";
+
+                await openStudentSurveyDemo(
+                    survey.id
+                );
+
+                return;
+            }
+
+            message.innerText =
+                error.message ||
+                "Không thể gửi khảo sát. Vui lòng thử lại.";
+        }
+    } finally {
+        studentSurveySubmitInProgress =
+            false;
+
+        /*
+         * Chỉ mở lại form nếu khảo sát vẫn còn được phép gửi.
+         */
+        if (
+            currentStudentSurveyApi
+                ?.canSubmit
+        ) {
+            setStudentSurveyFormBusyDemo(
+                false
+            );
+        }
+    }
+}
+
+
+/*
+ * =========================================================
+ * KHỞI TẠO TRANG KHẢO SÁT
+ * =========================================================
+ */
+
+function initializeStudentSurveyPageDemo() {
+    const surveyList =
+        document.getElementById(
+            "studentSurveyList"
+        );
+
+    if (!surveyList) {
+        return;
+    }
+
+    const currentUser =
+        JSON.parse(
+            localStorage.getItem(
+                "currentUser"
+            ) ||
+            "null"
+        );
+
+    if (!currentUser) {
+        logoutDemo();
+        return;
+    }
+
+    if (
+        String(
+            currentUser.role ||
+            ""
+        ).toLowerCase() !==
+        "student"
+    ) {
+        window.location.href =
+            "admin-dashboard.html";
+
+        return;
+    }
+
+    loadStudentSurveysDemo();
+}
+
+
+/*
+ * Chạy sau khi HTML đã sẵn sàng.
+ */
+if (
+    document.readyState ===
+    "loading"
+) {
+    document.addEventListener(
+        "DOMContentLoaded",
+        initializeStudentSurveyPageDemo
+    );
+} else {
+    initializeStudentSurveyPageDemo();
+}
+
+/*
+ * =========================================================
+ * ADMIN SURVEY MODULE
+ * =========================================================
+ */
+
+let adminSurveyListApi = [];
+let currentAdminSurveyApi = null;
+let filteredAdminSurveyResponsesApi = [];
+let adminSurveyRequestInProgress = false;
+
+
+/*
+ * =========================================================
+ * GỌI API ADMIN SURVEY
+ * =========================================================
+ */
+
+async function adminSurveyApiRequestDemo(
+    path,
+    options = {}
+) {
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
+
+    if (!token) {
+        logoutDemo();
+
+        throw new Error(
+            "Phiên đăng nhập không hợp lệ."
+        );
+    }
+
+    const headers = {
+        Authorization:
+            `Bearer ${token}`,
+
+        ...(options.headers || {})
+    };
+
+    if (
+        options.body !== undefined &&
+        options.body !== null
+    ) {
+        headers["Content-Type"] =
+            "application/json";
+    }
+
+    const response = await fetch(
+        `${API_BASE_URL}${path}`,
+        {
+            ...options,
+            headers
+        }
+    );
+
+    let result = null;
+
+    try {
+        result =
+            await response.json();
+    } catch (error) {
+        result = null;
+    }
+
+    if (response.status === 401) {
+        logoutDemo();
+
+        throw new Error(
+            "Phiên đăng nhập đã hết hạn."
+        );
+    }
+
+    if (response.status === 403) {
+        const forbiddenError =
+            new Error(
+                result?.error?.message ||
+                "Bạn không có quyền quản lý khảo sát."
+            );
+
+        forbiddenError.status =
+            403;
+
+        forbiddenError.code =
+            result?.error?.code ||
+            "FORBIDDEN";
+
+        throw forbiddenError;
+    }
+
+    if (
+        !response.ok ||
+        result?.success !== true
+    ) {
+        const apiError =
+            new Error(
+                result?.error?.message ||
+                "Không thể xử lý yêu cầu quản lý khảo sát."
+            );
+
+        apiError.status =
+            response.status;
+
+        apiError.code =
+            result?.error?.code ||
+            null;
+
+        apiError.details =
+            result?.error?.details ||
+            null;
+
+        throw apiError;
+    }
+
+    return result;
+}
+
+
+/*
+ * =========================================================
+ * HIỂN THỊ MESSAGE THAO TÁC ADMIN
+ * =========================================================
+ */
+
+function setAdminSurveyActionMessageDemo(
+    message,
+    type = ""
+) {
+    const element =
+        document.getElementById(
+            "adminSurveyActionMessage"
+        );
+
+    if (!element) {
+        return;
+    }
+
+    element.innerText =
+        message || "";
+
+    element.className =
+        "survey-form-message";
+
+    if (type) {
+        element.classList.add(
+            type
+        );
+    }
+}
+
+
+/*
+ * =========================================================
+ * FORMAT TRẠNG THÁI KHẢO SÁT
+ * =========================================================
+ */
+
+function getAdminSurveyStatusDemo(
+    status
+) {
+    const normalizedStatus =
+        String(status || "")
+            .trim()
+            .toUpperCase();
+
+    if (
+        normalizedStatus ===
+        "OPEN"
+    ) {
+        return {
+            label:
+                "Đang mở",
+
+            className:
+                "survey-status-open"
+        };
+    }
+
+    if (
+        normalizedStatus ===
+        "CLOSED"
+    ) {
+        return {
+            label:
+                "Đã đóng",
+
+            className:
+                "survey-status-closed"
+        };
+    }
+
+    return {
+        label:
+            "Bản nháp",
+
+        className:
+            "survey-status-draft"
+    };
+}
+
+
+/*
+ * =========================================================
+ * RENDER DANH SÁCH KHẢO SÁT ADMIN
+ * =========================================================
+ */
+
+function renderAdminSurveyListDemo(
+    surveys
+) {
+    const container =
+        document.getElementById(
+            "adminSurveyList"
+        );
+
+    if (!container) {
+        return;
+    }
+
+    const normalizedSurveys =
+        Array.isArray(surveys)
+            ? surveys
+            : [];
+
+    if (
+        normalizedSurveys.length === 0
+    ) {
+        container.innerHTML = `
+            <div class="survey-empty-card">
+                <div class="survey-empty-icon">
+                    📝
+                </div>
+
+                <h3>
+                    Chưa có khảo sát
+                </h3>
+
+                <p>
+                    Mùa hiện tại chưa có khảo sát nào.
+                </p>
+            </div>
+        `;
+
+        return;
+    }
+
+    container.innerHTML =
+        normalizedSurveys
+            .map(survey => {
+                const status =
+                    getAdminSurveyStatusDemo(
+                        survey.status
+                    );
+
+                const totalStudents =
+                    Number(
+                        survey.totalStudents
+                    ) || 0;
+
+                const responseCount =
+                    Number(
+                        survey.responseCount
+                    ) || 0;
+
+                const remainingStudents =
+                    Number(
+                        survey.remainingStudents
+                    ) || 0;
+
+                return `
+                    <article class="admin-survey-list-card">
+
+                        <div class="admin-survey-list-card-header">
+
+                            <div class="admin-survey-list-card-icon">
+                                📝
+                            </div>
+
+                            <span
+                                class="
+                                    survey-status-badge
+                                    ${status.className}
+                                "
+                            >
+                                ${escapeSurveyHtmlDemo(
+                                    status.label
+                                )}
+                            </span>
+
+                        </div>
+
+
+                        <div class="admin-survey-list-card-content">
+
+                            <p class="admin-survey-case-label">
+                                CASE STUDY
+                            </p>
+
+                            <h3>
+                                ${escapeSurveyHtmlDemo(
+                                    survey.title ||
+                                    "Khảo sát"
+                                )}
+                            </h3>
+
+                            <p>
+                                ${escapeSurveyHtmlDemo(
+                                    survey.description ||
+                                    ""
+                                )}
+                            </p>
+
+                        </div>
+
+
+                        <div class="admin-survey-list-statistics">
+
+                            <div>
+                                <span>
+                                    Tổng học viên
+                                </span>
+
+                                <strong>
+                                    ${totalStudents}
+                                </strong>
+                            </div>
+
+                            <div>
+                                <span>
+                                    Đã nộp
+                                </span>
+
+                                <strong>
+                                    ${responseCount}
+                                </strong>
+                            </div>
+
+                            <div>
+                                <span>
+                                    Chưa nộp
+                                </span>
+
+                                <strong>
+                                    ${remainingStudents}
+                                </strong>
+                            </div>
+
+                        </div>
+
+
+                        <button
+                            type="button"
+                            class="admin-survey-open-detail-button"
+                            onclick="openAdminSurveyDetailDemo(
+                                ${Number(survey.id)}
+                            )"
+                        >
+                            Xem kết quả khảo sát
+                        </button>
+
+                    </article>
+                `;
+            })
+            .join("");
+}
+
+
+/*
+ * =========================================================
+ * TẢI DANH SÁCH KHẢO SÁT ADMIN
+ * =========================================================
+ */
+
+async function loadAdminSurveysDemo(
+    showMessage = false
+) {
+    const container =
+        document.getElementById(
+            "adminSurveyList"
+        );
+
+    if (!container) {
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="survey-loading-card">
+            Đang tải danh sách khảo sát...
+        </div>
+    `;
+
+    try {
+        const result =
+            await adminSurveyApiRequestDemo(
+                "/api/admin/surveys"
+            );
+
+        adminSurveyListApi =
+            Array.isArray(
+                result.data?.surveys
+            )
+                ? result.data.surveys
+                : [];
+
+        renderAdminSurveyListDemo(
+            adminSurveyListApi
+        );
+
+        if (showMessage) {
+            setAdminSurveyActionMessageDemo(
+                "Đã làm mới danh sách khảo sát.",
+                "success"
+            );
+        }
+    } catch (error) {
+        console.error(
+            "Load admin surveys error:",
+            error
+        );
+
+        container.innerHTML = `
+            <div class="survey-error-card">
+                <h3>
+                    Không thể tải danh sách khảo sát
+                </h3>
+
+                <p>
+                    ${escapeSurveyHtmlDemo(
+                        error.message ||
+                        "Vui lòng thử lại."
+                    )}
+                </p>
+
+                <button
+                    type="button"
+                    class="student-survey-retry-button"
+                    onclick="loadAdminSurveysDemo()"
+                >
+                    Thử lại
+                </button>
+            </div>
+        `;
+    }
+}
+
+
+/*
+ * =========================================================
+ * RENDER HEADER VÀ THỐNG KÊ CHI TIẾT
+ * =========================================================
+ */
+
+function renderAdminSurveyDetailHeaderDemo(
+    survey
+) {
+    const titleElement =
+        document.getElementById(
+            "adminSurveyDetailTitle"
+        );
+
+    const descriptionElement =
+        document.getElementById(
+            "adminSurveyDetailDescription"
+        );
+
+    const statusElement =
+        document.getElementById(
+            "adminSurveyDetailStatus"
+        );
+
+    const totalElement =
+        document.getElementById(
+            "adminSurveyTotalStudents"
+        );
+
+    const responseElement =
+        document.getElementById(
+            "adminSurveyResponseCount"
+        );
+
+    const remainingElement =
+        document.getElementById(
+            "adminSurveyRemainingCount"
+        );
+
+    if (titleElement) {
+        titleElement.innerText =
+            survey?.title ||
+            "Khảo sát";
+    }
+
+    if (descriptionElement) {
+        descriptionElement.innerText =
+            survey?.description ||
+            "";
+    }
+
+    if (statusElement) {
+        const status =
+            getAdminSurveyStatusDemo(
+                survey?.status
+            );
+
+        statusElement.className =
+            `survey-status-badge ${status.className}`;
+
+        statusElement.innerText =
+            status.label;
+    }
+
+    if (totalElement) {
+        totalElement.innerText =
+            Number(
+                survey?.totalStudents
+            ) || 0;
+    }
+
+    if (responseElement) {
+        responseElement.innerText =
+            Number(
+                survey?.responseCount
+            ) || 0;
+    }
+
+    if (remainingElement) {
+        remainingElement.innerText =
+            Number(
+                survey?.remainingStudents
+            ) || 0;
+    }
+}
+
+
+/*
+ * =========================================================
+ * CẬP NHẬT NÚT MỞ / ĐÓNG
+ * =========================================================
+ */
+
+function renderAdminSurveyStatusButtonDemo(
+    survey
+) {
+    const button =
+        document.getElementById(
+            "adminSurveyStatusButton"
+        );
+
+    if (!button) {
+        return;
+    }
+
+    const isOpen =
+        String(
+            survey?.status ||
+            ""
+        ).toUpperCase() ===
+        "OPEN";
+
+    button.disabled =
+        Boolean(
+            adminSurveyRequestInProgress
+        );
+
+    button.className =
+        isOpen
+            ? "admin-survey-status-button admin-survey-close-button"
+            : "admin-survey-status-button admin-survey-open-button";
+
+    button.innerText =
+        isOpen
+            ? "🔒 Đóng khảo sát"
+            : "🔓 Mở khảo sát";
+}
+
+
+/*
+ * =========================================================
+ * TẠO DANH SÁCH NHÓM CHO FILTER
+ * =========================================================
+ */
+
+function populateAdminSurveyGroupFilterDemo(
+    responses
+) {
+    const select =
+        document.getElementById(
+            "adminSurveyGroupFilter"
+        );
+
+    if (!select) {
+        return;
+    }
+
+    const currentValue =
+        select.value;
+
+    const groupMap =
+        new Map();
+
+    for (
+        const response of
+        Array.isArray(responses)
+            ? responses
+            : []
+    ) {
+        const group =
+            response?.group;
+
+        if (
+            group?.id &&
+            group?.name
+        ) {
+            groupMap.set(
+                Number(group.id),
+                group.name
+            );
+        }
+    }
+
+    const groups =
+        Array.from(
+            groupMap.entries()
+        )
+            .map(
+                ([id, name]) => ({
+                    id,
+                    name
+                })
+            )
+            .sort(
+                (firstGroup, secondGroup) =>
+                    String(firstGroup.name)
+                        .localeCompare(
+                            String(secondGroup.name),
+                            "vi"
+                        )
+            );
+
+    select.innerHTML = `
+        <option value="">
+            Tất cả nhóm
+        </option>
+
+        ${groups
+            .map(group => `
+                <option value="${Number(group.id)}">
+                    ${escapeSurveyHtmlDemo(
+                        group.name
+                    )}
+                </option>
+            `)
+            .join("")}
+    `;
+
+    if (
+        groups.some(
+            group =>
+                String(group.id) ===
+                String(currentValue)
+        )
+    ) {
+        select.value =
+            currentValue;
+    }
+}
+
+
+/*
+ * =========================================================
+ * RENDER DANH SÁCH BÀI NỘP
+ * =========================================================
+ */
+
+function renderAdminSurveyResponsesDemo(
+    responses
+) {
+    const container =
+        document.getElementById(
+            "adminSurveyResponseList"
+        );
+
+    const resultText =
+        document.getElementById(
+            "adminSurveySearchResult"
+        );
+
+    if (!container) {
+        return;
+    }
+
+    const normalizedResponses =
+        Array.isArray(responses)
+            ? responses
+            : [];
+
+    if (resultText) {
+        resultText.innerText =
+            `Đang hiển thị ${normalizedResponses.length} bài nộp`;
+    }
+
+    if (
+        normalizedResponses.length === 0
+    ) {
+        container.innerHTML = `
+            <div class="survey-empty-card">
+                <div class="survey-empty-icon">
+                    📭
+                </div>
+
+                <h3>
+                    Chưa có bài nộp phù hợp
+                </h3>
+
+                <p>
+                    Chưa có học viên nộp khảo sát
+                    hoặc không có kết quả phù hợp với bộ lọc.
+                </p>
+            </div>
+        `;
+
+        return;
+    }
+
+    container.innerHTML =
+        normalizedResponses
+            .map(response => {
+                const member =
+                    response.member ||
+                    {};
+
+                const groupName =
+                    response.group?.name ||
+                    "Chưa có nhóm";
+
+                return `
+                    <article class="admin-survey-response-card">
+
+                        <div class="admin-survey-response-avatar">
+                            ${escapeSurveyHtmlDemo(
+                                String(
+                                    member.fullName ||
+                                    "?"
+                                )
+                                    .trim()
+                                    .charAt(0)
+                                    .toUpperCase() ||
+                                "?"
+                            )}
+                        </div>
+
+
+                        <div class="admin-survey-response-information">
+
+                            <div class="admin-survey-response-name-row">
+
+                                <h3>
+                                    ${escapeSurveyHtmlDemo(
+                                        member.fullName ||
+                                        "Không rõ học viên"
+                                    )}
+                                </h3>
+
+                                <span class="admin-survey-response-code">
+                                    ${escapeSurveyHtmlDemo(
+                                        member.tkhCode ||
+                                        ""
+                                    )}
+                                </span>
+
+                            </div>
+
+                            <p>
+                                Nhóm:
+                                <strong>
+                                    ${escapeSurveyHtmlDemo(
+                                        groupName
+                                    )}
+                                </strong>
+                            </p>
+
+                            <p>
+                                Đã gửi:
+                                ${escapeSurveyHtmlDemo(
+                                    formatSurveyDateTimeDemo(
+                                        response.submittedAt
+                                    )
+                                )}
+                            </p>
+
+                        </div>
+
+
+                        <button
+                            type="button"
+                            class="admin-survey-view-response-button"
+                            onclick="openAdminSurveyResponseModalDemo(
+                                ${Number(response.id)}
+                            )"
+                        >
+                            Xem bài
+                        </button>
+
+                    </article>
+                `;
+            })
+            .join("");
+}
+
+
+/*
+ * =========================================================
+ * FILTER DANH SÁCH BÀI NỘP
+ * =========================================================
+ */
+
+function filterAdminSurveyResponsesDemo() {
+    const responses =
+        Array.isArray(
+            currentAdminSurveyApi
+                ?.responses
+        )
+            ? currentAdminSurveyApi
+                .responses
+            : [];
+
+    const searchInput =
+        document.getElementById(
+            "adminSurveySearchInput"
+        );
+
+    const groupSelect =
+        document.getElementById(
+            "adminSurveyGroupFilter"
+        );
+
+    const keyword =
+        String(
+            searchInput?.value ||
+            ""
+        )
+            .trim()
+            .toLocaleLowerCase(
+                "vi"
+            );
+
+    const selectedGroupId =
+        String(
+            groupSelect?.value ||
+            ""
+        );
+
+    filteredAdminSurveyResponsesApi =
+        responses.filter(response => {
+            const member =
+                response.member ||
+                {};
+
+            const group =
+                response.group ||
+                {};
+
+            const searchableText = [
+                member.tkhCode,
+                member.fullName,
+                group.code,
+                group.name
+            ]
+                .filter(Boolean)
+                .join(" ")
+                .toLocaleLowerCase(
+                    "vi"
+                );
+
+            const matchesKeyword =
+                !keyword ||
+                searchableText.includes(
+                    keyword
+                );
+
+            const matchesGroup =
+                !selectedGroupId ||
+                String(group.id) ===
+                selectedGroupId;
+
+            return (
+                matchesKeyword &&
+                matchesGroup
+            );
+        });
+
+    renderAdminSurveyResponsesDemo(
+        filteredAdminSurveyResponsesApi
+    );
+}
+
+
+/*
+ * =========================================================
+ * MỞ CHI TIẾT KHẢO SÁT
+ * =========================================================
+ */
+
+async function openAdminSurveyDetailDemo(
+    surveyId
+) {
+    const normalizedSurveyId =
+        Number(surveyId);
+
+    if (
+        !Number.isInteger(
+            normalizedSurveyId
+        ) ||
+        normalizedSurveyId <= 0
+    ) {
+        return;
+    }
+
+    const listSection =
+        document.getElementById(
+            "adminSurveyListSection"
+        );
+
+    const detailSection =
+        document.getElementById(
+            "adminSurveyDetailSection"
+        );
+
+    const responseContainer =
+        document.getElementById(
+            "adminSurveyResponseList"
+        );
+
+    if (
+        !listSection ||
+        !detailSection
+    ) {
+        return;
+    }
+
+    listSection.classList.add(
+        "hidden"
+    );
+
+    detailSection.classList.remove(
+        "hidden"
+    );
+
+    setAdminSurveyActionMessageDemo(
+        ""
+    );
+
+    if (responseContainer) {
+        responseContainer.innerHTML = `
+            <div class="survey-loading-card">
+                Đang tải bài nộp...
+            </div>
+        `;
+    }
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+
+    try {
+        const result =
+            await adminSurveyApiRequestDemo(
+                `/api/admin/surveys/${normalizedSurveyId}`
+            );
+
+        const survey =
+            result.data?.survey;
+
+        if (!survey) {
+            throw new Error(
+                "Không tìm thấy dữ liệu khảo sát."
+            );
+        }
+
+        currentAdminSurveyApi =
+            survey;
+
+        renderAdminSurveyDetailHeaderDemo(
+            survey
+        );
+
+        renderAdminSurveyStatusButtonDemo(
+            survey
+        );
+
+        populateAdminSurveyGroupFilterDemo(
+            survey.responses
+        );
+
+        const searchInput =
+            document.getElementById(
+                "adminSurveySearchInput"
+            );
+
+        if (searchInput) {
+            searchInput.value = "";
+        }
+
+        const groupSelect =
+            document.getElementById(
+                "adminSurveyGroupFilter"
+            );
+
+        if (groupSelect) {
+            groupSelect.value = "";
+        }
+
+        filterAdminSurveyResponsesDemo();
+    } catch (error) {
+        console.error(
+            "Open admin survey detail error:",
+            error
+        );
+
+        currentAdminSurveyApi =
+            null;
+
+        if (responseContainer) {
+            responseContainer.innerHTML = `
+                <div class="survey-error-card">
+                    <h3>
+                        Không thể tải kết quả khảo sát
+                    </h3>
+
+                    <p>
+                        ${escapeSurveyHtmlDemo(
+                            error.message ||
+                            "Vui lòng thử lại."
+                        )}
+                    </p>
+
+                    <button
+                        type="button"
+                        class="student-survey-retry-button"
+                        onclick="openAdminSurveyDetailDemo(
+                            ${normalizedSurveyId}
+                        )"
+                    >
+                        Thử lại
+                    </button>
+                </div>
+            `;
+        }
+    }
+}
+
+
+/*
+ * =========================================================
+ * LÀM MỚI CHI TIẾT
+ * =========================================================
+ */
+
+async function reloadAdminSurveyDetailDemo() {
+    const surveyId =
+        Number(
+            currentAdminSurveyApi?.id
+        );
+
+    if (!surveyId) {
+        return;
+    }
+
+    setAdminSurveyActionMessageDemo(
+        "Đang làm mới dữ liệu...",
+        "info"
+    );
+
+    await openAdminSurveyDetailDemo(
+        surveyId
+    );
+
+    if (currentAdminSurveyApi) {
+        setAdminSurveyActionMessageDemo(
+            "Đã làm mới kết quả khảo sát.",
+            "success"
+        );
+    }
+}
+
+
+/*
+ * =========================================================
+ * QUAY LẠI DANH SÁCH
+ * =========================================================
+ */
+
+function backToAdminSurveyListDemo() {
+    const listSection =
+        document.getElementById(
+            "adminSurveyListSection"
+        );
+
+    const detailSection =
+        document.getElementById(
+            "adminSurveyDetailSection"
+        );
+
+    if (listSection) {
+        listSection.classList.remove(
+            "hidden"
+        );
+    }
+
+    if (detailSection) {
+        detailSection.classList.add(
+            "hidden"
+        );
+    }
+
+    currentAdminSurveyApi =
+        null;
+
+    filteredAdminSurveyResponsesApi =
+        [];
+
+    setAdminSurveyActionMessageDemo(
+        ""
+    );
+
+    loadAdminSurveysDemo();
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+}
+
+
+/*
+ * =========================================================
+ * MỞ / ĐÓNG KHẢO SÁT
+ * =========================================================
+ */
+
+async function toggleAdminSurveyStatusDemo() {
+    const survey =
+        currentAdminSurveyApi;
+
+    if (
+        !survey ||
+        adminSurveyRequestInProgress
+    ) {
+        return;
+    }
+
+    const isOpen =
+        String(
+            survey.status ||
+            ""
+        ).toUpperCase() ===
+        "OPEN";
+
+    const nextStatus =
+        isOpen
+            ? "CLOSED"
+            : "OPEN";
+
+    const confirmationMessage =
+        isOpen
+            ? (
+                "Bạn có chắc muốn đóng khảo sát?\n\n" +
+                "Sau khi đóng, những học viên chưa nộp sẽ không thể gửi bài."
+            )
+            : (
+                "Bạn có chắc muốn mở khảo sát?\n\n" +
+                "Những học viên chưa nộp sẽ có thể tiếp tục làm và gửi bài."
+            );
+
+    const confirmed =
+        confirm(
+            confirmationMessage
+        );
+
+    if (!confirmed) {
+        return;
+    }
+
+    adminSurveyRequestInProgress =
+        true;
+
+    renderAdminSurveyStatusButtonDemo(
+        survey
+    );
+
+    setAdminSurveyActionMessageDemo(
+        isOpen
+            ? "Đang đóng khảo sát..."
+            : "Đang mở khảo sát...",
+        "info"
+    );
+
+    try {
+        const result =
+            await adminSurveyApiRequestDemo(
+                `/api/admin/surveys/${Number(
+                    survey.id
+                )}/status`,
+                {
+                    method:
+                        "PATCH",
+
+                    body:
+                        JSON.stringify({
+                            status:
+                                nextStatus
+                        })
+                }
+            );
+
+        const updatedSurvey =
+            result.data?.survey;
+
+        currentAdminSurveyApi = {
+            ...currentAdminSurveyApi,
+            ...updatedSurvey
+        };
+
+        renderAdminSurveyDetailHeaderDemo(
+            currentAdminSurveyApi
+        );
+
+        setAdminSurveyActionMessageDemo(
+            result.message ||
+            (
+                nextStatus === "OPEN"
+                    ? "Đã mở khảo sát."
+                    : "Đã đóng khảo sát."
+            ),
+            "success"
+        );
+
+        await openAdminSurveyDetailDemo(
+            survey.id
+        );
+    } catch (error) {
+        console.error(
+            "Toggle admin survey status error:",
+            error
+        );
+
+        setAdminSurveyActionMessageDemo(
+            error.message ||
+            "Không thể cập nhật trạng thái khảo sát.",
+            "error"
+        );
+    } finally {
+        adminSurveyRequestInProgress =
+            false;
+
+        renderAdminSurveyStatusButtonDemo(
+            currentAdminSurveyApi
+        );
+    }
+}
+
+
+/*
+ * =========================================================
+ * TÌM BÀI NỘP THEO RESPONSE ID
+ * =========================================================
+ */
+
+function findAdminSurveyResponseDemo(
+    responseId
+) {
+    const normalizedResponseId =
+        Number(responseId);
+
+    const responses =
+        Array.isArray(
+            currentAdminSurveyApi
+                ?.responses
+        )
+            ? currentAdminSurveyApi
+                .responses
+            : [];
+
+    return (
+        responses.find(
+            response =>
+                Number(response.id) ===
+                normalizedResponseId
+        ) ||
+        null
+    );
+}
+
+
+/*
+ * =========================================================
+ * MỞ MODAL XEM BÀI
+ * =========================================================
+ */
+
+function openAdminSurveyResponseModalDemo(
+    responseId
+) {
+    const response =
+        findAdminSurveyResponseDemo(
+            responseId
+        );
+
+    if (!response) {
+        alert(
+            "Không tìm thấy bài khảo sát."
+        );
+
+        return;
+    }
+
+    const modal =
+        document.getElementById(
+            "adminSurveyResponseModal"
+        );
+
+    const nameElement =
+        document.getElementById(
+            "adminSurveyResponseModalName"
+        );
+
+    const metaElement =
+        document.getElementById(
+            "adminSurveyResponseModalMeta"
+        );
+
+    const contentElement =
+        document.getElementById(
+            "adminSurveyResponseModalContent"
+        );
+
+    const member =
+        response.member ||
+        {};
+
+    const groupName =
+        response.group?.name ||
+        "Chưa có nhóm";
+
+    if (nameElement) {
+        nameElement.innerText =
+            member.fullName ||
+            "Bài khảo sát";
+    }
+
+    if (metaElement) {
+        metaElement.innerText =
+            [
+                member.tkhCode ||
+                    "Không có mã TKH",
+
+                groupName,
+
+                formatSurveyDateTimeDemo(
+                    response.submittedAt
+                )
+            ].join(" • ");
+    }
+
+    const answers =
+        Array.isArray(
+            response.answers
+        )
+            ? [...response.answers]
+            : [];
+
+    answers.sort(
+        (firstAnswer, secondAnswer) =>
+            Number(
+                firstAnswer.displayOrder
+            ) -
+            Number(
+                secondAnswer.displayOrder
+            )
+    );
+
+    if (contentElement) {
+        contentElement.innerHTML =
+            answers.length > 0
+                ? answers
+                    .map(answer => `
+                        <article class="admin-survey-modal-answer-card">
+
+                            <div class="admin-survey-modal-question-heading">
+
+                                <span>
+                                    ${Number(
+                                        answer.displayOrder
+                                    ) || ""}
+                                </span>
+
+                                <div>
+                                    <h4>
+                                        ${escapeSurveyHtmlDemo(
+                                            answer.questionTitle ||
+                                            "Hạng mục"
+                                        )}
+                                    </h4>
+
+                                    <p>
+                                        ${escapeSurveyHtmlDemo(
+                                            answer.questionText ||
+                                            ""
+                                        )}
+                                    </p>
+                                </div>
+
+                            </div>
+
+
+                            <div class="admin-survey-modal-answer-grid">
+
+                                <div class="admin-survey-modal-answer-yes">
+
+                                    <strong>
+                                        ${escapeSurveyHtmlDemo(
+                                            answer.yesLabel ||
+                                            "ĐÚNG / YES"
+                                        )}
+                                    </strong>
+
+                                    <p>
+                                        ${escapeSurveyHtmlDemo(
+                                            answer.yesAnswer ||
+                                            ""
+                                        )}
+                                    </p>
+
+                                </div>
+
+
+                                <div class="admin-survey-modal-answer-no">
+
+                                    <strong>
+                                        ${escapeSurveyHtmlDemo(
+                                            answer.noLabel ||
+                                            "SAI / NO"
+                                        )}
+                                    </strong>
+
+                                    <p>
+                                        ${escapeSurveyHtmlDemo(
+                                            answer.noAnswer ||
+                                            ""
+                                        )}
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </article>
+                    `)
+                    .join("")
+                : `
+                    <div class="survey-empty-card">
+                        Bài nộp chưa có câu trả lời.
+                    </div>
+                `;
+    }
+
+    if (modal) {
+        modal.classList.remove(
+            "hidden"
+        );
+    }
+
+    document.body.style.overflow =
+        "hidden";
+}
+
+
+/*
+ * =========================================================
+ * ĐÓNG MODAL XEM BÀI
+ * =========================================================
+ */
+
+function closeAdminSurveyResponseModalDemo() {
+    const modal =
+        document.getElementById(
+            "adminSurveyResponseModal"
+        );
+
+    if (modal) {
+        modal.classList.add(
+            "hidden"
+        );
+    }
+
+    document.body.style.overflow =
+        "";
+}
+
+
+/*
+ * =========================================================
+ * TẠO TÊN CỘT EXCEL AN TOÀN
+ * =========================================================
+ */
+
+function createAdminSurveyExcelColumnNameDemo(
+    question,
+    answerType
+) {
+    const order =
+        Number(
+            question.displayOrder
+        ) || "";
+
+    const title =
+        String(
+            question.title ||
+            "HẠNG MỤC"
+        )
+            .trim()
+            .toUpperCase();
+
+    return (
+        `${order}. ${title} - ` +
+        (
+            answerType === "YES"
+                ? "ĐÚNG / YES"
+                : "SAI / NO"
+        )
+    );
+}
+
+
+/*
+ * =========================================================
+ * XUẤT EXCEL
+ * =========================================================
+ */
+
+function exportAdminSurveyExcelDemo() {
+    const survey =
+        currentAdminSurveyApi;
+
+    if (!survey) {
+        alert(
+            "Chưa có dữ liệu khảo sát để xuất."
+        );
+
+        return;
+    }
+
+    if (
+        typeof XLSX ===
+        "undefined"
+    ) {
+        alert(
+            "Thư viện xuất Excel chưa được tải. Vui lòng tải lại trang."
+        );
+
+        return;
+    }
+
+    const responses =
+        Array.isArray(
+            survey.responses
+        )
+            ? survey.responses
+            : [];
+
+    if (responses.length === 0) {
+        alert(
+            "Khảo sát chưa có bài nộp để xuất Excel."
+        );
+
+        return;
+    }
+
+    const questions =
+        Array.isArray(
+            survey.questions
+        )
+            ? [...survey.questions]
+            : [];
+
+    questions.sort(
+        (firstQuestion, secondQuestion) =>
+            Number(
+                firstQuestion.displayOrder
+            ) -
+            Number(
+                secondQuestion.displayOrder
+            )
+    );
+
+    /*
+     * Xuất toàn bộ bài nộp, không phụ thuộc bộ lọc.
+     */
+    const excelRows =
+        responses.map(
+            (
+                response,
+                responseIndex
+            ) => {
+                const member =
+                    response.member ||
+                    {};
+
+                const group =
+                    response.group ||
+                    {};
+
+                const row = {
+                    "STT":
+                        responseIndex + 1,
+
+                    "Mã TKH":
+                        member.tkhCode ||
+                        "",
+
+                    "Họ và tên":
+                        member.fullName ||
+                        "",
+
+                    "Nhóm":
+                        group.name ||
+                        "",
+
+                    "Thời gian nộp":
+                        formatSurveyDateTimeDemo(
+                            response.submittedAt
+                        )
+                };
+
+                const answerMap =
+                    new Map(
+                        (
+                            Array.isArray(
+                                response.answers
+                            )
+                                ? response.answers
+                                : []
+                        ).map(
+                            answer => [
+                                Number(
+                                    answer.questionId
+                                ),
+                                answer
+                            ]
+                        )
+                    );
+
+                for (
+                    const question of
+                    questions
+                ) {
+                    const answer =
+                        answerMap.get(
+                            Number(
+                                question.id
+                            )
+                        );
+
+                    row[
+                        createAdminSurveyExcelColumnNameDemo(
+                            question,
+                            "YES"
+                        )
+                    ] =
+                        answer?.yesAnswer ||
+                        "";
+
+                    row[
+                        createAdminSurveyExcelColumnNameDemo(
+                            question,
+                            "NO"
+                        )
+                    ] =
+                        answer?.noAnswer ||
+                        "";
+                }
+
+                return row;
+            }
+        );
+
+    const worksheet =
+        XLSX.utils.json_to_sheet(
+            excelRows
+        );
+
+    /*
+     * Độ rộng cột:
+     * - Thông tin học viên gọn.
+     * - Nội dung trả lời rộng để diễn giả dễ đọc.
+     */
+    const columnWidths = [
+        { wch: 7 },
+        { wch: 12 },
+        { wch: 26 },
+        { wch: 18 },
+        { wch: 22 }
+    ];
+
+    for (
+        let index = 0;
+        index < questions.length * 2;
+        index += 1
+    ) {
+        columnWidths.push({
+            wch: 45
+        });
+    }
+
+    worksheet["!cols"] =
+        columnWidths;
+
+    /*
+     * Bật wrap text cho toàn bộ vùng dữ liệu.
+     */
+    const worksheetRange =
+        XLSX.utils.decode_range(
+            worksheet["!ref"]
+        );
+
+    for (
+        let rowIndex =
+            worksheetRange.s.r;
+        rowIndex <=
+            worksheetRange.e.r;
+        rowIndex += 1
+    ) {
+        for (
+            let columnIndex =
+                worksheetRange.s.c;
+            columnIndex <=
+                worksheetRange.e.c;
+            columnIndex += 1
+        ) {
+            const address =
+                XLSX.utils.encode_cell({
+                    r: rowIndex,
+                    c: columnIndex
+                });
+
+            const cell =
+                worksheet[address];
+
+            if (!cell) {
+                continue;
+            }
+
+            cell.s = {
+                alignment: {
+                    vertical:
+                        "top",
+
+                    wrapText:
+                        true
+                }
+            };
+        }
+    }
+
+    worksheet["!autofilter"] = {
+        ref:
+            worksheet["!ref"]
+    };
+
+    const workbook =
+        XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        "Kết quả khảo sát"
+    );
+
+    const dateText =
+        new Date()
+            .toISOString()
+            .slice(0, 10);
+
+    const safeSurveyCode =
+        String(
+            survey.code ||
+            `survey-${survey.id}`
+        )
+            .replace(
+                /[^a-zA-Z0-9_-]/g,
+                "-"
+            );
+
+    const fileName =
+        `TKH2026-Khao-sat-${safeSurveyCode}-${dateText}.xlsx`;
+
+    XLSX.writeFile(
+        workbook,
+        fileName
+    );
+
+    setAdminSurveyActionMessageDemo(
+        `Đã xuất ${responses.length} bài khảo sát ra Excel.`,
+        "success"
+    );
+}
+
+
+/*
+ * =========================================================
+ * ĐÓNG MODAL KHI BẤM RA NGOÀI
+ * =========================================================
+ */
+
+document.addEventListener(
+    "click",
+    event => {
+        const modal =
+            document.getElementById(
+                "adminSurveyResponseModal"
+            );
+
+        if (
+            modal &&
+            !modal.classList.contains(
+                "hidden"
+            ) &&
+            event.target === modal
+        ) {
+            closeAdminSurveyResponseModalDemo();
+        }
+    }
+);
+
+
+/*
+ * =========================================================
+ * ĐÓNG MODAL BẰNG PHÍM ESC
+ * =========================================================
+ */
+
+document.addEventListener(
+    "keydown",
+    event => {
+        if (
+            event.key ===
+            "Escape"
+        ) {
+            closeAdminSurveyResponseModalDemo();
+        }
+    }
+);
+
+
+/*
+ * =========================================================
+ * KHỞI TẠO TRANG ADMIN SURVEY
+ * =========================================================
+ */
+
+function initializeAdminSurveyPageDemo() {
+    const adminSurveyList =
+        document.getElementById(
+            "adminSurveyList"
+        );
+
+    if (!adminSurveyList) {
+        return;
+    }
+
+    let currentUser = null;
+
+    try {
+        currentUser =
+            JSON.parse(
+                localStorage.getItem(
+                    "currentUser"
+                ) ||
+                "null"
+            );
+    } catch (error) {
+        currentUser = null;
+    }
+
+    if (!currentUser) {
+        logoutDemo();
+
+        return;
+    }
+
+    const role =
+        String(
+            currentUser.role ||
+            ""
+        )
+            .trim()
+            .toLowerCase();
+
+    if (role !== "admin") {
+        window.location.href =
+            "attendance.html";
+
+        return;
+    }
+
+    loadAdminSurveysDemo();
+}
+
+
+/*
+ * Khởi tạo khi HTML sẵn sàng.
+ */
+if (
+    document.readyState ===
+    "loading"
+) {
+    document.addEventListener(
+        "DOMContentLoaded",
+        initializeAdminSurveyPageDemo
+    );
+} else {
+    initializeAdminSurveyPageDemo();
+}

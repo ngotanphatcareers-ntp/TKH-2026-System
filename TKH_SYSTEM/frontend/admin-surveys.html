@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>TKH 2026 - Quản lý khảo sát</title>
+
+    <link
+        rel="stylesheet"
+        href="css/style.css"
+    >
+</head>
+
+<body class="app-page">
+
+    <aside class="sidebar">
+        <h2>TKH Admin</h2>
+
+        <button
+            class="mobile-menu-btn"
+            onclick="toggleMobileMenu()"
+        >
+            ☰ Menu
+        </button>
+
+        <a href="admin-dashboard.html">
+            Tổng quan Admin
+        </a>
+
+        <a href="admin-members.html">
+            Quản lý thành viên
+        </a>
+
+        <a href="admin-groups.html">
+            Quản lý nhóm
+        </a>
+
+        <a href="admin-attendance.html">
+            Quản lý điểm danh
+        </a>
+
+        <a href="admin-session.html">
+            Quản lý buổi học
+        </a>
+
+        <a href="admin-score.html">
+            Quản lý điểm số
+        </a>
+
+        <a href="admin-bible-challenge.html">
+            Bible Challenge
+        </a>
+
+        <a href="admin-tests.html">
+            Quản lý bài kiểm tra
+        </a>
+
+        <a href="admin-surveys.html" class="active">
+            📝 Quản lý khảo sát
+        </a>
+
+        <a href="forum.html">
+            💬 Diễn đàn
+        </a>
+
+        <a href="admin-study-materials.html">
+            Kho tài liệu
+        </a>
+
+        <a href="admin-questions.html">
+            Câu hỏi học viên
+        </a>
+
+        <a href="admin-encouragement.html">
+            Thống kê khích lệ
+        </a>
+
+        <hr class="sidebar-divider">
+
+        <a
+            href="#"
+            onclick="confirmLogout(event)"
+            class="logout-menu"
+        >
+            ⏻ Đăng xuất
+        </a>
+    </aside>
+
+
+    <main class="main-content">
+
+        <!-- =================================================
+             HEADER
+             ================================================= -->
+
+        <div class="topbar admin-survey-topbar">
+            <div>
+                <h1>Quản lý khảo sát</h1>
+
+                <p>
+                    Theo dõi bài nộp, mở hoặc đóng khảo sát
+                    và xuất kết quả cho diễn giả.
+                </p>
+            </div>
+        </div>
+
+
+        <!-- =================================================
+             DANH SÁCH KHẢO SÁT
+             ================================================= -->
+
+        <section
+            id="adminSurveyListSection"
+            class="attendance-box"
+        >
+            <div class="admin-survey-section-header">
+                <div>
+                    <h2>Danh sách khảo sát</h2>
+
+                    <p class="empty-note">
+                        Chọn khảo sát để xem bài làm của học viên.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    class="admin-survey-refresh-button"
+                    onclick="loadAdminSurveysDemo(true)"
+                >
+                    ↻ Làm mới
+                </button>
+            </div>
+
+            <div
+                id="adminSurveyList"
+                class="admin-survey-list"
+            >
+                <div class="survey-loading-card">
+                    Đang tải danh sách khảo sát...
+                </div>
+            </div>
+        </section>
+
+
+        <!-- =================================================
+             CHI TIẾT KHẢO SÁT
+             ================================================= -->
+
+        <section
+            id="adminSurveyDetailSection"
+            class="attendance-box hidden"
+        >
+            <button
+                type="button"
+                class="survey-back-button"
+                onclick="backToAdminSurveyListDemo()"
+            >
+                ← Quay lại danh sách
+            </button>
+
+
+            <div class="admin-survey-detail-header">
+
+                <div>
+                    <p class="admin-survey-case-label">
+                        CASE STUDY
+                    </p>
+
+                    <h2 id="adminSurveyDetailTitle">
+                        Khảo sát
+                    </h2>
+
+                    <p
+                        id="adminSurveyDetailDescription"
+                        class="empty-note"
+                    ></p>
+                </div>
+
+                <div
+                    id="adminSurveyDetailStatus"
+                    class="survey-status-badge"
+                >
+                    Đang tải...
+                </div>
+
+            </div>
+
+
+            <!-- =================================================
+                 THỐNG KÊ GỌN
+                 ================================================= -->
+
+            <div class="admin-survey-summary-grid">
+
+                <div class="admin-survey-summary-card">
+                    <span>Tổng học viên</span>
+
+                    <strong id="adminSurveyTotalStudents">
+                        0
+                    </strong>
+                </div>
+
+                <div class="admin-survey-summary-card">
+                    <span>Đã nộp</span>
+
+                    <strong id="adminSurveyResponseCount">
+                        0
+                    </strong>
+                </div>
+
+                <div class="admin-survey-summary-card">
+                    <span>Chưa nộp</span>
+
+                    <strong id="adminSurveyRemainingCount">
+                        0
+                    </strong>
+                </div>
+
+            </div>
+
+
+            <!-- =================================================
+                 NÚT QUẢN LÝ
+                 ================================================= -->
+
+            <div class="admin-survey-toolbar">
+
+                <button
+                    id="adminSurveyStatusButton"
+                    type="button"
+                    class="admin-survey-status-button"
+                    onclick="toggleAdminSurveyStatusDemo()"
+                >
+                    Đang tải trạng thái...
+                </button>
+
+                <button
+                    type="button"
+                    class="admin-survey-export-button"
+                    onclick="exportAdminSurveyExcelDemo()"
+                >
+                    📥 Xuất Excel
+                </button>
+
+                <button
+                    type="button"
+                    class="admin-survey-refresh-button"
+                    onclick="reloadAdminSurveyDetailDemo()"
+                >
+                    ↻ Làm mới
+                </button>
+
+            </div>
+
+            <p
+                id="adminSurveyActionMessage"
+                class="survey-form-message"
+            ></p>
+
+
+            <!-- =================================================
+                 TÌM KIẾM / FILTER
+                 ================================================= -->
+
+            <div class="admin-survey-filter-bar">
+
+                <input
+                    type="text"
+                    id="adminSurveySearchInput"
+                    class="form-input"
+                    placeholder="🔍 Tìm theo mã TKH, họ tên hoặc nhóm..."
+                    oninput="filterAdminSurveyResponsesDemo()"
+                >
+
+                <select
+                    id="adminSurveyGroupFilter"
+                    class="form-input"
+                    onchange="filterAdminSurveyResponsesDemo()"
+                >
+                    <option value="">
+                        Tất cả nhóm
+                    </option>
+                </select>
+
+            </div>
+
+            <p
+                id="adminSurveySearchResult"
+                class="empty-note"
+            >
+                Đang hiển thị 0 bài nộp
+            </p>
+
+
+            <!-- =================================================
+                 DANH SÁCH BÀI NỘP
+                 ================================================= -->
+
+            <div
+                id="adminSurveyResponseList"
+                class="admin-survey-response-list"
+            >
+                <div class="survey-loading-card">
+                    Đang tải bài nộp...
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- =====================================================
+         MODAL XEM BÀI NỘP
+         ===================================================== -->
+
+    <div
+        id="adminSurveyResponseModal"
+        class="modal-overlay hidden"
+    >
+        <div class="modal-box admin-survey-response-modal-box">
+
+            <div class="admin-survey-modal-header">
+                <div>
+                    <h3 id="adminSurveyResponseModalName">
+                        Bài khảo sát
+                    </h3>
+
+                    <p id="adminSurveyResponseModalMeta">
+                        Thông tin học viên
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    class="admin-survey-modal-close-button"
+                    onclick="closeAdminSurveyResponseModalDemo()"
+                >
+                    ×
+                </button>
+            </div>
+
+            <div
+                id="adminSurveyResponseModalContent"
+                class="admin-survey-response-modal-content"
+            >
+                <div class="survey-loading-card">
+                    Đang tải nội dung...
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button
+                    type="button"
+                    class="btn-secondary"
+                    onclick="closeAdminSurveyResponseModalDemo()"
+                >
+                    Đóng
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- =====================================================
+         MODAL XÁC NHẬN ĐĂNG XUẤT
+         ===================================================== -->
+
+    <div
+        id="logoutModal"
+        class="modal-overlay hidden"
+    >
+        <div class="modal-box">
+            <h3>⏻ Đăng xuất</h3>
+
+            <p>
+                Bạn có chắc chắn muốn đăng xuất
+                khỏi hệ thống không?
+            </p>
+
+            <div class="modal-actions">
+                <button
+                    class="btn-secondary"
+                    onclick="closeLogoutModal()"
+                >
+                    Hủy
+                </button>
+
+                <button
+                    class="btn-danger"
+                    onclick="logoutDemo()"
+                >
+                    Đăng xuất
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- SheetJS dùng để xuất file Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+    <script src="js/app.js?v=152"></script>
+
+</body>
+</html>
