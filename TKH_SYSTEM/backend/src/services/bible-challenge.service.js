@@ -14,6 +14,7 @@ const {
   findAllGroupsWithEligibleMembers,
   findUsedGroupsInRound,
   createRoundSelection,
+  createRoundSelections,
   findLatestRoundSelection,
   findGroupById,
   findEligibleMembersByGroup,
@@ -1175,6 +1176,230 @@ async function submitResult({
 }
 
 
+async function startNewRound({
+  adminUserId,
+  excludedGroupIds,
+}) {
+  const normalizedAdminUserId =
+    normalizePositiveInteger(
+      adminUserId
+    );
+
+  if (!normalizedAdminUserId) {
+    return {
+      success: false,
+      code:
+        "ADMIN_ACCOUNT_REQUIRED",
+    };
+  }
+
+  const normalizedExcludedGroupIds =
+    Array.from(
+      new Set(
+        (
+          Array.isArray(
+            excludedGroupIds
+          )
+            ? excludedGroupIds
+            : []
+        )
+          .map(
+            normalizePositiveInteger
+          )
+          .filter(Boolean)
+      )
+    );
+
+  const sessionResult =
+    await getCurrentSessionOrError();
+
+  if (!sessionResult.success) {
+    return sessionResult;
+  }
+
+  const session =
+    sessionResult.session;
+
+  const seasonId =
+    Number(session.season_id);
+
+  const sessionId =
+    Number(session.id);
+
+  /*
+   * Chỉ cho chọn nhóm đang hoạt động và
+   * có học viên đủ điều kiện trong buổi hiện tại.
+   */
+  const allGroups =
+    await findAllGroupsWithEligibleMembers({
+      seasonId,
+      sessionId,
+    });
+
+  if (allGroups.length === 0) {
+    return {
+      success: false,
+      code:
+        "NO_ELIGIBLE_MEMBERS_REMAINING",
+      session:
+        mapSession(session),
+    };
+  }
+
+  const allGroupIds =
+    new Set(
+      allGroups.map(
+        group =>
+          Number(group.id)
+      )
+    );
+
+  const invalidGroupIds =
+    normalizedExcludedGroupIds
+      .filter(
+        groupId =>
+          !allGroupIds.has(
+            groupId
+          )
+      );
+
+  if (invalidGroupIds.length > 0) {
+    return {
+      success: false,
+      code:
+        "INVALID_EXCLUDED_GROUPS",
+      invalidGroupIds,
+    };
+  }
+
+  /*
+   * Không cho loại toàn bộ nhóm,
+   * vì khi đó vòng mới sẽ không còn nhóm để quay.
+   */
+  if (
+    normalizedExcludedGroupIds
+      .length >= allGroups.length
+  ) {
+    return {
+      success: false,
+      code:
+        "CANNOT_EXCLUDE_ALL_GROUPS",
+    };
+  }
+
+  const currentRoundNo =
+  await findCurrentRoundNumber({
+    seasonId,
+  });
+
+/*
+ * Chỉ được bắt đầu vòng mới khi vòng hiện tại
+ * không còn nhóm nào chưa quay.
+ */
+const remainingGroupsInCurrentRound =
+  await findEligibleGroups({
+    seasonId,
+    sessionId,
+    roundNo: currentRoundNo,
+  });
+
+if (
+  Array.isArray(
+    remainingGroupsInCurrentRound
+  ) &&
+  remainingGroupsInCurrentRound.length > 0
+) {
+  return {
+    success: false,
+    code:
+      "CURRENT_ROUND_NOT_COMPLETED",
+
+    roundNo:
+      currentRoundNo,
+
+    remainingGroups:
+      remainingGroupsInCurrentRound
+        .map(mapGroup),
+  };
+}
+
+const nextRoundNo =
+  currentRoundNo + 1;
+
+  try {
+    const insertedSelections =
+      await createRoundSelections({
+        seasonId,
+        sessionId,
+        roundNo:
+          nextRoundNo,
+        groupIds:
+          normalizedExcludedGroupIds,
+        createdByUserId:
+          normalizedAdminUserId,
+      });
+
+    const excludedGroups =
+      allGroups
+        .filter(group =>
+          normalizedExcludedGroupIds
+            .includes(
+              Number(group.id)
+            )
+        )
+        .map(mapGroup);
+
+    const availableGroups =
+      allGroups
+        .filter(group =>
+          !normalizedExcludedGroupIds
+            .includes(
+              Number(group.id)
+            )
+        )
+        .map(mapGroup);
+
+    return {
+      success: true,
+
+      session:
+        mapSession(session),
+
+      previousRoundNo:
+        currentRoundNo,
+
+      roundNo:
+        nextRoundNo,
+
+      excludedGroups,
+
+      availableGroups,
+
+      excludedGroupCount:
+        excludedGroups.length,
+
+      availableGroupCount:
+        availableGroups.length,
+
+      insertedSelectionCount:
+        insertedSelections.length,
+    };
+  } catch (error) {
+    if (
+      error.number === 2601 ||
+      error.number === 2627
+    ) {
+      return {
+        success: false,
+        code:
+          "NEW_ROUND_ALREADY_STARTED",
+      };
+    }
+
+    throw error;
+  }
+}
+
 async function getCurrentSessionHistory() {
   const sessionResult =
     await getCurrentSessionOrError();
@@ -1240,5 +1465,6 @@ module.exports = {
   drawGroup,
   drawMember,
   submitResult,
+  startNewRound,
   getCurrentSessionHistory,
 };

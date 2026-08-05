@@ -25,6 +25,12 @@ router.post(
 );
 
 router.post(
+  "/start-new-round",
+  bibleChallengeController
+    .startNewRound
+);
+
+router.post(
   "/draw-member/:groupId",
   bibleChallengeController.drawMember
 );

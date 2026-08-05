@@ -76,6 +76,12 @@ const ERROR_MAP = {
       "Nhóm này đã được chọn trong vòng hiện tại.",
   },
 
+  CURRENT_ROUND_NOT_COMPLETED: {
+    status: 409,
+    message:
+      "Vòng Bible Challenge hiện tại vẫn chưa hoàn tất.",
+  },
+
   MEMBER_ALREADY_USED_IN_SESSION: {
     status: 409,
     message:
@@ -147,6 +153,14 @@ function sendError(res, result) {
           group:
             result.group ??
             null,
+
+          roundNo:
+            result.roundNo ??
+            null,
+
+          remainingGroups:
+            result.remainingGroups ??
+            [],
         },
       },
     });
@@ -388,6 +402,66 @@ async function submitResult(
 }
 
 
+async function startNewRound(
+  req,
+  res,
+  next
+) {
+  try {
+    const result =
+      await bibleChallengeService
+        .startNewRound({
+          adminUserId:
+            getAdminUserId(req),
+
+          excludedGroupIds:
+            req.body
+              ?.excludedGroupIds,
+        });
+
+    if (!result.success) {
+      return sendError(
+        res,
+        result
+      );
+    }
+
+    return res
+      .status(201)
+      .json({
+        success: true,
+
+        data: {
+          session:
+            result.session,
+
+          previousRoundNo:
+            result.previousRoundNo,
+
+          roundNo:
+            result.roundNo,
+
+          excludedGroups:
+            result.excludedGroups,
+
+          availableGroups:
+            result.availableGroups,
+
+          excludedGroupCount:
+            result.excludedGroupCount,
+
+          availableGroupCount:
+            result.availableGroupCount,
+
+          message:
+            "Đã bắt đầu vòng Bible Challenge mới.",
+        },
+      });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 async function getCurrentSessionHistory(
   req,
   res,
@@ -433,5 +507,6 @@ module.exports = {
   drawGroup,
   drawMember,
   submitResult,
+  startNewRound,
   getCurrentSessionHistory,
 };

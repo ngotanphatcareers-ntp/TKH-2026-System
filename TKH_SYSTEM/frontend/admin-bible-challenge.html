@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TKH 2026 - Bible Challenge</title>
 
-    <link rel="stylesheet" href="css/style.css?v=143">
+    <link rel="stylesheet" href="css/style.css?v=145">
 </head>
 
 <body class="app-page">
@@ -172,11 +172,12 @@ Random học viên trả bài Kinh Thánh theo buổi học.
             </button>
 
             <button
+                id="bcStartNewRoundButton"
                 type="button"
-                disabled
-                title="Chức năng reset backend chưa được triển khai"
+                onclick="openBibleChallengeNewRoundModal()"
+                class="bc-start-new-round-button"
             >
-                Reset Bible Challenge
+                Bắt đầu vòng mới
             </button>
         </div>
 
@@ -348,6 +349,162 @@ Random học viên trả bài Kinh Thánh theo buổi học.
     </div>
 </div>
 
+<div
+    id="bcNewRoundModal"
+    class="modal-overlay hidden"
+    onclick="handleBibleChallengeNewRoundBackdrop(event)"
+>
+    <div class="modal-box bc-new-round-modal-box">
+        <div class="bc-round-status-header">
+            <div>
+                <h3>Bắt đầu vòng Bible Challenge mới</h3>
+
+                <p>
+                    Chọn các nhóm sẽ không tham gia vòng mới.
+                </p>
+            </div>
+
+            <button
+                type="button"
+                class="bc-round-status-close"
+                onclick="closeBibleChallengeNewRoundModal()"
+                aria-label="Đóng"
+            >
+                ×
+            </button>
+        </div>
+
+        <div class="bc-new-round-warning">
+            <strong>Lưu ý:</strong>
+
+            Chỉ thực hiện thao tác này sau khi vòng hiện tại
+            đã hoàn tất. Các nhóm được chọn dưới đây sẽ không
+            thể quay trúng trong vòng mới.
+        </div>
+
+        <div
+            id="bcNewRoundCurrentStatus"
+            class="bc-new-round-current-status"
+        >
+            Đang kiểm tra trạng thái vòng hiện tại...
+        </div>
+
+        <div
+            id="bcNewRoundGroupList"
+            class="bc-new-round-group-list"
+        >
+            <p class="empty-note">
+                Đang tải danh sách nhóm...
+            </p>
+        </div>
+
+        <div
+            id="bcNewRoundSelectedSummary"
+            class="bc-new-round-selected-summary hidden"
+        >
+            <div class="bc-new-round-selected-header">
+                <strong>Nhóm không tham gia vòng mới</strong>
+
+                <span id="bcNewRoundSelectedCount">
+                    0 nhóm
+                </span>
+            </div>
+
+            <div
+                id="bcNewRoundSelectedNames"
+                class="bc-new-round-selected-names"
+            ></div>
+        </div>
+
+        <p
+            id="bcNewRoundMessage"
+            class="bc-new-round-message"
+        ></p>
+
+        <div class="modal-actions">
+            <button
+                type="button"
+                class="btn-secondary"
+                onclick="closeBibleChallengeNewRoundModal()"
+            >
+                Hủy
+            </button>
+
+            <button
+                id="bcConfirmNewRoundButton"
+                type="button"
+                class="bc-confirm-new-round-button"
+                onclick="confirmBibleChallengeNewRound()"
+                disabled
+            >
+                Bắt đầu vòng mới
+            </button>
+        </div>
+    </div>
+</div>
+
+<div
+    id="bcNewRoundConfirmModal"
+    class="modal-overlay hidden"
+    onclick="handleBibleChallengeNewRoundConfirmBackdrop(event)"
+>
+    <div class="modal-box bc-new-round-confirm-modal-box">
+        <div class="bc-new-round-confirm-icon">
+            ↻
+        </div>
+
+        <h3>Bắt đầu vòng mới?</h3>
+
+        <p class="bc-new-round-confirm-intro">
+            Hệ thống sẽ tạo vòng Bible Challenge mới.
+        </p>
+
+        <div
+            id="bcNewRoundConfirmExcludedBox"
+            class="bc-new-round-confirm-excluded-box hidden"
+        >
+            <strong>
+                Các nhóm không tham gia:
+            </strong>
+
+            <div
+                id="bcNewRoundConfirmExcludedNames"
+                class="bc-new-round-confirm-excluded-names"
+            ></div>
+        </div>
+
+        <div
+            id="bcNewRoundConfirmAllGroups"
+            class="bc-new-round-confirm-all-groups hidden"
+        >
+            Tất cả nhóm sẽ tham gia vòng mới.
+        </div>
+
+        <p class="bc-new-round-confirm-note">
+            Lịch sử và điểm của các vòng trước vẫn được giữ nguyên.
+        </p>
+
+        <div class="modal-actions">
+            <button
+                type="button"
+                class="btn-secondary"
+                onclick="closeBibleChallengeNewRoundConfirmModal()"
+            >
+                Quay lại
+            </button>
+
+            <button
+                id="bcExecuteNewRoundButton"
+                type="button"
+                class="bc-confirm-new-round-button"
+                onclick="executeBibleChallengeNewRound()"
+            >
+                Xác nhận bắt đầu
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 function setBibleChallengePresentation(enabled) {
     document.body.classList.toggle("bc-presentation-mode", enabled);
@@ -375,7 +532,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
-<script src="js/app.js?v=152"></script>
+<script src="js/app.js?v=153"></script>
 
 </body>
 </html>

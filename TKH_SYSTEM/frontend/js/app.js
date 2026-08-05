@@ -14289,6 +14289,777 @@ function handleBibleChallengeRoundStatusBackdrop(
     }
 }
 
+/*
+ * =========================================================
+ * BIBLE CHALLENGE — START NEW ROUND
+ * =========================================================
+ */
+
+let bcNewRoundGroupsApi = [];
+let bcStartNewRoundInProgress = false;
+let bcPendingExcludedGroupIds = [];
+
+
+function getBibleChallengeAllGroupsFromCurrentData(
+    currentData
+) {
+    const eligibleGroups =
+        Array.isArray(
+            currentData?.eligibleGroups
+        )
+            ? currentData.eligibleGroups
+            : [];
+
+    const usedGroups =
+        Array.isArray(
+            currentData?.usedGroups
+        )
+            ? currentData.usedGroups
+            : [];
+
+    const groupMap =
+        new Map();
+
+    eligibleGroups.forEach(item => {
+        const group =
+            item.group || item;
+
+        if (!group?.id) {
+            return;
+        }
+
+        groupMap.set(
+            Number(group.id),
+            {
+                id:
+                    Number(group.id),
+
+                code:
+                    group.code || "",
+
+                name:
+                    group.name ||
+                    "Không xác định",
+
+                logoPath:
+                    group.logoPath ||
+                    null,
+
+                used:
+                    false
+            }
+        );
+    });
+
+    usedGroups.forEach(item => {
+        const group =
+            item.group || item;
+
+        if (!group?.id) {
+            return;
+        }
+
+        groupMap.set(
+            Number(group.id),
+            {
+                id:
+                    Number(group.id),
+
+                code:
+                    group.code || "",
+
+                name:
+                    group.name ||
+                    "Không xác định",
+
+                logoPath:
+                    group.logoPath ||
+                    null,
+
+                used:
+                    true
+            }
+        );
+    });
+
+    return Array.from(
+        groupMap.values()
+    ).sort(
+        (a, b) =>
+            a.id - b.id
+    );
+}
+
+function updateBibleChallengeNewRoundSelectedSummary() {
+    const summary =
+        document.getElementById(
+            "bcNewRoundSelectedSummary"
+        );
+
+    const countElement =
+        document.getElementById(
+            "bcNewRoundSelectedCount"
+        );
+
+    const namesElement =
+        document.getElementById(
+            "bcNewRoundSelectedNames"
+        );
+
+    if (
+        !summary ||
+        !countElement ||
+        !namesElement
+    ) {
+        return;
+    }
+
+    const checkedIds =
+        Array.from(
+            document.querySelectorAll(
+                '#bcNewRoundGroupList input[name="bcExcludedGroup"]:checked'
+            )
+        )
+            .map(input =>
+                Number(input.value)
+            )
+            .filter(
+                groupId =>
+                    Number.isInteger(groupId) &&
+                    groupId > 0
+            );
+
+    const selectedGroups =
+        bcNewRoundGroupsApi
+            .filter(group =>
+                checkedIds.includes(
+                    Number(group.id)
+                )
+            );
+
+    if (selectedGroups.length === 0) {
+        summary.classList.add(
+            "hidden"
+        );
+
+        countElement.innerText =
+            "0 nhóm";
+
+        namesElement.innerHTML = "";
+
+        return;
+    }
+
+    summary.classList.remove(
+        "hidden"
+    );
+
+    countElement.innerText =
+        `${selectedGroups.length} nhóm`;
+
+    namesElement.innerHTML =
+        selectedGroups
+            .map(group => `
+                <span>
+                    ✓ ${escapeBibleChallengeHtml(
+                        group.name
+                    )}
+                </span>
+            `)
+            .join("");
+}
+
+function updateBibleChallengeNewRoundButtonState() {
+    updateBibleChallengeNewRoundSelectedSummary();
+
+    const confirmButton =
+        document.getElementById(
+            "bcConfirmNewRoundButton"
+        );
+
+    if (!confirmButton) {
+        return;
+    }
+
+    const checkedGroups =
+        document.querySelectorAll(
+            '#bcNewRoundGroupList input[name="bcExcludedGroup"]:checked'
+        );
+
+    const totalGroups =
+        bcNewRoundGroupsApi.length;
+
+    const excludedCount =
+        checkedGroups.length;
+
+    /*
+     * Có thể bắt đầu vòng mới khi:
+     * - Có ít nhất một nhóm còn tham gia.
+     * - Không đang gửi dữ liệu.
+     *
+     * Admin không bắt buộc phải loại nhóm nào.
+     */
+    confirmButton.disabled =
+        bcStartNewRoundInProgress ||
+        totalGroups === 0 ||
+        excludedCount >= totalGroups;
+}
+
+
+function renderBibleChallengeNewRoundGroups(
+    groups
+) {
+    const groupList =
+        document.getElementById(
+            "bcNewRoundGroupList"
+        );
+
+    if (!groupList) {
+        return;
+    }
+
+    const normalizedGroups =
+        Array.isArray(groups)
+            ? groups
+            : [];
+
+    if (normalizedGroups.length === 0) {
+        groupList.innerHTML = `
+            <p class="empty-note">
+                Không tìm thấy nhóm nào.
+            </p>
+        `;
+
+        updateBibleChallengeNewRoundButtonState();
+        return;
+    }
+
+    groupList.innerHTML =
+        normalizedGroups
+            .map(group => `
+                <label
+                    class="bc-new-round-group-option"
+                >
+                    <input
+                        type="checkbox"
+                        name="bcExcludedGroup"
+                        value="${Number(group.id)}"
+                        onchange="updateBibleChallengeNewRoundButtonState()"
+                    >
+
+                    <span
+                        class="bc-new-round-group-logo"
+                    >
+                        ${
+                            group.logoPath
+                                ? `
+                                    <img
+                                        src="${escapeBibleChallengeHtml(
+                                            group.logoPath
+                                        )}"
+                                        alt=""
+                                        onerror="
+                                            this.onerror = null;
+                                            this.parentElement.innerHTML =
+                                                '${escapeBibleChallengeHtml(
+                                                    group.name.charAt(0)
+                                                )}';
+                                        "
+                                    >
+                                `
+                                : escapeBibleChallengeHtml(
+                                    group.name.charAt(0)
+                                )
+                        }
+                    </span>
+
+                    <span
+                        class="bc-new-round-group-information"
+                    >
+                        <strong>
+                            ${escapeBibleChallengeHtml(
+                                group.name
+                            )}
+                        </strong>
+
+                        <small>
+                            Chọn để nhóm này không quay trúng
+                        </small>
+                    </span>
+                </label>
+            `)
+            .join("");
+
+    updateBibleChallengeNewRoundButtonState();
+}
+
+
+async function openBibleChallengeNewRoundModal() {
+    const modal =
+        document.getElementById(
+            "bcNewRoundModal"
+        );
+
+    const statusElement =
+        document.getElementById(
+            "bcNewRoundCurrentStatus"
+        );
+
+    const groupList =
+        document.getElementById(
+            "bcNewRoundGroupList"
+        );
+
+    const message =
+        document.getElementById(
+            "bcNewRoundMessage"
+        );
+
+    const confirmButton =
+        document.getElementById(
+            "bcConfirmNewRoundButton"
+        );
+
+    if (
+        !modal ||
+        !statusElement ||
+        !groupList ||
+        !message ||
+        !confirmButton
+    ) {
+        return;
+    }
+
+    modal.classList.remove(
+        "hidden"
+    );
+
+    message.innerText = "";
+    message.className =
+        "bc-new-round-message";
+
+    confirmButton.disabled = true;
+
+    statusElement.innerText =
+        "Đang kiểm tra trạng thái vòng hiện tại...";
+
+    groupList.innerHTML = `
+        <p class="empty-note">
+            Đang tải danh sách nhóm...
+        </p>
+    `;
+
+    bcNewRoundGroupsApi = [];
+
+    bcPendingExcludedGroupIds = [];
+
+    const selectedSummary =
+        document.getElementById(
+            "bcNewRoundSelectedSummary"
+        );
+
+    if (selectedSummary) {
+        selectedSummary.classList.add(
+            "hidden"
+        );
+    }
+
+    try {
+        const currentData =
+            await getBibleChallengeCurrentApi(
+                true
+            );
+
+        const status =
+            getBibleChallengeRoundStatusData(
+                currentData
+            );
+
+        const usedCount =
+            status.usedGroups.length;
+
+        const totalGroups =
+            status.totalGroups;
+
+        const remainingCount =
+            status.availableGroups.length;
+
+        bcNewRoundGroupsApi =
+            getBibleChallengeAllGroupsFromCurrentData(
+                currentData
+            );
+
+        if (remainingCount > 0) {
+            const remainingNames =
+                status.availableGroups
+                    .map(group =>
+                        group.name
+                    )
+                    .filter(Boolean)
+                    .join(", ");
+
+            statusElement.className =
+                "bc-new-round-current-status bc-new-round-status-blocked";
+
+            statusElement.innerHTML = `
+                <strong>
+                    Vòng hiện tại chưa hoàn tất:
+                    ${usedCount}/${totalGroups} nhóm.
+                </strong>
+
+                <span>
+                    Còn lại:
+                    ${escapeBibleChallengeHtml(
+                        remainingNames ||
+                        `${remainingCount} nhóm`
+                    )}
+                </span>
+            `;
+
+            groupList.innerHTML = `
+                <p class="empty-note">
+                    Hãy hoàn tất vòng hiện tại trước khi bắt đầu vòng mới.
+                </p>
+            `;
+
+            confirmButton.disabled = true;
+            return;
+        }
+
+        statusElement.className =
+            "bc-new-round-current-status bc-new-round-status-ready";
+
+        statusElement.innerHTML = `
+            <strong>
+                Vòng hiện tại đã hoàn tất:
+                ${usedCount}/${totalGroups} nhóm.
+            </strong>
+
+            <span>
+                Bạn có thể bắt đầu vòng mới.
+            </span>
+        `;
+
+        renderBibleChallengeNewRoundGroups(
+            bcNewRoundGroupsApi
+        );
+    } catch (error) {
+        console.error(
+            "Open Bible Challenge new round modal error:",
+            error
+        );
+
+        statusElement.className =
+            "bc-new-round-current-status bc-new-round-status-blocked";
+
+        statusElement.innerText =
+            "Không thể kiểm tra trạng thái vòng.";
+
+        groupList.innerHTML = `
+            <p class="bc-round-status-error">
+                ${escapeBibleChallengeHtml(
+                    error.message ||
+                    "Vui lòng thử lại."
+                )}
+            </p>
+        `;
+    }
+}
+
+
+function closeBibleChallengeNewRoundModal() {
+    if (bcStartNewRoundInProgress) {
+        return;
+    }
+
+    const modal =
+        document.getElementById(
+            "bcNewRoundModal"
+        );
+
+    if (modal) {
+        modal.classList.add(
+            "hidden"
+        );
+    }
+}
+
+
+function handleBibleChallengeNewRoundBackdrop(
+    event
+) {
+    if (
+        event.target?.id ===
+        "bcNewRoundModal"
+    ) {
+        closeBibleChallengeNewRoundModal();
+    }
+}
+
+
+function confirmBibleChallengeNewRound() {
+    if (bcStartNewRoundInProgress) {
+        return;
+    }
+
+    const message =
+        document.getElementById(
+            "bcNewRoundMessage"
+        );
+
+    const checkedInputs =
+        Array.from(
+            document.querySelectorAll(
+                '#bcNewRoundGroupList input[name="bcExcludedGroup"]:checked'
+            )
+        );
+
+    const excludedGroupIds =
+        checkedInputs
+            .map(input =>
+                Number(input.value)
+            )
+            .filter(
+                groupId =>
+                    Number.isInteger(groupId) &&
+                    groupId > 0
+            );
+
+    if (
+        excludedGroupIds.length >=
+        bcNewRoundGroupsApi.length
+    ) {
+        message.className =
+            "bc-new-round-message error";
+
+        message.innerText =
+            "Không thể loại toàn bộ nhóm khỏi vòng mới.";
+
+        return;
+    }
+
+    bcPendingExcludedGroupIds =
+        excludedGroupIds;
+
+    openBibleChallengeNewRoundConfirmModal();
+}
+
+function openBibleChallengeNewRoundConfirmModal() {
+    const modal =
+        document.getElementById(
+            "bcNewRoundConfirmModal"
+        );
+
+    const excludedBox =
+        document.getElementById(
+            "bcNewRoundConfirmExcludedBox"
+        );
+
+    const excludedNamesElement =
+        document.getElementById(
+            "bcNewRoundConfirmExcludedNames"
+        );
+
+    const allGroupsElement =
+        document.getElementById(
+            "bcNewRoundConfirmAllGroups"
+        );
+
+    if (
+        !modal ||
+        !excludedBox ||
+        !excludedNamesElement ||
+        !allGroupsElement
+    ) {
+        return;
+    }
+
+    const excludedGroups =
+        bcNewRoundGroupsApi
+            .filter(group =>
+                bcPendingExcludedGroupIds
+                    .includes(
+                        Number(group.id)
+                    )
+            );
+
+    if (excludedGroups.length > 0) {
+        excludedBox.classList.remove(
+            "hidden"
+        );
+
+        allGroupsElement.classList.add(
+            "hidden"
+        );
+
+        excludedNamesElement.innerHTML =
+            excludedGroups
+                .map(group => `
+                    <span>
+                        ${escapeBibleChallengeHtml(
+                            group.name
+                        )}
+                    </span>
+                `)
+                .join("");
+    } else {
+        excludedBox.classList.add(
+            "hidden"
+        );
+
+        allGroupsElement.classList.remove(
+            "hidden"
+        );
+
+        excludedNamesElement.innerHTML = "";
+    }
+
+    modal.classList.remove(
+        "hidden"
+    );
+}
+
+
+function closeBibleChallengeNewRoundConfirmModal() {
+    if (bcStartNewRoundInProgress) {
+        return;
+    }
+
+    const modal =
+        document.getElementById(
+            "bcNewRoundConfirmModal"
+        );
+
+    if (modal) {
+        modal.classList.add(
+            "hidden"
+        );
+    }
+}
+
+
+function handleBibleChallengeNewRoundConfirmBackdrop(
+    event
+) {
+    if (
+        event.target?.id ===
+        "bcNewRoundConfirmModal"
+    ) {
+        closeBibleChallengeNewRoundConfirmModal();
+    }
+}
+
+
+async function executeBibleChallengeNewRound() {
+    if (bcStartNewRoundInProgress) {
+        return;
+    }
+
+    const executeButton =
+        document.getElementById(
+            "bcExecuteNewRoundButton"
+        );
+
+    const message =
+        document.getElementById(
+            "bcNewRoundMessage"
+        );
+
+    bcStartNewRoundInProgress = true;
+
+    if (executeButton) {
+        executeButton.disabled = true;
+
+        executeButton.innerText =
+            "Đang bắt đầu...";
+    }
+
+    message.className =
+        "bc-new-round-message info";
+
+    message.innerText =
+        "Đang bắt đầu vòng Bible Challenge mới...";
+
+    try {
+        const data =
+            await bibleChallengeApiRequest(
+                "/start-new-round",
+                {
+                    method: "POST",
+
+                    body: JSON.stringify({
+                        excludedGroupIds:
+                            bcPendingExcludedGroupIds
+                    })
+                }
+            );
+
+        const roundNo =
+            Number(data.roundNo) || "";
+
+        message.className =
+            "bc-new-round-message success";
+
+        message.innerText =
+            `Đã bắt đầu vòng ${
+                roundNo || "mới"
+            } thành công.`;
+
+        bcSelectedGroupApi = null;
+        bcSelectedMemberApi = null;
+        bcEligibleMembersApi = [];
+
+        await refreshBibleChallengeApiUi();
+
+        bcPendingExcludedGroupIds = [];
+
+        closeBibleChallengeNewRoundConfirmModal();
+
+        setTimeout(() => {
+            bcStartNewRoundInProgress =
+                false;
+
+            if (executeButton) {
+                executeButton.disabled =
+                    false;
+
+                executeButton.innerText =
+                    "Xác nhận bắt đầu";
+            }
+
+            closeBibleChallengeNewRoundModal();
+        }, 500);
+    } catch (error) {
+        console.error(
+            "Start Bible Challenge new round error:",
+            error
+        );
+
+        bcStartNewRoundInProgress = false;
+
+        if (executeButton) {
+            executeButton.disabled =
+                false;
+
+            executeButton.innerText =
+                "Xác nhận bắt đầu";
+        }
+
+        message.className =
+            "bc-new-round-message error";
+
+        message.innerText =
+            error.message ||
+            "Không thể bắt đầu vòng mới.";
+
+        closeBibleChallengeNewRoundConfirmModal();
+
+        updateBibleChallengeNewRoundButtonState();
+
+        resetBibleChallengeApiCache();
+    }
+}
+
 
 function bcRenderMemberPanelStatusDemo(currentData) {
     const memberGrid =
@@ -14960,7 +15731,7 @@ const availableGroupCards =
 if (availableGroupCards.length === 0) {
     alert(
         "Tất cả nhóm đã được random trong vòng hiện tại. " +
-        "Vui lòng reset Bible Challenge để bắt đầu vòng mới."
+        "Hãy bấm “Bắt đầu vòng mới” để tiếp tục."
     );
 
     return;

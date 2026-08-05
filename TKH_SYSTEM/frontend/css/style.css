@@ -5579,11 +5579,6 @@ body.bc-presentation-mode
     display: none;
 }
 
-body.bc-presentation-mode
-.bc-group-actions {
-    grid-template-columns:
-        repeat(2, minmax(0, 1fr));
-}
 
 
 @media (max-width: 768px) {
@@ -8559,5 +8554,401 @@ body.bc-presentation-mode
     .admin-survey-modal-question-heading {
         flex-direction:
             column;
+    }
+}
+
+
+/* =====================================================
+   BIBLE CHALLENGE — START NEW ROUND
+   ===================================================== */
+
+.bc-start-new-round-button {
+    background: #7c3aed !important;
+}
+
+.bc-start-new-round-button:hover {
+    background: #6d28d9 !important;
+}
+
+.bc-new-round-modal-box {
+    max-width: 720px;
+    max-height: 90vh;
+
+    overflow-y: auto;
+    padding: 26px;
+
+    text-align: left;
+}
+
+.bc-new-round-warning {
+    margin-bottom: 16px;
+    padding: 14px 16px;
+
+    border-left: 4px solid #f59e0b;
+    border-radius: 12px;
+
+    background: #fffbeb;
+    color: #92400e;
+
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.bc-new-round-current-status {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+
+    margin-bottom: 18px;
+    padding: 14px 16px;
+
+    border-radius: 13px;
+
+    line-height: 1.45;
+}
+
+.bc-new-round-status-ready {
+    border: 1px solid #86efac;
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.bc-new-round-status-blocked {
+    border: 1px solid #fecaca;
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+.bc-new-round-current-status span {
+    font-size: 14px;
+}
+
+.bc-new-round-group-list {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 12px;
+}
+
+.bc-new-round-group-option {
+    min-width: 0;
+
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding: 13px;
+
+    border: 1px solid #dbe3ef;
+    border-radius: 14px;
+
+    background: #ffffff;
+
+    cursor: pointer;
+
+    transition:
+        border-color 0.2s ease,
+        background-color 0.2s ease;
+}
+
+.bc-new-round-group-option:hover {
+    border-color: #a78bfa;
+    background: #faf5ff;
+}
+
+.bc-new-round-group-option:has(input:checked) {
+    border-color: #7c3aed;
+    background: #f3e8ff;
+
+    box-shadow:
+        0 0 0 2px
+        rgba(124, 58, 237, 0.1);
+}
+
+.bc-new-round-group-option input {
+    width: 19px;
+    height: 19px;
+
+    flex-shrink: 0;
+
+    accent-color: #7c3aed;
+}
+
+.bc-new-round-group-logo {
+    width: 44px;
+    height: 44px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    overflow: hidden;
+
+    border-radius: 50%;
+
+    background: #e2e8f0;
+    color: #334155;
+
+    font-weight: 800;
+}
+
+.bc-new-round-group-logo img {
+    width: 100%;
+    height: 100%;
+
+    display: block;
+    object-fit: cover;
+}
+
+.bc-new-round-group-information {
+    min-width: 0;
+    flex: 1;
+}
+
+.bc-new-round-group-information strong,
+.bc-new-round-group-information small {
+    display: block;
+}
+
+.bc-new-round-group-information strong {
+    overflow: hidden;
+
+    color: #111827;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bc-new-round-group-information small {
+    margin-top: 4px;
+
+    color: #64748b;
+    line-height: 1.35;
+}
+
+.bc-new-round-message {
+    min-height: 20px;
+
+    margin: 16px 0 0;
+
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.bc-new-round-message.info {
+    color: #475569;
+}
+
+.bc-new-round-message.success {
+    color: #15803d;
+}
+
+.bc-new-round-message.error {
+    color: #b91c1c;
+}
+
+.bc-confirm-new-round-button {
+    background: #7c3aed !important;
+    color: #ffffff;
+}
+
+.bc-confirm-new-round-button:hover:not(:disabled) {
+    background: #6d28d9 !important;
+}
+
+.bc-confirm-new-round-button:disabled {
+    background: #cbd5e1 !important;
+    color: #64748b;
+
+    cursor: not-allowed;
+}
+
+
+/*
+ * Không để học viên nhìn thấy nút điều khiển vòng
+ * khi đang dùng chế độ trình chiếu.
+ */
+body.bc-presentation-mode
+.bc-start-new-round-button {
+    display: none;
+}
+
+body.bc-presentation-mode
+.bc-group-actions {
+    grid-template-columns: 1fr;
+}
+
+
+@media (max-width: 768px) {
+    .bc-new-round-modal-box {
+        max-height: 92vh;
+        padding: 20px 16px;
+    }
+
+    .bc-new-round-group-list {
+        grid-template-columns: 1fr;
+    }
+
+    .bc-new-round-group-option {
+        min-height: 72px;
+    }
+}
+
+/* =====================================================
+   BIBLE CHALLENGE — QUICK NEW ROUND CONFIRMATION
+   ===================================================== */
+
+.bc-new-round-selected-summary {
+    margin-top: 16px;
+    padding: 14px 16px;
+
+    border: 1px solid #c4b5fd;
+    border-radius: 14px;
+
+    background: #f5f3ff;
+}
+
+.bc-new-round-selected-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    color: #5b21b6;
+}
+
+.bc-new-round-selected-header span {
+    padding: 4px 9px;
+
+    border-radius: 999px;
+
+    background: #ede9fe;
+    color: #6d28d9;
+
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.bc-new-round-selected-names {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    margin-top: 11px;
+}
+
+.bc-new-round-selected-names span {
+    padding: 7px 10px;
+
+    border-radius: 999px;
+
+    background: #7c3aed;
+    color: #ffffff;
+
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.bc-new-round-confirm-modal-box {
+    max-width: 500px;
+    padding: 30px;
+
+    text-align: center;
+}
+
+.bc-new-round-confirm-icon {
+    width: 68px;
+    height: 68px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin: 0 auto 15px;
+
+    border-radius: 50%;
+
+    background: #ede9fe;
+    color: #7c3aed;
+
+    font-size: 38px;
+    font-weight: 900;
+}
+
+.bc-new-round-confirm-modal-box h3 {
+    margin: 0 0 8px;
+
+    font-size: 25px;
+}
+
+.bc-new-round-confirm-intro {
+    margin: 0 0 18px;
+
+    color: #64748b;
+}
+
+.bc-new-round-confirm-excluded-box {
+    padding: 16px;
+
+    border: 1px solid #c4b5fd;
+    border-radius: 14px;
+
+    background: #f5f3ff;
+
+    color: #5b21b6;
+    text-align: left;
+}
+
+.bc-new-round-confirm-excluded-names {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    margin-top: 11px;
+}
+
+.bc-new-round-confirm-excluded-names span {
+    padding: 7px 10px;
+
+    border-radius: 999px;
+
+    background: #7c3aed;
+    color: #ffffff;
+
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.bc-new-round-confirm-all-groups {
+    padding: 15px;
+
+    border: 1px solid #86efac;
+    border-radius: 14px;
+
+    background: #f0fdf4;
+    color: #166534;
+
+    font-weight: 700;
+}
+
+.bc-new-round-confirm-note {
+    margin: 17px 0 0;
+
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+    .bc-new-round-confirm-modal-box {
+        padding: 24px 18px;
+    }
+
+    .bc-new-round-selected-header {
+        align-items: flex-start;
+        flex-direction: column;
     }
 }

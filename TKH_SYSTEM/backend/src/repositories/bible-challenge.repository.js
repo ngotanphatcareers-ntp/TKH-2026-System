@@ -260,6 +260,118 @@ async function createRoundSelection({
 }
 
 
+async function createRoundSelections({
+  seasonId,
+  sessionId,
+  roundNo,
+  groupIds,
+  createdByUserId,
+}) {
+  const normalizedGroupIds =
+    Array.from(
+      new Set(
+        (Array.isArray(groupIds)
+          ? groupIds
+          : []
+        )
+          .map(Number)
+          .filter(
+            groupId =>
+              Number.isInteger(groupId) &&
+              groupId > 0
+          )
+      )
+    );
+
+  if (normalizedGroupIds.length === 0) {
+    return [];
+  }
+
+  const pool = await getPool();
+
+  const transaction =
+    new sql.Transaction(pool);
+
+  await transaction.begin();
+
+  try {
+    const insertedSelections = [];
+
+    for (
+      const groupId
+      of normalizedGroupIds
+    ) {
+      const result =
+        await new sql.Request(
+          transaction
+        )
+          .input(
+            "seasonId",
+            sql.Int,
+            seasonId
+          )
+          .input(
+            "sessionId",
+            sql.Int,
+            sessionId
+          )
+          .input(
+            "roundNo",
+            sql.Int,
+            roundNo
+          )
+          .input(
+            "groupId",
+            sql.Int,
+            groupId
+          )
+          .input(
+            "createdByUserId",
+            sql.Int,
+            createdByUserId || null
+          )
+          .query(`
+            INSERT INTO dbo.bible_challenge_rounds
+            (
+              season_id,
+              session_id,
+              round_no,
+              group_id,
+              created_by_user_id
+            )
+            OUTPUT
+              INSERTED.id,
+              INSERTED.season_id,
+              INSERTED.session_id,
+              INSERTED.round_no,
+              INSERTED.group_id,
+              INSERTED.created_by_user_id,
+              INSERTED.created_at
+            VALUES
+            (
+              @seasonId,
+              @sessionId,
+              @roundNo,
+              @groupId,
+              @createdByUserId
+            );
+          `);
+
+      insertedSelections.push(
+        result.recordset[0]
+      );
+    }
+
+    await transaction.commit();
+
+    return insertedSelections;
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+}
+
+
 async function findLatestRoundSelection({
   seasonId,
 }) {
@@ -856,6 +968,7 @@ module.exports = {
   findAllGroupsWithEligibleMembers,
   findUsedGroupsInRound,
   createRoundSelection,
+  createRoundSelections,
   findLatestRoundSelection,
   findGroupById,
   findEligibleMembersByGroup,
