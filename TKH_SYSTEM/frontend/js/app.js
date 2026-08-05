@@ -1,5 +1,5 @@
 const API_BASE_URL =
-    "https://induction-selecting-beginners-ind.trycloudflare.com";
+    "https://intensive-designated-raises-pocket.trycloudflare.com";
 
 const demoUsers = [
     {
