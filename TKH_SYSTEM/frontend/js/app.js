@@ -1,5 +1,5 @@
 const API_BASE_URL =
-    "https://intensive-designated-raises-pocket.trycloudflare.com";
+    "https://via-giants-attend-accent.trycloudflare.com";
 
 const demoUsers = [
     {
