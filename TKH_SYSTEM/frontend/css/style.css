@@ -10674,14 +10674,15 @@ small {
     }
 
     .mens-day-recipient-intro {
-        margin-bottom: 20px;
+        margin-bottom: 0;
         padding:
             13px
             10px;
     }
 
     .mens-day-letter-content {
-        margin-top: 24px;
+        margin-top: 0;
+        padding-top: 32px;
         line-height: 1.72;
     }
 
