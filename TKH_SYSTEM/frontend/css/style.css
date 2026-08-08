@@ -9978,18 +9978,30 @@ small {
 }
 
 .mens-day-letter-paper::before {
-    content: "";
+    content: none;
+}
 
-    position: absolute;
-    inset: 11px;
+/* =========================================================
+   MEN'S DAY — TOP DECORATIVE FRAME
+   Chỉ bao phần tiêu đề + tên người nhận
+   ========================================================= */
+
+.mens-day-letter-top-frame {
+    position: relative;
+    z-index: 2;
+
+    margin-bottom: 34px;
+
+    padding:
+        18px
+        16px
+        22px;
 
     border:
         1px solid
-        rgba(177, 137, 58, 0.2);
+        rgba(177, 137, 58, 0.22);
 
-    border-radius: 6px;
-
-    pointer-events: none;
+    border-radius: 8px;
 }
 
 
@@ -10674,7 +10686,7 @@ small {
     }
 
     .mens-day-recipient-intro {
-        margin-bottom: 32px;
+        margin-bottom: 0;
 
         padding:
             13px
