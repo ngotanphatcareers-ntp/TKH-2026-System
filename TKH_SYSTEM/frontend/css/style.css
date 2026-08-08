@@ -3181,10 +3181,11 @@ input:focus {
     }
 
     .program-logo {
-        width: 54px;
-        height: 54px;
+        width: 62px;
+        height: 62px;
 
         object-fit: contain;
+        flex-shrink: 0;
     }
 
     .program-header-text p {
