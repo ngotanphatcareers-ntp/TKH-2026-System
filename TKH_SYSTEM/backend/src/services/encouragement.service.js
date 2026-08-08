@@ -1180,6 +1180,318 @@ async function sendMensDayCampaignTest({
   }
 }
 
+
+/*
+=====================================================
+9. Admin Men's Day PRODUCTION bulk send
+
+IMPORTANT:
+- Sends only to eligible MALE students
+- Skips recipients who already received MENS_DAY_2026
+- Anonymous
+- Normal encouragement visual for everyone except TKH158
+- Does NOT modify the supplied message
+=====================================================
+*/
+
+async function sendMensDayCampaignBulk({
+    message,
+}) {
+    const CAMPAIGN_CODE =
+        "MENS_DAY_2026";
+
+    const normalizedMessage =
+        String(message || "").trim();
+
+    if (!normalizedMessage) {
+        return {
+            success: false,
+            code: "MESSAGE_REQUIRED",
+        };
+    }
+
+    if (normalizedMessage.length > 1000) {
+        return {
+            success: false,
+            code: "MESSAGE_TOO_LONG",
+        };
+    }
+
+    const activeSeason =
+        await findActiveSeason();
+
+    if (!activeSeason) {
+        return {
+            success: false,
+            code: "ACTIVE_SEASON_NOT_FOUND",
+        };
+    }
+
+    /*
+     * Lấy toàn bộ học viên Nam hợp lệ.
+     * Repository cũng cho biết ai đã nhận campaign.
+     */
+    const recipients =
+        await findMensDayCampaignRecipients({
+            seasonId:
+                activeSeason.id,
+
+            campaignCode:
+                CAMPAIGN_CODE,
+        });
+
+    /*
+     * Chỉ gửi cho người CHƯA có campaign.
+     *
+     * TKH158 hiện đã có MENS_DAY_2026,
+     * vì vậy tự động bị loại khỏi pendingRecipients.
+     */
+    const pendingRecipients =
+        recipients.filter(
+            item =>
+                item
+                    .campaign_encouragement_id ===
+                    null ||
+                item
+                    .campaign_encouragement_id ===
+                    undefined
+        );
+
+    const alreadySentCount =
+        recipients.length -
+        pendingRecipients.length;
+
+    /*
+     * Nếu tất cả đã nhận rồi,
+     * không tạo thêm bất kỳ record nào.
+     */
+    if (
+        pendingRecipients.length === 0
+    ) {
+        return {
+            success: true,
+
+            campaign: {
+                code:
+                    CAMPAIGN_CODE,
+
+                name:
+                    "Ngày của Nam 2026",
+            },
+
+            recipientCount:
+                recipients.length,
+
+            alreadySentCount,
+
+            sentCount:
+                0,
+
+            failedCount:
+                0,
+
+            pendingCount:
+                0,
+
+            results: [],
+        };
+    }
+
+    const results = [];
+
+    let sentCount = 0;
+    let failedCount = 0;
+
+    /*
+     * Gửi tuần tự.
+     *
+     * Với khoảng 85 người, cách này đơn giản,
+     * dễ kiểm soát và tránh tạo burst query.
+     */
+    for (
+        const recipient
+        of pendingRecipients
+    ) {
+        try {
+            const encouragement =
+                await createEncouragement({
+                    seasonId:
+                        activeSeason.id,
+
+                    /*
+                     * Thư BTC:
+                     * không giả lập sender học viên.
+                     */
+                    senderSeasonMembershipId:
+                        null,
+
+                    recipientSeasonMembershipId:
+                        recipient
+                            .season_membership_id,
+
+                    /*
+                     * Giữ nguyên message được gửi lên.
+                     */
+                    message:
+                        normalizedMessage,
+
+                    /*
+                     * YÊU CẦU BTC:
+                     * thư phải ẨN DANH.
+                     */
+                    isAnonymous:
+                        true,
+
+                    campaignCode:
+                        CAMPAIGN_CODE,
+                });
+
+            sentCount += 1;
+
+            results.push({
+                success: true,
+
+                encouragementId:
+                    encouragement.id,
+
+                seasonMembershipId:
+                    recipient
+                        .season_membership_id,
+
+                username:
+                    recipient.username,
+
+                tkhCode:
+                    recipient.tkh_code,
+
+                fullName:
+                    recipient.full_name,
+            });
+        } catch (error) {
+            /*
+             * Nếu vì lý do concurrency mà
+             * database báo duplicate,
+             * không làm hỏng toàn bộ batch.
+             */
+            if (
+                error?.number === 2601 ||
+                error?.number === 2627
+            ) {
+                results.push({
+                    success: false,
+
+                    skipped: true,
+
+                    reason:
+                        "DUPLICATE",
+
+                    seasonMembershipId:
+                        recipient
+                            .season_membership_id,
+
+                    username:
+                        recipient.username,
+
+                    tkhCode:
+                        recipient.tkh_code,
+                });
+
+                continue;
+            }
+
+            failedCount += 1;
+
+            console.error(
+                "Mens Day bulk recipient error:",
+                {
+                    username:
+                        recipient.username,
+
+                    tkhCode:
+                        recipient.tkh_code,
+
+                    error,
+                }
+            );
+
+            results.push({
+                success: false,
+
+                skipped: false,
+
+                reason:
+                    "SEND_FAILED",
+
+                seasonMembershipId:
+                    recipient
+                        .season_membership_id,
+
+                username:
+                    recipient.username,
+
+                tkhCode:
+                    recipient.tkh_code,
+            });
+        }
+    }
+
+    /*
+     * Query lại sau khi hoàn tất để biết
+     * trạng thái campaign thực tế.
+     */
+    const recipientsAfterSend =
+        await findMensDayCampaignRecipients({
+            seasonId:
+                activeSeason.id,
+
+            campaignCode:
+                CAMPAIGN_CODE,
+        });
+
+    const pendingAfterSend =
+        recipientsAfterSend.filter(
+            item =>
+                item
+                    .campaign_encouragement_id ===
+                    null ||
+                item
+                    .campaign_encouragement_id ===
+                    undefined
+        );
+
+    return {
+        success:
+            failedCount === 0,
+
+        campaign: {
+            code:
+                CAMPAIGN_CODE,
+
+            name:
+                "Ngày của Nam 2026",
+        },
+
+        recipientCount:
+            recipientsAfterSend.length,
+
+        alreadySentBefore:
+            alreadySentCount,
+
+        sentCount,
+
+        failedCount,
+
+        pendingCount:
+            pendingAfterSend.length,
+
+        alreadySentAfter:
+            recipientsAfterSend.length -
+            pendingAfterSend.length,
+
+        results,
+    };
+}
+
 module.exports = {
   getRecipients,
   sendEncouragement,
@@ -1190,4 +1502,5 @@ module.exports = {
   getAdminReview,
   getMensDayCampaignPreview,
   sendMensDayCampaignTest,
+  sendMensDayCampaignBulk,
 };

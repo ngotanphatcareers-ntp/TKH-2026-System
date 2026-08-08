@@ -15,6 +15,7 @@ const {
   getAdminReview,
   getMensDayCampaignPreview,
   sendMensDayCampaignTest,
+  sendMensDayCampaignBulk,
 } = require(
   "../controllers/encouragement.controller"
 );
@@ -68,6 +69,23 @@ router.post(
   sendMensDayCampaignTest
 );
 
+
+/*
+POST
+/api/admin/encouragements/campaigns/mens-day-2026/send
+
+PRODUCTION BULK SEND
+
+IMPORTANT:
+Calling this endpoint creates real encouragements
+for all pending eligible male students.
+*/
+router.post(
+    "/campaigns/mens-day-2026/send",
+    authenticateToken,
+    requireRole("ADMIN"),
+    sendMensDayCampaignBulk
+);
 
 /*
 GET

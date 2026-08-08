@@ -8,6 +8,7 @@ const {
   getAdminReview,
   getMensDayCampaignPreview,
   sendMensDayCampaignTest,
+  sendMensDayCampaignBulk,
 } = require(
   "../services/encouragement.service"
 );
@@ -427,6 +428,67 @@ async function sendMensDayCampaignTestController(
   }
 }
 
+/*
+=====================================================
+9. Admin Men's Day PRODUCTION bulk send
+
+POST
+/api/admin/encouragements/campaigns/mens-day-2026/send
+=====================================================
+*/
+
+async function sendMensDayCampaignBulkController(
+    req,
+    res
+) {
+    try {
+        const result =
+            await sendMensDayCampaignBulk({
+                message:
+                    req.body.message,
+            });
+
+        if (!result.success) {
+            /*
+             * Nếu có business validation error
+             * như MESSAGE_REQUIRED thì dùng
+             * error mapper hiện tại.
+             *
+             * Nếu batch chạy nhưng có một vài
+             * recipient lỗi, vẫn trả result
+             * để Admin biết trạng thái thực tế.
+             */
+            if (
+                result.code
+            ) {
+                return sendErrorResponse(
+                    res,
+                    result
+                );
+            }
+
+            return res
+                .status(207)
+                .json(result);
+        }
+
+        return res
+            .status(200)
+            .json(result);
+    } catch (error) {
+        console.error(
+            "Send Men's Day bulk campaign error:",
+            error
+        );
+
+        return res.status(500).json({
+            success: false,
+            code:
+                "INTERNAL_SERVER_ERROR",
+        });
+    }
+}
+
 module.exports = {
   getRecipients:
     getRecipientsController,
@@ -454,4 +516,6 @@ module.exports = {
 
   sendMensDayCampaignTest:
     sendMensDayCampaignTestController,
+  sendMensDayCampaignBulk:
+    sendMensDayCampaignBulkController,
 };

@@ -5568,6 +5568,40 @@ function isMensDayEncouragementDemo(item) {
 
 /*
 =====================================================
+MEN'S DAY 2026
+Special visual experience is kept only for TKH158.
+Other recipients use the normal encouragement UI.
+=====================================================
+*/
+
+function shouldUseMensDaySpecialExperience(
+    item
+) {
+    if (
+        !isMensDayEncouragementDemo(item)
+    ) {
+        return false;
+    }
+
+    const currentUser =
+        JSON.parse(
+            localStorage.getItem(
+                "currentUser"
+            )
+        );
+
+    const username =
+        String(
+            currentUser?.username || ""
+        )
+            .trim()
+            .toLowerCase();
+
+    return username === "tkh158";
+}
+
+/*
+=====================================================
 MEN'S DAY 2026 — TIMER HELPERS
 =====================================================
 */
@@ -6084,25 +6118,20 @@ function openEncouragementLetterFromApi(
         return;
     }
 
-    const isMensDay =
-        isMensDayEncouragementDemo(
+    const useMensDaySpecialExperience =
+        shouldUseMensDaySpecialExperience(
             item
         );
 
-        /*
-        * Campaign đặc biệt đi vào experience
-        * hoàn toàn riêng.
-        *
-        * Thư bình thường tiếp tục dùng
-        * modal kraft hiện tại.
-        */
-        if (isMensDay) {
-            openMensDayLetterExperience(
-                item
-            );
+    if (
+        useMensDaySpecialExperience
+    ) {
+        openMensDayLetterExperience(
+            item
+        );
 
-            return;
-        }
+        return;
+    }
 
     const modal =
         document.getElementById(
@@ -6149,15 +6178,7 @@ function openEncouragementLetterFromApi(
     * Bật/tắt giao diện đặc biệt
     * cho thư Ngày của Nam.
     */
-    modal.classList.toggle(
-        "mens-day-letter-modal",
-        isMensDay
-    );
 
-    animation.classList.toggle(
-        "mens-day-letter-animation",
-        isMensDay
-    );
 
 
     currentOpenedEncouragementId =
@@ -6452,8 +6473,8 @@ async function loadEncouragementListFromApi() {
 
         list.innerHTML =
             sortedMessages.map(item => {
-                const isMensDay =
-                    isMensDayEncouragementDemo(
+                const useMensDaySpecialExperience =
+                    shouldUseMensDaySpecialExperience(
                         item
                     );
 
@@ -6485,7 +6506,9 @@ async function loadEncouragementListFromApi() {
                 /*
                     * Men's Day 2026 có card riêng hoàn toàn.
                     */
-                    if (isMensDay) {
+                    if (
+                        useMensDaySpecialExperience
+                    ) {
                         return `
                             <article
                                 class="
