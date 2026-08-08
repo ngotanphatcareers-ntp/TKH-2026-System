@@ -10674,7 +10674,8 @@ small {
     }
 
     .mens-day-recipient-intro {
-        margin-bottom: 0;
+        margin-bottom: 32px;
+
         padding:
             13px
             10px;
@@ -10682,7 +10683,7 @@ small {
 
     .mens-day-letter-content {
         margin-top: 0;
-        padding-top: 32px;
+        padding-top: 0;
         line-height: 1.72;
     }
 
