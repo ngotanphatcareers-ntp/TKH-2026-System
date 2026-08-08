@@ -6,6 +6,8 @@ const {
   toggleMyEncouragementPin,
   getAdminStats,
   getAdminReview,
+  getMensDayCampaignPreview,
+  sendMensDayCampaignTest,
 } = require(
   "../services/encouragement.service"
 );
@@ -36,6 +38,9 @@ const STATUS_BY_CODE = {
 
   INVALID_ENCOURAGEMENT_ID: 400,
   ENCOURAGEMENT_NOT_FOUND: 404,
+
+  MENS_DAY_TEST_RECIPIENT_NOT_FOUND: 404,
+  MENS_DAY_CAMPAIGN_ALREADY_SENT: 409,
 };
 
 
@@ -339,8 +344,91 @@ async function getAdminReviewController(
 }
 
 
+/*
+=====================================================
+7. Admin Men's Day campaign preview
+GET /api/admin/encouragements/campaigns/mens-day-2026/preview
+=====================================================
+*/
+
+async function getMensDayCampaignPreviewController(
+  req,
+  res
+) {
+  try {
+    const result =
+      await getMensDayCampaignPreview();
+
+    if (!result.success) {
+      return sendErrorResponse(
+        res,
+        result
+      );
+    }
+
+    return res
+      .status(200)
+      .json(result);
+  } catch (error) {
+    console.error(
+      "Get Men's Day campaign preview error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      code: "INTERNAL_SERVER_ERROR",
+    });
+  }
+}
+
+
+/*
+=====================================================
+8. Admin Men's Day TEST send
+POST /api/admin/encouragements/campaigns/mens-day-2026/test
+
+TEST MODE:
+Recipient is hard-locked to TKH158.
+=====================================================
+*/
+
+async function sendMensDayCampaignTestController(
+  req,
+  res
+) {
+  try {
+    const result =
+      await sendMensDayCampaignTest({
+        message:
+          req.body.message,
+      });
+
+    if (!result.success) {
+      return sendErrorResponse(
+        res,
+        result
+      );
+    }
+
+    return res
+      .status(201)
+      .json(result);
+  } catch (error) {
+    console.error(
+      "Send Men's Day TEST campaign error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      code: "INTERNAL_SERVER_ERROR",
+    });
+  }
+}
+
 module.exports = {
-    getRecipients:
+  getRecipients:
     getRecipientsController,
 
   createEncouragement:
@@ -360,4 +448,10 @@ module.exports = {
 
   getAdminReview:
     getAdminReviewController,
+
+  getMensDayCampaignPreview:
+    getMensDayCampaignPreviewController,
+
+  sendMensDayCampaignTest:
+    sendMensDayCampaignTestController,
 };

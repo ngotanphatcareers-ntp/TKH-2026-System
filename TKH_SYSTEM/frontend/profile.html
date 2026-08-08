@@ -11,7 +11,7 @@
         href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap"
         rel="stylesheet"
     >
-    <link rel="stylesheet" href="css/style.css?v=142">
+    <link rel="stylesheet" href="css/style.css?v=154">
 </head>
 <body class="app-page">
 
@@ -182,6 +182,276 @@
     </div>
 </div>
 
+<!-- =====================================================
+     MEN'S DAY 2026 — SPECIAL LETTER EXPERIENCE
+     Dedicated experience for MENS_DAY_2026 only.
+     Normal encouragement modal above remains unchanged.
+     ===================================================== -->
+
+<div
+    id="mensDayLetterExperience"
+    class="mens-day-experience hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="mensDayLetterTitle"
+>
+    <!-- Dark cinematic background -->
+    <div
+        class="mens-day-backdrop"
+        aria-hidden="true"
+    ></div>
+
+    <!-- Ambient stars / particles -->
+    <div
+        class="mens-day-particles"
+        aria-hidden="true"
+    >
+        <span class="mens-day-particle mens-day-particle-1">✦</span>
+        <span class="mens-day-particle mens-day-particle-2">✧</span>
+        <span class="mens-day-particle mens-day-particle-3">✦</span>
+        <span class="mens-day-particle mens-day-particle-4">•</span>
+        <span class="mens-day-particle mens-day-particle-5">✧</span>
+        <span class="mens-day-particle mens-day-particle-6">✦</span>
+        <span class="mens-day-particle mens-day-particle-7">•</span>
+        <span class="mens-day-particle mens-day-particle-8">✧</span>
+        <span class="mens-day-particle mens-day-particle-9">✦</span>
+        <span class="mens-day-particle mens-day-particle-10">•</span>
+    </div>
+
+    <!-- Close -->
+    <button
+        type="button"
+        class="mens-day-close-button"
+        onclick="closeMensDayLetterExperience()"
+        aria-label="Đóng thư đặc biệt"
+    >
+        ×
+    </button>
+
+
+    <!-- =================================================
+         MAIN STAGE
+         ================================================= -->
+
+    <div class="mens-day-stage">
+
+        <!-- =============================================
+             PHASE 1 — ENVELOPE
+             ============================================= -->
+
+        <div
+            id="mensDayEnvelopeScene"
+            class="mens-day-envelope-scene"
+        >
+            <!-- Light coming from inside envelope -->
+            <div
+                class="mens-day-envelope-light"
+                aria-hidden="true"
+            ></div>
+
+
+            <!-- Main Navy envelope -->
+            <div class="mens-day-envelope">
+
+                <div
+                    class="mens-day-envelope-back"
+                    aria-hidden="true"
+                ></div>
+
+
+                <!-- Letter hidden inside envelope -->
+                <div
+                    id="mensDayLetterInside"
+                    class="mens-day-letter-inside"
+                >
+
+                    <!-- =================================
+                         IVORY LETTER
+                         ================================= -->
+
+                    <article class="mens-day-letter-paper">
+
+                        <header class="mens-day-letter-header">
+
+                            <img
+                                class="mens-day-letter-logo"
+                                src="assets/images/logo-menday/LOGO-Mau-Chieu-Ra-2026.png"
+                                alt="Màu Chiếu Ra 2026"
+                            >
+
+                            <p class="mens-day-letter-eyebrow">
+                                ✦ SPECIAL MESSAGE ✦
+                            </p>
+
+                            <h2
+                                id="mensDayLetterTitle"
+                                class="mens-day-letter-title"
+                            >
+                                MỘT LÁ THƯ ĐẶC BIỆT
+                            </h2>
+
+                            <div
+                                class="mens-day-letter-divider"
+                                aria-hidden="true"
+                            >
+                                <span></span>
+                                <b>✦</b>
+                                <span></span>
+                            </div>
+                        </header>
+
+
+                        <!-- =================================
+                             RECIPIENT INTRO
+                             Not part of BTC message.
+                             ================================= -->
+
+                        <div
+                            id="mensDayRecipientIntro"
+                            class="mens-day-recipient-intro"
+                        >
+                            <p>
+                                ĐẶC BIỆT GỬI ĐẾN
+                            </p>
+
+                            <strong
+                                id="mensDayRecipientName"
+                            >
+                                HỌC VIÊN TKH
+                            </strong>
+                        </div>
+
+
+                        <!-- =================================
+                             ORIGINAL BTC MESSAGE
+                             ================================= -->
+
+                        <div
+                            id="mensDayLetterContent"
+                            class="mens-day-letter-content"
+                        ></div>
+
+
+                        <!-- =================================
+                             SIGNATURE
+                             ================================= -->
+
+                        <footer class="mens-day-letter-footer">
+
+                            <div class="mens-day-letter-signature">
+                                <span>
+                                    — Ẩn danh
+                                </span>
+
+                                <small
+                                    id="mensDayLetterDate"
+                                ></small>
+                            </div>
+
+                            <button
+                                type="button"
+                                id="mensDayLetterPinButton"
+                                class="mens-day-pin-button"
+                            >
+                                📌 Ghim
+                            </button>
+
+                        </footer>
+
+                    </article>
+                </div>
+
+
+                <!-- Front pieces -->
+                <div
+                    class="mens-day-envelope-front"
+                    aria-hidden="true"
+                ></div>
+
+                <div
+                    class="mens-day-envelope-left"
+                    aria-hidden="true"
+                ></div>
+
+                <div
+                    class="mens-day-envelope-right"
+                    aria-hidden="true"
+                ></div>
+
+                <div
+                    class="mens-day-envelope-flap"
+                    aria-hidden="true"
+                ></div>
+
+
+                <!-- =====================================
+                     LOGO SEAL
+                     ===================================== -->
+
+                <button
+                    type="button"
+                    id="mensDaySeal"
+                    class="mens-day-seal"
+                    aria-label="Mở con dấu thư đặc biệt"
+                >
+                    <span
+                        class="mens-day-seal-ring"
+                        aria-hidden="true"
+                    ></span>
+
+                    <span class="mens-day-seal-inner">
+                        <img
+                            src="assets/images/logo-menday/LOGO-Mau-Chieu-Ra-2026.png"
+                            alt=""
+                        >
+                    </span>
+
+                    <span
+                        class="mens-day-seal-glow"
+                        aria-hidden="true"
+                    ></span>
+                </button>
+
+            </div>
+        </div>
+
+
+        <!-- =============================================
+             PHASE 2 — PERSONAL INTRO
+             ============================================= -->
+
+        <div
+            id="mensDayPersonalIntro"
+            class="mens-day-personal-intro"
+            aria-hidden="true"
+        >
+            <p>
+                MỘT LÁ THƯ ĐẶC BIỆT
+            </p>
+
+            <span>
+                GỬI ĐẾN
+            </span>
+
+            <strong
+                id="mensDayIntroRecipientName"
+            >
+                HỌC VIÊN TKH
+            </strong>
+
+            <div
+                class="mens-day-intro-divider"
+                aria-hidden="true"
+            >
+                <span></span>
+                <b>✦</b>
+                <span></span>
+            </div>
+        </div>
+
+    </div>
+</div>
+
 <div id="logoutModal" class="modal-overlay hidden">
         <div class="modal-box">
                 <h3>⏻ Đăng xuất</h3>
@@ -193,7 +463,7 @@
                 </div>
         </div>
 </div>
-<script src="js/app.js?v=139"></script>
+<script src="js/app.js?v=154"></script>
 
 
 

@@ -8952,3 +8952,2530 @@ body.bc-presentation-mode
         flex-direction: column;
     }
 }
+
+/* =====================================================
+   MEN'S DAY 2026 — SPECIAL INBOX CARD
+   ===================================================== */
+
+.mens-day-envelope-card {
+    position: relative;
+    overflow: hidden;
+
+    border:
+        1px solid
+        rgba(214, 181, 109, 0.8);
+
+    background:
+        linear-gradient(
+            145deg,
+            #071729,
+            #102f51
+        );
+
+    box-shadow:
+        0 12px 30px
+        rgba(7, 23, 41, 0.22);
+}
+
+.mens-day-envelope-card::before {
+    content: "";
+
+    position: absolute;
+    inset: 0;
+
+    pointer-events: none;
+
+    background:
+        linear-gradient(
+            110deg,
+            transparent 20%,
+            rgba(242, 223, 173, 0.12) 48%,
+            transparent 76%
+        );
+}
+
+.mens-day-envelope-preview {
+    color: #f8f1df;
+}
+
+.mens-day-envelope-preview
+.encouragement-envelope-preview-information
+strong {
+    color: #f2dfad;
+
+    letter-spacing: 0.5px;
+}
+
+.mens-day-envelope-preview
+.encouragement-envelope-preview-information
+small {
+    color:
+        rgba(
+            248,
+            241,
+            223,
+            0.82
+        );
+}
+
+.mens-day-envelope-preview
+.encouragement-open-label {
+    color: #d6b56d;
+}
+
+
+/* =====================================================
+   MEN'S DAY 2026 — LOGO
+   ===================================================== */
+
+.mens-day-envelope-logo {
+    width: 48px;
+    height: 48px;
+
+    display: block;
+
+    object-fit: contain;
+
+    padding: 5px;
+
+    border-radius: 12px;
+
+    background:
+        rgba(
+            255,
+            255,
+            255,
+            0.95
+        );
+
+    box-shadow:
+        0 0 18px
+        rgba(
+            214,
+            181,
+            109,
+            0.28
+        );
+}
+
+
+/* =====================================================
+   MEN'S DAY 2026 — MODAL
+   First visual checkpoint only.
+   Full animation will be added later.
+   ===================================================== */
+
+.mens-day-letter-modal {
+    background:
+        rgba(
+            3,
+            12,
+            24,
+            0.82
+        );
+}
+
+.mens-day-letter-modal
+.encouragement-letter-close {
+    border-color:
+        rgba(
+            214,
+            181,
+            109,
+            0.6
+        );
+
+    background:
+        #071729;
+
+    color:
+        #f2dfad;
+}
+
+/* =========================================================
+   MEN'S DAY 2026 — THE MIDNIGHT LETTER
+   Special experience for campaign: MENS_DAY_2026
+
+   Palette:
+   - Midnight Navy
+   - Deep Navy
+   - Champagne Gold
+   - Warm Ivory
+   ========================================================= */
+
+
+/* =========================================================
+   1. EXPERIENCE / CINEMATIC OVERLAY
+   ========================================================= */
+
+.mens-day-experience {
+    --mens-day-navy-950: #030b16;
+    --mens-day-navy-900: #061426;
+    --mens-day-navy-850: #0a1d34;
+    --mens-day-navy-800: #102a48;
+
+    --mens-day-gold-500: #d8b66a;
+    --mens-day-gold-400: #ead08e;
+    --mens-day-gold-300: #f3dfa8;
+
+    --mens-day-ivory: #fffaf0;
+    --mens-day-ivory-soft: #f8efd9;
+
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    overflow: hidden;
+
+    padding:
+        max(20px, env(safe-area-inset-top))
+        16px
+        max(20px, env(safe-area-inset-bottom));
+
+    isolation: isolate;
+}
+
+.mens-day-experience.hidden {
+    display: none !important;
+}
+
+
+/* =========================================================
+   2. BACKDROP
+   ========================================================= */
+
+.mens-day-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+
+    background:
+        radial-gradient(
+            circle at 50% 38%,
+            rgba(27, 67, 108, 0.48) 0%,
+            rgba(8, 28, 50, 0.72) 32%,
+            rgba(3, 11, 22, 0.96) 75%
+        ),
+        linear-gradient(
+            180deg,
+            #07182b 0%,
+            #030b16 100%
+        );
+
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
+}
+
+.mens-day-backdrop::before {
+    content: "";
+
+    position: absolute;
+    inset: 0;
+
+    background:
+        radial-gradient(
+            circle at 50% 45%,
+            rgba(234, 208, 142, 0.08),
+            transparent 34%
+        );
+
+    pointer-events: none;
+}
+
+
+/* =========================================================
+   3. AMBIENT PARTICLES
+   ========================================================= */
+
+.mens-day-particles {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+
+    overflow: hidden;
+
+    pointer-events: none;
+}
+
+.mens-day-particle {
+    position: absolute;
+
+    color:
+        rgba(243, 223, 168, 0.72);
+
+    font-size: 13px;
+    line-height: 1;
+
+    opacity: 0;
+
+    text-shadow:
+        0 0 8px
+        rgba(234, 208, 142, 0.6);
+
+    animation:
+        mensDayStarTwinkle
+        4.8s
+        ease-in-out
+        infinite;
+}
+
+.mens-day-particle-1 {
+    top: 10%;
+    left: 13%;
+    animation-delay: 0.2s;
+}
+
+.mens-day-particle-2 {
+    top: 18%;
+    left: 79%;
+    font-size: 17px;
+    animation-delay: 1.1s;
+}
+
+.mens-day-particle-3 {
+    top: 31%;
+    left: 7%;
+    animation-delay: 2.2s;
+}
+
+.mens-day-particle-4 {
+    top: 23%;
+    left: 60%;
+    font-size: 8px;
+    animation-delay: 0.8s;
+}
+
+.mens-day-particle-5 {
+    top: 62%;
+    left: 90%;
+    font-size: 16px;
+    animation-delay: 2.8s;
+}
+
+.mens-day-particle-6 {
+    top: 76%;
+    left: 11%;
+    font-size: 12px;
+    animation-delay: 1.7s;
+}
+
+.mens-day-particle-7 {
+    top: 84%;
+    left: 72%;
+    font-size: 8px;
+    animation-delay: 3.1s;
+}
+
+.mens-day-particle-8 {
+    top: 46%;
+    left: 88%;
+    font-size: 14px;
+    animation-delay: 0.5s;
+}
+
+.mens-day-particle-9 {
+    top: 70%;
+    left: 33%;
+    font-size: 11px;
+    animation-delay: 2.4s;
+}
+
+.mens-day-particle-10 {
+    top: 8%;
+    left: 47%;
+    font-size: 7px;
+    animation-delay: 3.4s;
+}
+
+@keyframes mensDayStarTwinkle {
+    0%,
+    100% {
+        opacity: 0.16;
+        transform:
+            scale(0.75)
+            rotate(0deg);
+    }
+
+    50% {
+        opacity: 0.92;
+        transform:
+            scale(1.2)
+            rotate(12deg);
+    }
+}
+
+
+/* =========================================================
+   4. CLOSE BUTTON
+   ========================================================= */
+
+.mens-day-close-button {
+    position: fixed;
+
+    top:
+        max(
+            18px,
+            env(safe-area-inset-top)
+        );
+
+    right: 18px;
+
+    z-index: 50;
+
+    width: 46px;
+    height: 46px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0;
+
+    border:
+        1px solid
+        rgba(234, 208, 142, 0.55);
+
+    border-radius: 50%;
+
+    background:
+        rgba(6, 20, 38, 0.88);
+
+    color:
+        var(--mens-day-gold-300);
+
+    font-family: Arial, sans-serif;
+    font-size: 30px;
+    font-weight: 300;
+    line-height: 1;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 8px 28px
+        rgba(0, 0, 0, 0.3),
+        inset 0 0 0 1px
+        rgba(255, 255, 255, 0.03);
+
+    transition:
+        transform 180ms ease,
+        background 180ms ease,
+        border-color 180ms ease;
+}
+
+.mens-day-close-button:hover {
+    transform: scale(1.06);
+
+    background:
+        rgba(16, 42, 72, 0.96);
+
+    border-color:
+        rgba(243, 223, 168, 0.9);
+}
+
+
+/* =========================================================
+   5. MAIN STAGE
+   ========================================================= */
+
+.mens-day-stage {
+    position: relative;
+    z-index: 10;
+
+    width: min(92vw, 520px);
+    height: min(86vh, 720px);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    perspective: 1400px;
+}
+
+
+/* =========================================================
+   6. ENVELOPE SCENE
+   ========================================================= */
+
+.mens-day-envelope-scene {
+    position: relative;
+
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    transform:
+        translateY(22px)
+        scale(0.96);
+
+    opacity: 1;
+
+    transform-origin: center center;
+}
+
+
+/* =========================================================
+   7. ENVELOPE
+   ========================================================= */
+
+.mens-day-envelope {
+    position: relative;
+
+    width: min(88vw, 430px);
+    aspect-ratio: 1.52 / 1;
+
+    border-radius: 15px;
+
+    filter:
+        drop-shadow(
+            0 26px 34px
+            rgba(0, 0, 0, 0.38)
+        );
+
+    transform-style: preserve-3d;
+}
+
+
+/* Back plate */
+
+.mens-day-envelope-back {
+    position: absolute;
+    inset: 0;
+
+    z-index: 1;
+
+    overflow: hidden;
+
+    border:
+        1px solid
+        rgba(216, 182, 106, 0.65);
+
+    border-radius: 15px;
+
+    background:
+        linear-gradient(
+            145deg,
+            #102d4c 0%,
+            #081a30 55%,
+            #061426 100%
+        );
+
+    box-shadow:
+        inset 0 0 0 1px
+        rgba(255, 255, 255, 0.025),
+        inset 0 -30px 60px
+        rgba(0, 0, 0, 0.16);
+}
+
+.mens-day-envelope-back::before {
+    content: "";
+
+    position: absolute;
+    inset: 0;
+
+    opacity: 0.2;
+
+    background-image:
+        radial-gradient(
+            circle,
+            rgba(243, 223, 168, 0.32)
+            0.7px,
+            transparent 0.8px
+        );
+
+    background-size:
+        18px 18px;
+}
+
+
+/* =========================================================
+   8. FRONT ENVELOPE PIECES
+   ========================================================= */
+
+.mens-day-envelope-front {
+    position: absolute;
+
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    z-index: 7;
+
+    height: 57%;
+
+    overflow: hidden;
+
+    border-radius:
+        0
+        0
+        15px
+        15px;
+
+    background:
+        linear-gradient(
+            160deg,
+            #0e2946,
+            #07182b
+        );
+
+    clip-path:
+        polygon(
+            0 0,
+            50% 72%,
+            100% 0,
+            100% 100%,
+            0 100%
+        );
+
+    border-bottom:
+        1px solid
+        rgba(216, 182, 106, 0.7);
+}
+
+.mens-day-envelope-left {
+    position: absolute;
+
+    left: 0;
+    bottom: 0;
+
+    z-index: 6;
+
+    width: 55%;
+    height: 73%;
+
+    background:
+        linear-gradient(
+            145deg,
+            #143556,
+            #0a2038
+        );
+
+    clip-path:
+        polygon(
+            0 0,
+            100% 72%,
+            58% 100%,
+            0 100%
+        );
+}
+
+.mens-day-envelope-right {
+    position: absolute;
+
+    right: 0;
+    bottom: 0;
+
+    z-index: 6;
+
+    width: 55%;
+    height: 73%;
+
+    background:
+        linear-gradient(
+            215deg,
+            #123150,
+            #081b31
+        );
+
+    clip-path:
+        polygon(
+            100% 0,
+            0 72%,
+            42% 100%,
+            100% 100%
+        );
+}
+
+
+/* =========================================================
+   9. ENVELOPE FLAP
+   ========================================================= */
+
+.mens-day-envelope-flap {
+    position: absolute;
+
+    top: 0;
+    left: 0;
+
+    z-index: 12;
+
+    width: 100%;
+    height: 61%;
+
+    transform-origin:
+        center top;
+
+    transform:
+        rotateX(0deg);
+
+    backface-visibility: hidden;
+
+    clip-path:
+        polygon(
+            0 0,
+            100% 0,
+            50% 100%
+        );
+
+    background:
+        linear-gradient(
+            180deg,
+            #173a5d 0%,
+            #0c2642 62%,
+            #07192c 100%
+        );
+
+    border-top:
+        1px solid
+        rgba(234, 208, 142, 0.75);
+
+    transition:
+        transform
+        900ms
+        cubic-bezier(
+            0.22,
+            0.75,
+            0.22,
+            1
+        ),
+        opacity
+        500ms
+        ease;
+}
+
+.mens-day-envelope-flap::after {
+    content: "";
+
+    position: absolute;
+    inset: 0;
+
+    background:
+        linear-gradient(
+            115deg,
+            transparent 22%,
+            rgba(243, 223, 168, 0.08) 47%,
+            transparent 70%
+        );
+}
+
+
+/* =========================================================
+   10. GOLD EDGE
+   ========================================================= */
+
+.mens-day-envelope::after {
+    content: "";
+
+    position: absolute;
+    inset: -1px;
+
+    z-index: 15;
+
+    border:
+        1px solid
+        rgba(216, 182, 106, 0.72);
+
+    border-radius: 16px;
+
+    pointer-events: none;
+
+    box-shadow:
+        inset 0 0 18px
+        rgba(216, 182, 106, 0.05);
+}
+
+
+/* =========================================================
+   11. LOGO SEAL
+   ========================================================= */
+
+.mens-day-seal {
+    position: absolute;
+
+    top: 44%;
+    left: 50%;
+
+    z-index: 20;
+
+    width: 92px;
+    height: 92px;
+
+    padding: 0;
+
+    transform:
+        translate(-50%, -50%);
+
+    border: 0;
+
+    border-radius: 50%;
+
+    background: transparent;
+
+    cursor: pointer;
+
+    filter:
+        drop-shadow(
+            0 12px 16px
+            rgba(0, 0, 0, 0.32)
+        );
+
+    transition:
+        opacity 400ms ease,
+        transform 400ms ease;
+}
+
+.mens-day-seal-ring {
+    position: absolute;
+    inset: 0;
+
+    border:
+        1px solid
+        rgba(243, 223, 168, 0.9);
+
+    border-radius: 50%;
+
+    box-shadow:
+        0 0 0 5px
+        rgba(216, 182, 106, 0.1),
+        0 0 24px
+        rgba(216, 182, 106, 0.26);
+
+    animation:
+        mensDaySealPulse
+        2.5s
+        ease-in-out
+        infinite;
+}
+
+.mens-day-seal-inner {
+    position: absolute;
+    inset: 9px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    overflow: hidden;
+
+    border:
+        2px solid
+        rgba(216, 182, 106, 0.92);
+
+    border-radius: 50%;
+
+    background:
+        radial-gradient(
+            circle,
+            #fffdf7 0%,
+            #f5ead0 100%
+        );
+
+    box-shadow:
+        inset 0 0 14px
+        rgba(112, 80, 23, 0.14);
+}
+
+.mens-day-seal-inner img {
+    display: block;
+
+    width: 78%;
+    height: 78%;
+
+    object-fit: contain;
+}
+
+.mens-day-seal-glow {
+    position: absolute;
+    inset: -28px;
+
+    z-index: -1;
+
+    border-radius: 50%;
+
+    opacity: 0.58;
+
+    background:
+        radial-gradient(
+            circle,
+            rgba(243, 223, 168, 0.36)
+            0%,
+            rgba(216, 182, 106, 0.12)
+            36%,
+            transparent 72%
+        );
+
+    animation:
+        mensDaySealGlow
+        2.5s
+        ease-in-out
+        infinite;
+}
+
+@keyframes mensDaySealPulse {
+    0%,
+    100% {
+        transform: scale(1);
+
+        box-shadow:
+            0 0 0 5px
+            rgba(216, 182, 106, 0.08),
+            0 0 20px
+            rgba(216, 182, 106, 0.2);
+    }
+
+    50% {
+        transform: scale(1.07);
+
+        box-shadow:
+            0 0 0 8px
+            rgba(216, 182, 106, 0.04),
+            0 0 34px
+            rgba(243, 223, 168, 0.48);
+    }
+}
+
+@keyframes mensDaySealGlow {
+    0%,
+    100% {
+        opacity: 0.34;
+        transform: scale(0.9);
+    }
+
+    50% {
+        opacity: 0.8;
+        transform: scale(1.16);
+    }
+}
+
+
+/* =========================================================
+   12. LIGHT INSIDE ENVELOPE
+   ========================================================= */
+
+.mens-day-envelope-light {
+    position: absolute;
+
+    left: 50%;
+    top: 37%;
+
+    z-index: 0;
+
+    width: 78%;
+    height: 68%;
+
+    transform:
+        translate(-50%, -50%)
+        scale(0.5);
+
+    opacity: 0;
+
+    pointer-events: none;
+
+    background:
+        radial-gradient(
+            ellipse at center,
+            rgba(255, 237, 184, 0.74) 0%,
+            rgba(234, 208, 142, 0.24) 34%,
+            transparent 72%
+        );
+
+    filter: blur(16px);
+
+    transition:
+        opacity 650ms ease,
+        transform 800ms ease;
+}
+
+
+/* =========================================================
+   13. LETTER INSIDE ENVELOPE
+   ========================================================= */
+
+.mens-day-letter-inside {
+    position: absolute;
+
+    left: 50%;
+    bottom: 8%;
+
+    z-index: 5;
+
+    width: 88%;
+    height: 118%;
+
+    transform:
+        translate(-50%, 42%)
+        scale(0.88);
+
+    opacity: 0;
+
+    pointer-events: none;
+
+    transition:
+        transform
+        1050ms
+        cubic-bezier(
+            0.16,
+            0.82,
+            0.22,
+            1
+        ),
+        opacity
+        500ms
+        ease;
+}
+
+
+/* =========================================================
+   14. IVORY LETTER
+   ========================================================= */
+
+.mens-day-letter-paper {
+    position: relative;
+
+    width: 100%;
+    height: 100%;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    padding:
+        28px
+        28px
+        24px;
+
+    border:
+        1px solid
+        rgba(177, 137, 58, 0.5);
+
+    border-radius: 10px;
+
+    background:
+        linear-gradient(
+            180deg,
+            #fffdf7 0%,
+            #fff9eb 52%,
+            #f8efd9 100%
+        );
+
+    color:
+        #15253a;
+
+    box-shadow:
+        0 22px 48px
+        rgba(0, 0, 0, 0.28),
+        inset 0 0 0 6px
+        rgba(216, 182, 106, 0.055);
+
+    scrollbar-width: thin;
+    scrollbar-color:
+        rgba(177, 137, 58, 0.55)
+        transparent;
+}
+
+.mens-day-letter-paper::before {
+    content: "";
+
+    position: absolute;
+    inset: 11px;
+
+    border:
+        1px solid
+        rgba(177, 137, 58, 0.2);
+
+    border-radius: 6px;
+
+    pointer-events: none;
+}
+
+
+/* =========================================================
+   15. LETTER HEADER
+   ========================================================= */
+
+.mens-day-letter-header {
+    position: relative;
+    z-index: 2;
+
+    text-align: center;
+
+    margin-bottom: 22px;
+}
+
+.mens-day-letter-logo {
+    display: block;
+
+    width: 74px;
+    height: 74px;
+
+    object-fit: contain;
+
+    margin:
+        0 auto
+        12px;
+
+    filter:
+        drop-shadow(
+            0 5px 8px
+            rgba(11, 31, 52, 0.12)
+        );
+}
+
+.mens-day-letter-eyebrow {
+    margin:
+        0 0
+        7px;
+
+    color:
+        #9a742c;
+
+    font-size: 11px;
+    font-weight: 800;
+
+    letter-spacing: 2px;
+}
+
+.mens-day-letter-title {
+    margin: 0;
+
+    color:
+        #0b223c;
+
+    font-size:
+        clamp(
+            19px,
+            4.8vw,
+            26px
+        );
+
+    font-weight: 900;
+
+    line-height: 1.25;
+
+    letter-spacing: 0.5px;
+}
+
+.mens-day-letter-divider,
+.mens-day-intro-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 10px;
+
+    width: min(220px, 72%);
+
+    margin:
+        15px auto
+        0;
+
+    color:
+        #b78c3d;
+}
+
+.mens-day-letter-divider span,
+.mens-day-intro-divider span {
+    display: block;
+
+    flex: 1;
+
+    height: 1px;
+
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(183, 140, 61, 0.8)
+        );
+}
+
+.mens-day-letter-divider span:last-child,
+.mens-day-intro-divider span:last-child {
+    background:
+        linear-gradient(
+            90deg,
+            rgba(183, 140, 61, 0.8),
+            transparent
+        );
+}
+
+.mens-day-letter-divider b,
+.mens-day-intro-divider b {
+    font-size: 12px;
+    font-weight: 400;
+}
+
+
+/* =========================================================
+   16. RECIPIENT INSIDE LETTER
+   ========================================================= */
+
+.mens-day-recipient-intro {
+    position: relative;
+    z-index: 2;
+
+    margin:
+        0 auto
+        24px;
+
+    padding:
+        15px 14px;
+
+    text-align: center;
+
+    border-top:
+        1px solid
+        rgba(183, 140, 61, 0.2);
+
+    border-bottom:
+        1px solid
+        rgba(183, 140, 61, 0.2);
+}
+
+.mens-day-recipient-intro p {
+    margin:
+        0 0
+        5px;
+
+    color:
+        #8a6a2d;
+
+    font-size: 10px;
+    font-weight: 800;
+
+    letter-spacing: 2.2px;
+}
+
+.mens-day-recipient-intro strong {
+    display: block;
+
+    color:
+        #0b223c;
+
+    font-size:
+        clamp(
+            18px,
+            5vw,
+            24px
+        );
+
+    font-weight: 900;
+
+    line-height: 1.25;
+
+    text-transform: uppercase;
+}
+
+
+/* =========================================================
+   17. BTC MESSAGE
+   ========================================================= */
+
+.mens-day-letter-content {
+    position: relative;
+    z-index: 2;
+
+    min-height: 100px;
+
+    color:
+        #25364b;
+
+    font-size:
+        clamp(
+            16px,
+            4.2vw,
+            18px
+        );
+
+    font-weight: 500;
+
+    line-height: 1.8;
+
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+
+    text-align: left;
+}
+
+
+/* =========================================================
+   18. LETTER FOOTER
+   ========================================================= */
+
+.mens-day-letter-footer {
+    position: relative;
+    z-index: 2;
+
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+
+    gap: 16px;
+
+    margin-top: 28px;
+    padding-top: 18px;
+
+    border-top:
+        1px solid
+        rgba(183, 140, 61, 0.2);
+}
+
+.mens-day-letter-signature {
+    display: flex;
+    flex-direction: column;
+
+    gap: 4px;
+
+    color:
+        #6f5830;
+}
+
+.mens-day-letter-signature span {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.mens-day-letter-signature small {
+    font-size: 11px;
+
+    color:
+        rgba(70, 58, 37, 0.7);
+}
+
+
+/* =========================================================
+   19. PIN BUTTON
+   ========================================================= */
+
+.mens-day-pin-button {
+    flex: 0 0 auto;
+
+    min-height: 42px;
+
+    padding:
+        10px
+        16px;
+
+    border:
+        1px solid
+        rgba(177, 137, 58, 0.45);
+
+    border-radius: 999px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #0c2845,
+            #07182b
+        );
+
+    color:
+        #f2d99b;
+
+    font-size: 13px;
+    font-weight: 800;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 8px 18px
+        rgba(7, 24, 43, 0.18);
+
+    transition:
+        transform 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.mens-day-pin-button:hover {
+    transform:
+        translateY(-1px);
+
+    box-shadow:
+        0 11px 22px
+        rgba(7, 24, 43, 0.24);
+}
+
+
+/* =========================================================
+   20. PERSONAL INTRO
+   ========================================================= */
+
+.mens-day-personal-intro {
+    position: absolute;
+
+    top: 50%;
+    left: 50%;
+
+    z-index: 30;
+
+    width: min(88vw, 460px);
+
+    transform:
+        translate(-50%, -50%)
+        scale(0.94);
+
+    opacity: 0;
+
+    visibility: hidden;
+
+    text-align: center;
+
+    color:
+        var(--mens-day-ivory);
+
+    pointer-events: none;
+
+    transition:
+        opacity 500ms ease,
+        transform 650ms ease,
+        visibility 0s linear 500ms;
+}
+
+.mens-day-personal-intro p {
+    margin:
+        0 0
+        14px;
+
+    color:
+        var(--mens-day-gold-400);
+
+    font-size: 13px;
+    font-weight: 800;
+
+    letter-spacing: 3px;
+}
+
+.mens-day-personal-intro > span {
+    display: block;
+
+    margin-bottom: 8px;
+
+    color:
+        rgba(255, 250, 240, 0.72);
+
+    font-size: 11px;
+    font-weight: 700;
+
+    letter-spacing: 3.5px;
+}
+
+.mens-day-personal-intro > strong {
+    display: block;
+
+    color:
+        #fffaf0;
+
+    font-size:
+        clamp(
+            27px,
+            7vw,
+            42px
+        );
+
+    font-weight: 900;
+
+    line-height: 1.15;
+
+    letter-spacing: 1px;
+
+    text-shadow:
+        0 5px 24px
+        rgba(0, 0, 0, 0.34),
+        0 0 28px
+        rgba(234, 208, 142, 0.12);
+}
+
+
+/* =========================================================
+   21. INTRO ACTIVE STATE
+   JS will add/remove this class later.
+   ========================================================= */
+
+.mens-day-personal-intro.is-visible {
+    opacity: 1;
+
+    visibility: visible;
+
+    transform:
+        translate(-50%, -50%)
+        scale(1);
+
+    transition:
+        opacity 500ms ease,
+        transform 650ms ease,
+        visibility 0s;
+}
+
+
+/* =========================================================
+   22. OPENING STATES
+   These classes will be controlled by JS later.
+   ========================================================= */
+
+
+/* Seal preparing to unlock */
+
+.mens-day-experience.is-seal-opening
+.mens-day-seal {
+    transform:
+        translate(-50%, -50%)
+        scale(1.12);
+}
+
+
+/* Seal disappears */
+
+.mens-day-experience.is-envelope-opening
+.mens-day-seal {
+    opacity: 0;
+
+    transform:
+        translate(-50%, -58%)
+        scale(0.72);
+
+    pointer-events: none;
+}
+
+
+/* Flap opens upward */
+
+.mens-day-experience.is-envelope-opening
+.mens-day-envelope-flap {
+    transform:
+        rotateX(178deg);
+
+    z-index: 2;
+}
+
+
+/* Light shines from inside */
+
+.mens-day-experience.is-envelope-opening
+.mens-day-envelope-light {
+    opacity: 1;
+
+    transform:
+        translate(-50%, -67%)
+        scale(1.35);
+}
+
+
+/* =========================================================
+   23. LETTER REVEAL
+   ========================================================= */
+
+.mens-day-experience.is-letter-revealed
+.mens-day-letter-inside {
+    opacity: 1;
+
+    transform:
+        translate(-50%, -42%)
+        scale(1);
+
+    pointer-events: auto;
+
+    z-index: 18;
+}
+
+.mens-day-experience.is-letter-revealed
+.mens-day-envelope-light {
+    opacity: 0.65;
+
+    transform:
+        translate(-50%, -85%)
+        scale(1.55);
+}
+
+
+/* Push envelope slightly downward when letter rises */
+
+.mens-day-experience.is-letter-revealed
+.mens-day-envelope-scene {
+    transform:
+        translateY(78px)
+        scale(0.94);
+
+    transition:
+        transform
+        900ms
+        cubic-bezier(
+            0.16,
+            0.82,
+            0.22,
+            1
+        );
+}
+
+
+/* =========================================================
+   24. CINEMATIC ENTRANCE
+   ========================================================= */
+
+.mens-day-experience:not(.hidden)
+.mens-day-envelope-scene {
+    animation:
+        mensDayEnvelopeEntrance
+        750ms
+        cubic-bezier(
+            0.16,
+            0.8,
+            0.24,
+            1
+        )
+        both;
+}
+
+@keyframes mensDayEnvelopeEntrance {
+    from {
+        opacity: 0;
+
+        transform:
+            translateY(90px)
+            scale(0.84);
+    }
+
+    to {
+        opacity: 1;
+
+        transform:
+            translateY(22px)
+            scale(0.96);
+    }
+}
+
+
+/* =========================================================
+   25. LIGHT RAYS — "MÀU CHIẾU RA"
+   ========================================================= */
+
+.mens-day-envelope-scene::before {
+    content: "";
+
+    position: absolute;
+
+    left: 50%;
+    top: 44%;
+
+    z-index: -1;
+
+    width: 135%;
+    height: 135%;
+
+    transform:
+        translate(-50%, -50%)
+        scale(0.7);
+
+    opacity: 0;
+
+    pointer-events: none;
+
+    background:
+        conic-gradient(
+            from 0deg,
+            transparent 0deg,
+            rgba(243, 223, 168, 0.06) 12deg,
+            transparent 25deg,
+            transparent 52deg,
+            rgba(243, 223, 168, 0.08) 65deg,
+            transparent 80deg,
+            transparent 112deg,
+            rgba(243, 223, 168, 0.055) 126deg,
+            transparent 140deg,
+            transparent 190deg,
+            rgba(243, 223, 168, 0.07) 204deg,
+            transparent 220deg,
+            transparent 270deg,
+            rgba(243, 223, 168, 0.055) 286deg,
+            transparent 302deg,
+            transparent 360deg
+        );
+
+    filter: blur(4px);
+
+    transition:
+        opacity 800ms ease,
+        transform 1100ms ease;
+}
+
+.mens-day-experience.is-envelope-opening
+.mens-day-envelope-scene::before {
+    opacity: 0.75;
+
+    transform:
+        translate(-50%, -50%)
+        scale(1.1);
+}
+
+
+/* =========================================================
+   26. MOBILE
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+    .mens-day-experience {
+        padding:
+            max(
+                14px,
+                env(safe-area-inset-top)
+            )
+            10px
+            max(
+                14px,
+                env(safe-area-inset-bottom)
+            );
+    }
+
+    .mens-day-stage {
+        width: 100%;
+        height: 88vh;
+    }
+
+    .mens-day-envelope {
+        width:
+            min(
+                91vw,
+                410px
+            );
+    }
+
+    .mens-day-seal {
+        width: 82px;
+        height: 82px;
+    }
+
+    .mens-day-seal-inner {
+        inset: 8px;
+    }
+
+    .mens-day-letter-inside {
+        width: 91%;
+        height: 132%;
+    }
+
+    .mens-day-letter-paper {
+        padding:
+            22px
+            20px
+            20px;
+    }
+
+    .mens-day-letter-logo {
+        width: 64px;
+        height: 64px;
+    }
+
+    .mens-day-letter-header {
+        margin-bottom: 18px;
+    }
+
+    .mens-day-recipient-intro {
+        margin-bottom: 20px;
+        padding:
+            13px
+            10px;
+    }
+
+    .mens-day-letter-content {
+        line-height: 1.72;
+    }
+
+    .mens-day-letter-footer {
+        flex-direction: column;
+        align-items: stretch;
+
+        gap: 15px;
+    }
+
+    .mens-day-letter-signature {
+        align-items: flex-end;
+
+        text-align: right;
+    }
+
+    .mens-day-pin-button {
+        width: 100%;
+    }
+
+    .mens-day-close-button {
+        top:
+            max(
+                12px,
+                env(safe-area-inset-top)
+            );
+
+        right: 12px;
+
+        width: 42px;
+        height: 42px;
+
+        font-size: 27px;
+    }
+
+    .mens-day-experience.is-letter-revealed
+    .mens-day-envelope-scene {
+        transform:
+            translateY(95px)
+            scale(0.92);
+    }
+}
+
+
+/* =========================================================
+   27. SMALL MOBILE
+   ========================================================= */
+
+@media (max-width: 380px) {
+
+    .mens-day-envelope {
+        width: 94vw;
+    }
+
+    .mens-day-seal {
+        width: 74px;
+        height: 74px;
+    }
+
+    .mens-day-letter-inside {
+        width: 92%;
+    }
+
+    .mens-day-letter-paper {
+        padding:
+            19px
+            16px
+            18px;
+    }
+
+    .mens-day-letter-eyebrow {
+        font-size: 9px;
+        letter-spacing: 1.5px;
+    }
+
+    .mens-day-recipient-intro p {
+        font-size: 9px;
+        letter-spacing: 1.7px;
+    }
+}
+
+
+/* =========================================================
+   28. REDUCED MOTION
+   Accessibility:
+   keep the experience usable when the device/user
+   requests reduced motion.
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .mens-day-particle,
+    .mens-day-seal-ring,
+    .mens-day-seal-glow,
+    .mens-day-experience:not(.hidden)
+    .mens-day-envelope-scene {
+        animation: none !important;
+    }
+
+    .mens-day-envelope-flap,
+    .mens-day-envelope-light,
+    .mens-day-letter-inside,
+    .mens-day-envelope-scene,
+    .mens-day-personal-intro,
+    .mens-day-seal {
+        transition-duration:
+            0.01ms !important;
+    }
+}
+
+
+/* =========================================================
+   MEN'S DAY 2026 — SEALED INBOX ENVELOPE
+   Pre-open card
+   ========================================================= */
+
+.mens-day-inbox-card {
+    position: relative;
+
+    width: 100%;
+    max-width: 520px;
+
+    margin: 0 auto 20px;
+
+    overflow: hidden;
+
+    border:
+        1px solid
+        rgba(216, 182, 106, 0.88);
+
+    border-radius: 22px;
+
+    background:
+        linear-gradient(
+            145deg,
+            #102d4c 0%,
+            #07192d 62%,
+            #04111f 100%
+        );
+
+    box-shadow:
+        0 18px 36px
+        rgba(3, 15, 29, 0.26),
+        inset 0 0 0 1px
+        rgba(255, 255, 255, 0.025);
+}
+
+
+/* =========================================================
+   MAIN CLICKABLE ENVELOPE
+   ========================================================= */
+
+.mens-day-inbox-open {
+    position: relative;
+
+    width: 100%;
+    min-height: 330px;
+
+    display: block;
+
+    overflow: hidden;
+
+    padding: 0;
+
+    border: 0;
+
+    background: transparent;
+
+    color: inherit;
+
+    text-align: left;
+
+    cursor: pointer;
+}
+
+
+/* =========================================================
+   SUBTLE NAVY TEXTURE
+   ========================================================= */
+
+.mens-day-inbox-open::before {
+    content: "";
+
+    position: absolute;
+    inset: 0;
+
+    z-index: 0;
+
+    opacity: 0.18;
+
+    background-image:
+        radial-gradient(
+            circle,
+            rgba(243, 223, 168, 0.32)
+            0.7px,
+            transparent 0.8px
+        );
+
+    background-size:
+        19px 19px;
+
+    pointer-events: none;
+}
+
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.mens-day-inbox-header {
+    position: absolute;
+
+    top: 38px;
+    left: 42px;
+    right: 42px;
+
+    z-index: 8;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 7px;
+}
+
+.mens-day-inbox-header strong {
+    color: #ead08e;
+
+    font-size: 15px;
+    font-weight: 900;
+
+    line-height: 1.35;
+
+    letter-spacing: 1.3px;
+}
+
+.mens-day-inbox-header small {
+    color:
+        rgba(
+            255,
+            250,
+            240,
+            0.82
+        );
+
+    font-size: 13px;
+    line-height: 1.35;
+}
+
+
+/* =========================================================
+   ENVELOPE FLAP
+   ========================================================= */
+
+.mens-day-inbox-flap {
+    position: absolute;
+
+    left: 0;
+    right: 0;
+    bottom: 67px;
+
+    z-index: 3;
+
+    height: 54%;
+
+    clip-path:
+        polygon(
+            0 0,
+            50% 74%,
+            100% 0,
+            100% 100%,
+            0 100%
+        );
+
+    background:
+        linear-gradient(
+            180deg,
+            #0e2947,
+            #06172a
+        );
+
+    border-top:
+        1px solid
+        rgba(216, 182, 106, 0.72);
+}
+
+
+/* =========================================================
+   LEFT FOLD
+   ========================================================= */
+
+.mens-day-inbox-left-fold {
+    position: absolute;
+
+    left: 0;
+    bottom: 67px;
+
+    z-index: 4;
+
+    width: 58%;
+    height: 47%;
+
+    clip-path:
+        polygon(
+            0 0,
+            100% 75%,
+            62% 100%,
+            0 100%
+        );
+
+    background:
+        linear-gradient(
+            145deg,
+            #173c61,
+            #0a223c
+        );
+}
+
+
+/* =========================================================
+   RIGHT FOLD
+   ========================================================= */
+
+.mens-day-inbox-right-fold {
+    position: absolute;
+
+    right: 0;
+    bottom: 67px;
+
+    z-index: 4;
+
+    width: 58%;
+    height: 47%;
+
+    clip-path:
+        polygon(
+            100% 0,
+            0 75%,
+            38% 100%,
+            100% 100%
+        );
+
+    background:
+        linear-gradient(
+            215deg,
+            #143656,
+            #081d34
+        );
+}
+
+
+/* =========================================================
+   GOLD LINE ABOVE FOLDS
+   ========================================================= */
+
+.mens-day-inbox-card::before {
+    content: "";
+
+    position: absolute;
+
+    left: 0;
+    right: 0;
+    bottom: 66px;
+
+    z-index: 10;
+
+    height: 1px;
+
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(234, 208, 142, 0.65),
+            transparent
+        );
+
+    pointer-events: none;
+}
+
+
+/* =========================================================
+   LOGO SEAL
+   ========================================================= */
+
+.mens-day-inbox-seal {
+    position: absolute;
+
+    left: 50%;
+    top: 62%;
+
+    z-index: 15;
+
+    width: 92px;
+    height: 92px;
+
+    transform:
+        translate(-50%, -50%);
+
+    border-radius: 50%;
+}
+
+
+/* Gold glow */
+
+.mens-day-inbox-seal-glow {
+    position: absolute;
+
+    inset: -24px;
+
+    border-radius: 50%;
+
+    background:
+        radial-gradient(
+            circle,
+            rgba(243, 223, 168, 0.32),
+            rgba(216, 182, 106, 0.1) 40%,
+            transparent 72%
+        );
+
+    opacity: 0.7;
+
+    animation:
+        mensDayInboxSealGlow
+        2.8s
+        ease-in-out
+        infinite;
+}
+
+
+/* Outer gold ring */
+
+.mens-day-inbox-seal-ring {
+    position: absolute;
+    inset: 0;
+
+    border:
+        2px solid
+        rgba(243, 223, 168, 0.92);
+
+    border-radius: 50%;
+
+    box-shadow:
+        0 0 0 5px
+        rgba(216, 182, 106, 0.12),
+        0 0 24px
+        rgba(216, 182, 106, 0.34);
+
+    animation:
+        mensDayInboxSealPulse
+        2.8s
+        ease-in-out
+        infinite;
+}
+
+
+/* White medallion */
+
+.mens-day-inbox-seal-inner {
+    position: absolute;
+    inset: 9px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    overflow: hidden;
+
+    border:
+        2px solid
+        rgba(216, 182, 106, 0.88);
+
+    border-radius: 50%;
+
+    background:
+        radial-gradient(
+            circle,
+            #ffffff,
+            #f8eed8
+        );
+
+    box-shadow:
+        inset 0 0 12px
+        rgba(79, 56, 19, 0.12);
+}
+
+.mens-day-inbox-seal-inner img {
+    width: 75%;
+    height: 75%;
+
+    display: block;
+
+    object-fit: contain;
+}
+
+
+/* =========================================================
+   SEAL ANIMATION
+   ========================================================= */
+
+@keyframes mensDayInboxSealPulse {
+    0%,
+    100% {
+        transform: scale(1);
+
+        box-shadow:
+            0 0 0 5px
+            rgba(216, 182, 106, 0.1),
+            0 0 21px
+            rgba(216, 182, 106, 0.28);
+    }
+
+    50% {
+        transform: scale(1.07);
+
+        box-shadow:
+            0 0 0 8px
+            rgba(216, 182, 106, 0.04),
+            0 0 34px
+            rgba(243, 223, 168, 0.5);
+    }
+}
+
+@keyframes mensDayInboxSealGlow {
+    0%,
+    100% {
+        opacity: 0.38;
+        transform: scale(0.9);
+    }
+
+    50% {
+        opacity: 0.9;
+        transform: scale(1.15);
+    }
+}
+
+
+/* =========================================================
+   OPEN HINT
+   ========================================================= */
+
+.mens-day-inbox-hint {
+    position: absolute;
+
+    left: 50%;
+    bottom: 18px;
+
+    z-index: 20;
+
+    width: max-content;
+    max-width: 78%;
+
+    transform:
+        translateX(-50%);
+
+    padding:
+        8px
+        18px;
+
+    border:
+        1px solid
+        rgba(216, 182, 106, 0.14);
+
+    border-radius: 999px;
+
+    background:
+        rgba(18, 53, 88, 0.72);
+
+    color:
+        rgba(243, 223, 168, 0.78);
+
+    font-size: 12px;
+    font-weight: 700;
+
+    line-height: 1.35;
+
+    text-align: center;
+
+    backdrop-filter: blur(5px);
+}
+
+
+/* =========================================================
+   PIN BUTTON
+   ========================================================= */
+
+.mens-day-inbox-pin {
+    position: relative;
+    z-index: 30;
+
+    display: block;
+
+    min-width: 105px;
+    min-height: 44px;
+
+    margin:
+        -5px 14px
+        14px
+        auto;
+
+    padding:
+        10px
+        17px;
+
+    border: 0;
+
+    border-radius: 999px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #f0ac20,
+            #e58b00
+        );
+
+    color: #ffffff;
+
+    font-size: 14px;
+    font-weight: 800;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 7px 18px
+        rgba(229, 139, 0, 0.24);
+}
+
+
+/* =========================================================
+   PINNED STATE
+   ========================================================= */
+
+.mens-day-inbox-card-pinned {
+    box-shadow:
+        0 0 0 2px
+        rgba(243, 223, 168, 0.36),
+        0 18px 38px
+        rgba(3, 15, 29, 0.32);
+}
+
+
+/* =========================================================
+   HOVER
+   ========================================================= */
+
+@media (hover: hover) {
+
+    .mens-day-inbox-open:hover
+    .mens-day-inbox-seal {
+        transform:
+            translate(-50%, -50%)
+            scale(1.05);
+
+        transition:
+            transform
+            220ms ease;
+    }
+
+    .mens-day-inbox-open:hover
+    .mens-day-inbox-hint {
+        color:
+            #f3dfa8;
+
+        border-color:
+            rgba(216, 182, 106, 0.34);
+    }
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+    .mens-day-inbox-card {
+        max-width: 100%;
+
+        border-radius: 19px;
+    }
+
+    .mens-day-inbox-open {
+        min-height: 310px;
+    }
+
+    .mens-day-inbox-header {
+        top: 30px;
+        left: 25px;
+        right: 25px;
+    }
+
+    .mens-day-inbox-header strong {
+        font-size: 14px;
+        letter-spacing: 1px;
+    }
+
+    .mens-day-inbox-header small {
+        font-size: 12px;
+    }
+
+    .mens-day-inbox-seal {
+        width: 82px;
+        height: 82px;
+
+        top: 62%;
+    }
+
+    .mens-day-inbox-hint {
+        bottom: 17px;
+
+        max-width: 86%;
+
+        padding:
+            7px
+            13px;
+
+        font-size: 11px;
+    }
+
+    .mens-day-inbox-pin {
+        min-height: 42px;
+
+        margin-right: 11px;
+        margin-bottom: 11px;
+
+        font-size: 13px;
+    }
+}
+
+
+/* =========================================================
+   VERY SMALL PHONE
+   ========================================================= */
+
+@media (max-width: 380px) {
+
+    .mens-day-inbox-open {
+        min-height: 295px;
+    }
+
+    .mens-day-inbox-header {
+        top: 25px;
+        left: 19px;
+        right: 19px;
+    }
+
+    .mens-day-inbox-seal {
+        width: 74px;
+        height: 74px;
+    }
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .mens-day-inbox-seal-ring,
+    .mens-day-inbox-seal-glow {
+        animation: none !important;
+    }
+}
+
+/* =========================================================
+   MEN'S DAY — INBOX TITLE REFINEMENT
+   ========================================================= */
+
+.mens-day-inbox-header strong {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+
+    gap: 3px;
+
+    line-height: 1.25;
+}
+
+.mens-day-inbox-special-label {
+    display: block;
+
+    color: #ead08e;
+
+    font-size: 13px;
+    font-weight: 800;
+
+    letter-spacing: 1.8px;
+}
+
+.mens-day-inbox-event-label {
+    display: block;
+
+    color: #f3dfa8;
+
+    font-size: 19px;
+    font-weight: 900;
+
+    letter-spacing: 1.2px;
+}

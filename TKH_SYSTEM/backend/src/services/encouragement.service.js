@@ -12,6 +12,7 @@ const {
   findTopSenders,
   findTopRecipients,
   findEncouragementsBySeasonId,
+  findMensDayCampaignRecipients,
 } = require(
   "../repositories/encouragement.repository"
 );
@@ -167,6 +168,10 @@ function mapEncouragement(
   return {
     id: encouragement.id,
     message: encouragement.message,
+
+    campaignCode:
+      encouragement.campaign_code || null,
+
     isAnonymous,
     status: encouragement.status,
     isRead: Boolean(
@@ -849,13 +854,340 @@ async function getAdminReview() {
   };
 }
 
+/*
+=====================================================
+7. Admin Men's Day campaign preview
+
+IMPORTANT:
+- Read only
+- Does not create encouragements
+- Does not send anything
+=====================================================
+*/
+
+async function getMensDayCampaignPreview() {
+  const CAMPAIGN_CODE =
+    "MENS_DAY_2026";
+
+  const TEST_USERNAME =
+    "tkh158";
+
+  const activeSeason =
+    await findActiveSeason();
+
+  if (!activeSeason) {
+    return {
+      success: false,
+      code: "ACTIVE_SEASON_NOT_FOUND",
+    };
+  }
+
+  const recipients =
+    await findMensDayCampaignRecipients({
+      seasonId:
+        activeSeason.id,
+
+      campaignCode:
+        CAMPAIGN_CODE,
+    });
+
+  const alreadySentRecipients =
+    recipients.filter(
+      item =>
+        item.campaign_encouragement_id !==
+          null &&
+        item.campaign_encouragement_id !==
+          undefined
+    );
+
+  const pendingRecipients =
+    recipients.filter(
+      item =>
+        item.campaign_encouragement_id ===
+          null ||
+        item.campaign_encouragement_id ===
+          undefined
+    );
+
+  const testRecipient =
+    recipients.find(
+      item =>
+        String(item.username || "")
+          .trim()
+          .toLowerCase() ===
+        TEST_USERNAME
+    ) || null;
+
+  return {
+    success: true,
+
+    campaign: {
+      code:
+        CAMPAIGN_CODE,
+
+      name:
+        "Ngày của Nam 2026",
+
+      gender:
+        "Nam",
+
+      recipientCount:
+        recipients.length,
+
+      alreadySentCount:
+        alreadySentRecipients.length,
+
+      pendingCount:
+        pendingRecipients.length,
+
+      testMode:
+        true,
+
+      testUsername:
+        TEST_USERNAME,
+
+      testRecipient:
+        testRecipient
+          ? {
+              seasonMembershipId:
+                testRecipient
+                  .season_membership_id,
+
+              memberId:
+                testRecipient.member_id,
+
+              username:
+                testRecipient.username,
+
+              tkhCode:
+                testRecipient.tkh_code,
+
+              fullName:
+                testRecipient.full_name,
+
+              gender:
+                testRecipient.gender,
+
+              alreadyReceived:
+                testRecipient
+                  .campaign_encouragement_id !==
+                    null &&
+                testRecipient
+                  .campaign_encouragement_id !==
+                    undefined,
+            }
+          : null,
+    },
+  };
+}
+
+
+/*
+=====================================================
+8. Admin Men's Day TEST send
+
+IMPORTANT:
+- TEST MODE ONLY
+- Recipient is hard-locked to TKH158
+- Request cannot choose another recipient
+- Creates at most one MENS_DAY_2026 letter
+  for TKH158
+=====================================================
+*/
+
+async function sendMensDayCampaignTest({
+  message,
+}) {
+  const CAMPAIGN_CODE =
+    "MENS_DAY_2026";
+
+  const TEST_USERNAME =
+    "tkh158";
+
+  const normalizedMessage =
+    String(message || "").trim();
+
+  if (!normalizedMessage) {
+    return {
+      success: false,
+      code: "MESSAGE_REQUIRED",
+    };
+  }
+
+  if (normalizedMessage.length > 1000) {
+    return {
+      success: false,
+      code: "MESSAGE_TOO_LONG",
+    };
+  }
+
+  const activeSeason =
+    await findActiveSeason();
+
+  if (!activeSeason) {
+    return {
+      success: false,
+      code: "ACTIVE_SEASON_NOT_FOUND",
+    };
+  }
+
+  /*
+   * Lấy đúng tập người nhận Nam hợp lệ
+   * trong active season.
+   */
+  const recipients =
+    await findMensDayCampaignRecipients({
+      seasonId:
+        activeSeason.id,
+
+      campaignCode:
+        CAMPAIGN_CODE,
+    });
+
+  /*
+   * TEST MODE:
+   * Không nhận username từ request.
+   * Backend tự khóa cứng TKH158.
+   */
+  const testRecipient =
+    recipients.find(
+      item =>
+        String(item.username || "")
+          .trim()
+          .toLowerCase() ===
+        TEST_USERNAME
+    );
+
+  if (!testRecipient) {
+    return {
+      success: false,
+      code:
+        "MENS_DAY_TEST_RECIPIENT_NOT_FOUND",
+    };
+  }
+
+  /*
+   * Chặn gửi campaign lần thứ hai.
+   */
+  if (
+    testRecipient
+      .campaign_encouragement_id !==
+        null &&
+    testRecipient
+      .campaign_encouragement_id !==
+        undefined
+  ) {
+    return {
+      success: false,
+      code:
+        "MENS_DAY_CAMPAIGN_ALREADY_SENT",
+
+      existingEncouragementId:
+        testRecipient
+          .campaign_encouragement_id,
+    };
+  }
+
+  try {
+    const encouragement =
+      await createEncouragement({
+        seasonId:
+          activeSeason.id,
+
+        /*
+         * Campaign được gửi bởi BTC,
+         * không giả lập thành học viên.
+         */
+        senderSeasonMembershipId:
+          null,
+
+        recipientSeasonMembershipId:
+          testRecipient
+            .season_membership_id,
+
+        message:
+          normalizedMessage,
+
+        isAnonymous:
+          false,
+
+        campaignCode:
+          CAMPAIGN_CODE,
+      });
+
+    return {
+      success: true,
+
+      testMode:
+        true,
+
+      campaign: {
+        code:
+          CAMPAIGN_CODE,
+
+        name:
+          "Ngày của Nam 2026",
+      },
+
+      recipient: {
+        seasonMembershipId:
+          testRecipient
+            .season_membership_id,
+
+        memberId:
+          testRecipient.member_id,
+
+        username:
+          testRecipient.username,
+
+        tkhCode:
+          testRecipient.tkh_code,
+
+        fullName:
+          testRecipient.full_name,
+
+        gender:
+          testRecipient.gender,
+      },
+
+      encouragement:
+        mapEncouragement(
+          encouragement,
+          {
+            revealAnonymousSender:
+              true,
+          }
+        ),
+    };
+  } catch (error) {
+    /*
+     * Existing unique index vẫn là
+     * lớp bảo vệ phụ nếu có hai request
+     * gần như đồng thời.
+     */
+    if (
+      error?.number === 2601 ||
+      error?.number === 2627
+    ) {
+      return {
+        success: false,
+        code:
+          "MENS_DAY_CAMPAIGN_ALREADY_SENT",
+      };
+    }
+
+    throw error;
+  }
+}
 
 module.exports = {
-    getRecipients,
+  getRecipients,
   sendEncouragement,
   getMyInbox,
   getMyInboxSummary,
   toggleMyEncouragementPin,
   getAdminStats,
   getAdminReview,
+  getMensDayCampaignPreview,
+  sendMensDayCampaignTest,
 };

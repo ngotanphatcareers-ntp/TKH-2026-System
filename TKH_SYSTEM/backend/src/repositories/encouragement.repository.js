@@ -11,6 +11,7 @@ const ENCOURAGEMENT_SELECT = `
     e.sender_season_membership_id,
     e.recipient_season_membership_id,
     e.message,
+    e.campaign_code,
     e.is_anonymous,
     e.status,
     e.is_read,
@@ -311,6 +312,7 @@ async function createEncouragement({
   recipientSeasonMembershipId,
   message,
   isAnonymous,
+  campaignCode = null,
 }) {
   const pool = await getPool();
 
@@ -337,6 +339,11 @@ async function createEncouragement({
       sql.Bit,
       isAnonymous
     )
+    .input(
+      "campaignCode",
+      sql.VarChar(50),
+      campaignCode
+    )
     .query(`
       INSERT INTO dbo.encouragements
       (
@@ -344,6 +351,7 @@ async function createEncouragement({
         sender_season_membership_id,
         recipient_season_membership_id,
         message,
+        campaign_code,
         is_anonymous,
         status,
         is_read,
@@ -356,6 +364,7 @@ async function createEncouragement({
         @senderSeasonMembershipId,
         @recipientSeasonMembershipId,
         @message,
+        @campaignCode,
         @isAnonymous,
         'VISIBLE',
         0,
@@ -824,6 +833,104 @@ async function findEncouragementsBySeasonId(
   return result.recordset;
 }
 
+/*
+=====================================================
+13. Find Men's Day campaign recipients
+
+Read-only query used by Admin preview.
+
+Rules:
+- Active season membership
+- Active member
+- Active STUDENT user
+- Gender = Nam
+- Detect whether this recipient already has
+  the requested campaign
+=====================================================
+*/
+
+async function findMensDayCampaignRecipients({
+  seasonId,
+  campaignCode,
+}) {
+  const pool = await getPool();
+
+  const result = await pool
+    .request()
+    .input(
+      "seasonId",
+      sql.Int,
+      seasonId
+    )
+    .input(
+      "campaignCode",
+      sql.VarChar(50),
+      campaignCode
+    )
+    .query(`
+      SELECT
+        sm.id AS season_membership_id,
+        sm.season_id,
+        sm.member_id,
+        sm.group_id,
+
+        m.tkh_code,
+        m.full_name,
+        m.gender,
+        m.avatar_filename,
+
+        u.id AS user_id,
+        u.username,
+
+        g.code AS group_code,
+        g.name AS group_name,
+
+        existing_campaign.id
+          AS campaign_encouragement_id
+
+      FROM dbo.season_memberships AS sm
+
+      INNER JOIN dbo.members AS m
+        ON m.id = sm.member_id
+
+      INNER JOIN dbo.users AS u
+        ON u.member_id = m.id
+
+      LEFT JOIN dbo.groups AS g
+        ON g.id = sm.group_id
+
+      OUTER APPLY
+      (
+        SELECT TOP (1)
+          e.id
+
+        FROM dbo.encouragements AS e
+
+        WHERE e.season_id = @seasonId
+          AND e.recipient_season_membership_id =
+            sm.id
+          AND e.campaign_code =
+            @campaignCode
+          AND e.status <> 'DELETED'
+
+        ORDER BY
+          e.id DESC
+      ) AS existing_campaign
+
+      WHERE sm.season_id = @seasonId
+        AND sm.status = 'ACTIVE'
+        AND m.status = 'ACTIVE'
+        AND m.gender = N'Nam'
+        AND u.is_active = 1
+        AND u.role = 'STUDENT'
+
+      ORDER BY
+        m.tkh_code ASC,
+        m.full_name ASC;
+    `);
+
+  return result.recordset;
+}
 
 module.exports = {
   findActiveRecipientByUsername,
@@ -839,4 +946,5 @@ module.exports = {
   findTopSenders,
   findTopRecipients,
   findEncouragementsBySeasonId,
+  findMensDayCampaignRecipients,
 };

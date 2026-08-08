@@ -3620,7 +3620,7 @@ function createScheduleDemo() {
 
     saveStoredSchedulesDemo(schedules);
 
-    
+
     document.getElementById("scheduleTitle").value = "";
     document.getElementById("bibleVerse").value = "";
     document.getElementById("scheduleActivity").value = "";
@@ -5537,6 +5537,493 @@ let encouragementInboxMessagesApi = [];
 
 let currentOpenedEncouragementId = null;
 
+/*
+=====================================================
+MEN'S DAY 2026 — ANIMATION STATE
+=====================================================
+*/
+
+let mensDayAnimationTimeoutIds = [];
+
+let mensDayAnimationInProgress = false;
+
+
+/*
+=====================================================
+MEN'S DAY 2026
+Detect special encouragement campaign
+=====================================================
+*/
+
+function isMensDayEncouragementDemo(item) {
+    return (
+        String(
+            item?.campaignCode || ""
+        )
+            .trim()
+            .toUpperCase() ===
+        "MENS_DAY_2026"
+    );
+}
+
+/*
+=====================================================
+MEN'S DAY 2026 — TIMER HELPERS
+=====================================================
+*/
+
+function clearMensDayAnimationTimers() {
+    mensDayAnimationTimeoutIds
+        .forEach(timeoutId => {
+            clearTimeout(timeoutId);
+        });
+
+    mensDayAnimationTimeoutIds = [];
+}
+
+
+function scheduleMensDayAnimation(
+    callback,
+    delay
+) {
+    const timeoutId =
+        window.setTimeout(
+            callback,
+            delay
+        );
+
+    mensDayAnimationTimeoutIds.push(
+        timeoutId
+    );
+
+    return timeoutId;
+}
+
+/*
+=====================================================
+MEN'S DAY 2026 — RESET EXPERIENCE
+=====================================================
+*/
+
+function resetMensDayLetterExperience() {
+    clearMensDayAnimationTimers();
+
+    mensDayAnimationInProgress = false;
+
+    const experience =
+        document.getElementById(
+            "mensDayLetterExperience"
+        );
+
+    const personalIntro =
+        document.getElementById(
+            "mensDayPersonalIntro"
+        );
+
+    const envelopeScene =
+        document.getElementById(
+            "mensDayEnvelopeScene"
+        );
+
+    if (experience) {
+        experience.classList.remove(
+            "is-seal-opening",
+            "is-envelope-opening",
+            "is-letter-revealed"
+        );
+    }
+
+    if (personalIntro) {
+        personalIntro.classList.remove(
+            "is-visible"
+        );
+
+        personalIntro.setAttribute(
+            "aria-hidden",
+            "true"
+        );
+    }
+
+    /*
+     * Trong phase personal intro,
+     * JS sẽ làm phong bì tối nhẹ.
+     * Reset lại khi đóng/mở lần sau.
+     */
+    if (envelopeScene) {
+        envelopeScene.style.opacity = "";
+        envelopeScene.style.filter = "";
+        envelopeScene.style.transition = "";
+    }
+}
+
+/*
+=====================================================
+MEN'S DAY 2026 — OPEN SPECIAL EXPERIENCE
+=====================================================
+*/
+
+function openMensDayLetterExperience(
+    item
+) {
+    if (!item) {
+        return;
+    }
+
+    const normalizedId =
+        Number(item.id);
+
+    if (
+        !Number.isInteger(normalizedId) ||
+        normalizedId <= 0
+    ) {
+        return;
+    }
+
+    const experience =
+        document.getElementById(
+            "mensDayLetterExperience"
+        );
+
+    const envelopeScene =
+        document.getElementById(
+            "mensDayEnvelopeScene"
+        );
+
+    const personalIntro =
+        document.getElementById(
+            "mensDayPersonalIntro"
+        );
+
+    const recipientNameElement =
+        document.getElementById(
+            "mensDayRecipientName"
+        );
+
+    const introRecipientNameElement =
+        document.getElementById(
+            "mensDayIntroRecipientName"
+        );
+
+    const contentElement =
+        document.getElementById(
+            "mensDayLetterContent"
+        );
+
+    const dateElement =
+        document.getElementById(
+            "mensDayLetterDate"
+        );
+
+    const pinButton =
+        document.getElementById(
+            "mensDayLetterPinButton"
+        );
+
+    if (
+        !experience ||
+        !envelopeScene ||
+        !personalIntro ||
+        !recipientNameElement ||
+        !introRecipientNameElement ||
+        !contentElement ||
+        !dateElement ||
+        !pinButton
+    ) {
+        console.error(
+            "Men's Day experience HTML is incomplete."
+        );
+
+        return;
+    }
+
+    /*
+     * Reset mọi animation state
+     * từ lần mở trước.
+     */
+    resetMensDayLetterExperience();
+
+    currentOpenedEncouragementId =
+        normalizedId;
+
+    const currentUser =
+        JSON.parse(
+            localStorage.getItem(
+                "currentUser"
+            )
+        );
+
+    /*
+     * Ưu tiên tên recipient do Backend trả về.
+     * Fallback sang currentUser.
+     *
+     * Tên này chỉ nằm ở presentation layer,
+     * KHÔNG thay đổi item.message.
+     */
+    const recipientName =
+        item.recipient?.fullName ||
+        currentUser?.fullName ||
+        "Học viên TKH";
+
+    recipientNameElement.textContent =
+        recipientName;
+
+    introRecipientNameElement.textContent =
+        recipientName;
+
+    /*
+     * Nội dung BTC được giữ nguyên.
+     */
+    contentElement.textContent =
+        item.message || "";
+
+    dateElement.textContent =
+        formatEncouragementDateDemo(
+            item.createdAt
+        );
+
+    pinButton.textContent =
+        item.isPinned
+            ? "Bỏ ghim"
+            : "📌 Ghim";
+
+    pinButton.onclick =
+        async function () {
+            pinButton.disabled = true;
+
+            try {
+                await togglePinEncouragementFromApi(
+                    normalizedId
+                );
+
+                closeMensDayLetterExperience();
+            } finally {
+                pinButton.disabled = false;
+            }
+        };
+
+    experience.classList.remove(
+        "hidden"
+    );
+
+    document.body.classList.add(
+        "encouragement-modal-open"
+    );
+
+    /*
+     * Cho browser render trạng thái đầu
+     * trước khi chạy sequence.
+     */
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            startMensDayLetterSequence();
+        });
+    });
+}
+
+
+/*
+=====================================================
+MEN'S DAY 2026 — CINEMATIC SEQUENCE
+
+Timeline:
+0.0s  Navy envelope entrance
+0.7s  Seal starts glowing
+1.3s  Seal unlock + flap opens
+2.2s  Personal recipient intro
+3.6s  Intro fades
+4.1s  Ivory letter rises
+=====================================================
+*/
+
+function startMensDayLetterSequence() {
+    const experience =
+        document.getElementById(
+            "mensDayLetterExperience"
+        );
+
+    const personalIntro =
+        document.getElementById(
+            "mensDayPersonalIntro"
+        );
+
+    const envelopeScene =
+        document.getElementById(
+            "mensDayEnvelopeScene"
+        );
+
+    if (
+        !experience ||
+        !personalIntro ||
+        !envelopeScene
+    ) {
+        return;
+    }
+
+    if (mensDayAnimationInProgress) {
+        return;
+    }
+
+    mensDayAnimationInProgress = true;
+
+    clearMensDayAnimationTimers();
+
+
+    /*
+     * PHASE 1
+     * Envelope đã tự entrance bằng CSS.
+     *
+     * Sau ~700ms:
+     * logo seal bắt đầu glow/pulse mạnh hơn.
+     */
+    scheduleMensDayAnimation(
+        () => {
+            experience.classList.add(
+                "is-seal-opening"
+            );
+        },
+        700
+    );
+
+
+    /*
+     * PHASE 2
+     * Seal unlock.
+     * Flap mở.
+     * Light rays "Màu Chiếu Ra" xuất hiện.
+     */
+    scheduleMensDayAnimation(
+        () => {
+            experience.classList.remove(
+                "is-seal-opening"
+            );
+
+            experience.classList.add(
+                "is-envelope-opening"
+            );
+        },
+        1350
+    );
+
+
+    /*
+     * PHASE 3
+     * Phong bì chìm nhẹ xuống nền.
+     * Hiện intro cá nhân.
+     */
+    scheduleMensDayAnimation(
+        () => {
+            envelopeScene.style.transition =
+                "opacity 500ms ease, filter 500ms ease";
+
+            envelopeScene.style.opacity =
+                "0.2";
+
+            envelopeScene.style.filter =
+                "blur(2px)";
+
+            personalIntro.setAttribute(
+                "aria-hidden",
+                "false"
+            );
+
+            personalIntro.classList.add(
+                "is-visible"
+            );
+        },
+        2250
+    );
+
+
+    /*
+     * PHASE 4
+     * Intro người nhận bắt đầu fade.
+     */
+    scheduleMensDayAnimation(
+        () => {
+            personalIntro.classList.remove(
+                "is-visible"
+            );
+
+            personalIntro.setAttribute(
+                "aria-hidden",
+                "true"
+            );
+        },
+        3550
+    );
+
+
+    /*
+     * PHASE 5
+     * Phong bì rõ trở lại.
+     */
+    scheduleMensDayAnimation(
+        () => {
+            envelopeScene.style.opacity =
+                "1";
+
+            envelopeScene.style.filter =
+                "none";
+        },
+        3850
+    );
+
+
+    /*
+     * PHASE 6
+     * Ivory letter trượt lên.
+     */
+    scheduleMensDayAnimation(
+        () => {
+            experience.classList.add(
+                "is-letter-revealed"
+            );
+        },
+        4100
+    );
+
+
+    /*
+     * Animation sequence hoàn tất.
+     * Người dùng có thể đọc/scroll/ghim.
+     */
+    scheduleMensDayAnimation(
+        () => {
+            mensDayAnimationInProgress =
+                false;
+        },
+        5200
+    );
+}
+
+/*
+=====================================================
+MEN'S DAY 2026 — CLOSE EXPERIENCE
+=====================================================
+*/
+
+function closeMensDayLetterExperience() {
+    const experience =
+        document.getElementById(
+            "mensDayLetterExperience"
+        );
+
+    resetMensDayLetterExperience();
+
+    if (experience) {
+        experience.classList.add(
+            "hidden"
+        );
+    }
+
+    document.body.classList.remove(
+        "encouragement-modal-open"
+    );
+
+    currentOpenedEncouragementId =
+        null;
+}
+
 
 function getEncouragementSenderNameDemo(item) {
     if (
@@ -5597,6 +6084,26 @@ function openEncouragementLetterFromApi(
         return;
     }
 
+    const isMensDay =
+        isMensDayEncouragementDemo(
+            item
+        );
+
+        /*
+        * Campaign đặc biệt đi vào experience
+        * hoàn toàn riêng.
+        *
+        * Thư bình thường tiếp tục dùng
+        * modal kraft hiện tại.
+        */
+        if (isMensDay) {
+            openMensDayLetterExperience(
+                item
+            );
+
+            return;
+        }
+
     const modal =
         document.getElementById(
             "encouragementLetterModal"
@@ -5637,6 +6144,21 @@ function openEncouragementLetterFromApi(
     ) {
         return;
     }
+
+    /*
+    * Bật/tắt giao diện đặc biệt
+    * cho thư Ngày của Nam.
+    */
+    modal.classList.toggle(
+        "mens-day-letter-modal",
+        isMensDay
+    );
+
+    animation.classList.toggle(
+        "mens-day-letter-animation",
+        isMensDay
+    );
+
 
     currentOpenedEncouragementId =
         normalizedId;
@@ -5715,11 +6237,19 @@ function closeEncouragementLetterModal() {
         modal.classList.add(
             "hidden"
         );
+
+        modal.classList.remove(
+            "mens-day-letter-modal"
+        );
     }
 
     if (animation) {
         animation.classList.remove(
             "is-opening"
+        );
+
+        animation.classList.remove(
+            "mens-day-letter-animation"
         );
     }
 
@@ -5748,6 +6278,25 @@ document.addEventListener(
     "keydown",
     event => {
         if (event.key !== "Escape") {
+            return;
+        }
+
+        const mensDayExperience =
+            document.getElementById(
+                "mensDayLetterExperience"
+            );
+
+        /*
+         * Ưu tiên đóng special experience
+         * nếu đang mở.
+         */
+        if (
+            mensDayExperience &&
+            !mensDayExperience.classList.contains(
+                "hidden"
+            )
+        ) {
+            closeMensDayLetterExperience();
             return;
         }
 
@@ -5901,8 +6450,13 @@ async function loadEncouragementListFromApi() {
                 .replaceAll("'", "&#039;");
         };
 
-                list.innerHTML =
+        list.innerHTML =
             sortedMessages.map(item => {
+                const isMensDay =
+                    isMensDayEncouragementDemo(
+                        item
+                    );
+
                 const senderName =
                     getEncouragementSenderNameDemo(
                         item
@@ -5927,6 +6481,112 @@ async function loadEncouragementListFromApi() {
 
                 const encouragementId =
                     Number(item.id);
+
+                /*
+                    * Men's Day 2026 có card riêng hoàn toàn.
+                    */
+                    if (isMensDay) {
+                        return `
+                            <article
+                                class="
+                                    mens-day-inbox-card
+                                    ${
+                                        item.isPinned
+                                            ? "mens-day-inbox-card-pinned"
+                                            : ""
+                                    }
+                                "
+                            >
+                                <button
+                                    type="button"
+                                    class="mens-day-inbox-open"
+                                    onclick="openEncouragementLetterFromApi(${encouragementId})"
+                                    aria-label="Mở lá thư đặc biệt Ngày của Nam"
+                                >
+                                    <!-- Top information -->
+                                    <span class="mens-day-inbox-header">
+                                        <strong>
+                                            <span class="mens-day-inbox-special-label">
+                                                ✦ SPECIAL MESSAGE
+                                            </span>
+
+                                            <span class="mens-day-inbox-event-label">
+                                                NGÀY CỦA NAM
+                                            </span>
+                                        </strong>
+
+                                        <small>
+                                            Từ ${escapeHtml(senderName)}
+                                        </small>
+
+                                        <small>
+                                            ${escapeHtml(createdDate)}
+                                        </small>
+                                    </span>
+
+
+                                    <!-- Envelope flap / fold -->
+                                    <span
+                                        class="mens-day-inbox-flap"
+                                        aria-hidden="true"
+                                    ></span>
+
+                                    <span
+                                        class="mens-day-inbox-left-fold"
+                                        aria-hidden="true"
+                                    ></span>
+
+                                    <span
+                                        class="mens-day-inbox-right-fold"
+                                        aria-hidden="true"
+                                    ></span>
+
+
+                                    <!-- Logo seal -->
+                                    <span class="mens-day-inbox-seal">
+                                        <span
+                                            class="mens-day-inbox-seal-glow"
+                                            aria-hidden="true"
+                                        ></span>
+
+                                        <span
+                                            class="mens-day-inbox-seal-ring"
+                                            aria-hidden="true"
+                                        ></span>
+
+                                        <span class="mens-day-inbox-seal-inner">
+                                            <img
+                                                src="assets/images/logo-menday/LOGO-Mau-Chieu-Ra-2026.png"
+                                                alt=""
+                                            >
+                                        </span>
+                                    </span>
+
+
+                                    <!-- Hint -->
+                                    <span class="mens-day-inbox-hint">
+                                        Một lá thư đặc biệt đang chờ bạn mở...
+                                    </span>
+                                </button>
+
+
+                                <button
+                                    type="button"
+                                    class="mens-day-inbox-pin"
+                                    onclick="
+                                        event.stopPropagation();
+                                        togglePinEncouragementFromApi(${encouragementId});
+                                    "
+                                >
+                                    ${
+                                        item.isPinned
+                                            ? "Bỏ ghim"
+                                            : "📌 Ghim"
+                                    }
+                                </button>
+                            </article>
+                        `;
+                    }
 
                 return `
                     <article
@@ -16678,7 +17338,7 @@ function renderAdminExams(exams) {
                             >
                                 📺 Trình chiếu
                             </button>
-                        
+
                             <button
                                 type="button"
                                 class="admin-exam-select-btn"
@@ -19541,7 +20201,7 @@ function renderStudentExamRealtimeView(
 
     const isQuestionActive =
         liveState === "ACTIVE";
-    
+
     const questionEndsAt =
         realtimeState.questionEndsAt ||
         realtimeState.question_ends_at ||
