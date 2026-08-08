@@ -7,120 +7,1633 @@ body {
     margin: 0;
 }
 
+/* =====================================================
+   TKH 2026 — LOGIN PAGE
+   PASTEL WARM / MÀU CHIẾU RA 2026
+
+   Assets:
+   - LOGO-Mau-Chieu-Ra-2026-pastel.png
+   - login-bg-pastel.png
+   ===================================================== */
+
+
+/* =====================================================
+   LOGIN PAGE — DESKTOP OUTER BACKGROUND
+   ===================================================== */
+
 .login-page {
     min-height: 100vh;
-    background: linear-gradient(135deg, #0f172a, #1d4ed8);
+
+    margin: 0;
+    padding: 28px 18px;
+
     display: flex;
-    justify-content: center;
     align-items: center;
-    padding: 24px;
+    justify-content: center;
+
+    overflow-x: hidden;
+
+    background:
+        radial-gradient(
+            circle at 18% 12%,
+            rgba(183, 217, 232, 0.22),
+            transparent 28%
+        ),
+        radial-gradient(
+            circle at 82% 15%,
+            rgba(245, 220, 164, 0.25),
+            transparent 30%
+        ),
+        #fffaf3;
+
+    font-family:
+        "Nunito",
+        Arial,
+        sans-serif;
 }
 
-.login-wrapper {
-    width: 100%;
-    max-width: 1000px;
-    display: grid;
-    grid-template-columns: 1.1fr 0.9fr;
-    background: rgba(255,255,255,0.08);
-    border-radius: 28px;
+
+/* =====================================================
+   LOGIN ARTWORK WRAPPER
+
+   Desktop vẫn hiển thị background dọc ở giữa,
+   giống một poster/card của TKH.
+   ===================================================== */
+
+.pastel-login {
+    position: relative;
+
+    width: min(100%, 430px);
+    min-height: 704px;
+
+    margin: 0 auto;
+
+    padding:
+        33px
+        27px
+        42px;
+
     overflow: hidden;
-    box-shadow: 0 24px 70px rgba(0,0,0,0.35);
+
+    border:
+        1px solid
+        rgba(215, 190, 154, 0.32);
+
+    border-radius: 34px;
+
+    background-color:
+        #fffaf3;
+
+    background-image:
+        url("../assets/images/login-bg-pastel.png");
+
+    background-repeat:
+        no-repeat;
+
+    background-position:
+        center center;
+
+    background-size:
+        100% 100%;
+
+    box-shadow:
+        0 26px 70px
+        rgba(102, 75, 47, 0.13);
 }
 
-.login-left {
-    padding: 60px;
-    color: white;
+
+/* =====================================================
+   BRAND
+   ===================================================== */
+
+/* =====================================================
+   LOGIN BRAND
+   ===================================================== */
+
+.pastel-login-brand {
+    position: relative;
+    z-index: 2;
+
+    margin-bottom: 16px;
+
+    text-align: center;
+
+    isolation: isolate;
 }
 
-.label {
-    letter-spacing: 3px;
-    font-size: 13px;
-    opacity: 0.85;
+
+/* =====================================================
+   SOFT LIGHT BEHIND LOGO
+   ===================================================== */
+
+.pastel-login-brand::before {
+    content: "";
+
+    position: absolute;
+
+    z-index: -1;
+
+    top: -4px;
+    left: 50%;
+
+    width: 225px;
+    height: 210px;
+
+    transform:
+        translateX(-50%)
+        scale(0.96);
+
+    border-radius: 50%;
+
+    background:
+        radial-gradient(
+            ellipse at center,
+
+            rgba(255, 226, 168, 0.25) 0%,
+
+            rgba(255, 218, 145, 0.16) 30%,
+
+            rgba(255, 229, 182, 0.08) 52%,
+
+            transparent 74%
+        );
+
+    filter:
+        blur(10px);
+
+    opacity: 0.82;
+
+    pointer-events: none;
+
+    animation:
+        pastelLogoWarmGlow
+        5.5s
+        ease-in-out
+        infinite;
 }
 
-.login-left h1 {
-    font-size: 54px;
-    margin: 20px 0 12px;
-}
 
-.subtitle {
-    font-size: 18px;
-    line-height: 1.6;
-    max-width: 420px;
-    opacity: 0.9;
-}
+/* =====================================================
+   PASTEL LOGO
+   ===================================================== */
 
-.login-card {
-    background: white;
-    padding: 48px;
-}
+.pastel-login-logo {
+    position: relative;
+    z-index: 2;
 
-.login-card h2 {
-    margin: 0 0 8px;
-    font-size: 30px;
-    color: #111827;
-}
-
-.hint {
-    margin-bottom: 28px;
-    color: #6b7280;
-}
-
-.login-card label {
     display: block;
+
+    width: 188px;
+    height: auto;
+
+    margin:
+        0 auto
+        3px;
+
+    object-fit: contain;
+
+    filter:
+        drop-shadow(
+            0 4px 7px
+            rgba(110, 79, 49, 0.045)
+        )
+        drop-shadow(
+            0 0 11px
+            rgba(255, 211, 133, 0.13)
+        );
+
+    transition:
+        filter 300ms ease;
+}
+
+
+/* =====================================================
+   ORGANIZATION NAME
+   ===================================================== */
+
+.pastel-login-organization {
+    margin:
+        1px 0
+        6px !important;
+
+    color:
+        #8fae91 !important;
+
+    font-family:
+        "Nunito",
+        Arial,
+        sans-serif !important;
+
+    font-size:
+        10px !important;
+
+    font-weight:
+        800 !important;
+
+    line-height:
+        1.35 !important;
+
+    letter-spacing:
+        0.55px;
+
+    text-transform:
+        uppercase;
+
+    text-align:
+        center;
+}
+
+
+/* =====================================================
+   MAIN TITLE
+   ===================================================== */
+
+.pastel-login-brand h1 {
+    margin:
+        0 0
+        6px;
+
+    color:
+        #ed785f;
+
+    font-family:
+        "Nunito",
+        Arial,
+        sans-serif;
+
+    font-size:
+        27px;
+
+    font-weight:
+        900;
+
+    line-height:
+        1.15;
+
+    letter-spacing:
+        -0.25px;
+
+    text-transform:
+        uppercase;
+}
+
+
+/* =====================================================
+   DESCRIPTION
+   ===================================================== */
+
+.pastel-login-description {
+    margin: 0 !important;
+
+    color:
+        #494641 !important;
+
+    font-family:
+        "Nunito",
+        Arial,
+        sans-serif !important;
+
+    font-size:
+        15px !important;
+
+    font-weight:
+        600 !important;
+
+    line-height:
+        1.45 !important;
+
+    text-align:
+        center;
+}
+
+
+/* =====================================================
+   LOGIN CARD
+   ===================================================== */
+
+.pastel-login-card {
+    position: relative;
+    z-index: 3;
+
+    padding:
+        24px
+        23px
+        23px;
+
+    border:
+        1px solid
+        rgba(208, 178, 137, 0.28);
+
+    border-radius:
+        24px;
+
+    background:
+        rgba(
+            255,
+            252,
+            245,
+            0.90
+        );
+
+    box-shadow:
+        0 12px 30px
+        rgba(
+            111,
+            78,
+            45,
+            0.085
+        );
+
+    backdrop-filter:
+        blur(3px);
+
+    -webkit-backdrop-filter:
+        blur(3px);
+}
+
+
+/* =====================================================
+   LOGIN CARD HEADING
+   ===================================================== */
+
+.pastel-login-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 14px;
+
     margin-bottom: 8px;
-    font-weight: bold;
-    color: #374151;
 }
 
-.login-card input {
+
+.pastel-login-heading h2 {
+    margin: 0;
+
+    color:
+        #ed785f;
+
+    font-family:
+        "Nunito",
+        Arial,
+        sans-serif;
+
+    font-size: 27px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+
+.pastel-card-heart {
+    color:
+        #ef846d;
+
+    font-family:
+        Arial,
+        sans-serif;
+
+    font-size: 38px;
+    font-weight: 400;
+    line-height: 1;
+
+    transform:
+        rotate(-8deg);
+}
+
+
+/* =====================================================
+   LOGIN DESCRIPTION
+   ===================================================== */
+
+.pastel-login-hint {
+    margin:
+        0 0
+        22px;
+
+    color:
+        #57504a;
+
+    font-family:
+        "Nunito",
+        Arial,
+        sans-serif;
+
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+
+/* =====================================================
+   FORM FIELD
+   ===================================================== */
+
+.pastel-field {
+    margin-bottom: 17px;
+}
+
+
+.pastel-field label {
+    display: block;
+
+    margin-bottom: 7px;
+
+    color:
+        #654b3a;
+
+    font-family:
+        "Nunito",
+        Arial,
+        sans-serif;
+
+    font-size: 14px;
+    font-weight: 800;
+}
+
+
+/* =====================================================
+   INPUT WRAPPER
+   ===================================================== */
+
+.pastel-input-wrapper {
+    position: relative;
+}
+
+
+/* =====================================================
+   INPUT
+   ===================================================== */
+
+.pastel-input-wrapper input {
+    display: block;
+
     width: 100%;
-    padding: 14px;
-    margin-bottom: 18px;
-    border: 1px solid #d1d5db;
-    border-radius: 12px;
+    height: 49px;
+
+    padding:
+        0
+        46px
+        0
+        14px;
+
+    border:
+        1.4px solid
+        #d9bd97;
+
+    border-radius:
+        12px;
+
+    outline: none;
+
+    background:
+        rgba(
+            255,
+            253,
+            248,
+            0.78
+        );
+
+    color:
+        #504a45;
+
+    font-family:
+        "Nunito",
+        Arial,
+        sans-serif;
+
     font-size: 15px;
+    font-weight: 600;
+
+    transition:
+        border-color 180ms ease,
+        box-shadow 180ms ease,
+        background 180ms ease;
 }
 
-.login-card button {
+
+.pastel-input-wrapper
+input::placeholder {
+    color:
+        #aaa39a;
+
+    font-weight: 500;
+}
+
+
+.pastel-input-wrapper
+input:focus {
+    border-color:
+        #ef957e;
+
+    background:
+        #fffdf9;
+
+    box-shadow:
+        0 0 0 4px
+        rgba(
+            239,
+            132,
+            109,
+            0.11
+        );
+}
+
+
+/* =====================================================
+   INPUT ICON
+   ===================================================== */
+
+.pastel-input-icon {
+    position: absolute;
+
+    top: 50%;
+    right: 14px;
+
+    width: 21px;
+    height: 21px;
+
+    transform:
+        translateY(-50%);
+
+    color:
+        #6c665e;
+
+    pointer-events: none;
+}
+
+
+.pastel-input-icon svg {
+    display: block;
+
     width: 100%;
-    padding: 15px;
-    margin-top: 8px;
-    background: #2563eb;
-    color: white;
+    height: 100%;
+}
+
+
+/* =====================================================
+   LOGIN BUTTON
+   ===================================================== */
+
+.pastel-login-button {
+    position: relative;
+
+    width: 100%;
+    height: 51px;
+
+    margin-top: 3px;
+    padding: 0 20px;
+
+    overflow: hidden;
+
     border: none;
     border-radius: 12px;
-    font-size: 16px;
-    font-weight: bold;
+
+    background:
+        linear-gradient(
+            135deg,
+            #f38b69 0%,
+            #f16f52 100%
+        );
+
+    color:
+        #ffffff;
+
+    font-family:
+        "Nunito",
+        Arial,
+        sans-serif;
+
+    font-size: 15px;
+    font-weight: 900;
+
     cursor: pointer;
+
+    box-shadow:
+        0 8px 18px
+        rgba(
+            231,
+            108,
+            77,
+            0.19
+        );
+
+    transition:
+        transform 160ms ease,
+        box-shadow 160ms ease;
 }
 
-.login-card button:hover {
-    background: #1d4ed8;
+
+.pastel-login-button span {
+    position: relative;
+    z-index: 2;
 }
+
+
+/* light sweep */
+
+.pastel-login-button::before {
+    content: "";
+
+    position: absolute;
+
+    top: 0;
+    left: -70%;
+
+    width: 44%;
+    height: 100%;
+
+    transform:
+        skewX(-20deg);
+
+    background:
+        linear-gradient(
+            100deg,
+            transparent,
+            rgba(
+                255,
+                255,
+                255,
+                0.34
+            ),
+            transparent
+        );
+
+    transition:
+        left 500ms ease;
+}
+
+
+.pastel-login-button:hover {
+    transform:
+        translateY(-1px);
+
+    box-shadow:
+        0 11px 23px
+        rgba(
+            231,
+            108,
+            77,
+            0.24
+        );
+}
+
+
+.pastel-login-button:hover::before {
+    left: 130%;
+}
+
+
+.pastel-login-button:active {
+    transform:
+        translateY(1px)
+        scale(0.995);
+}
+
+
+/* =====================================================
+   LOGIN MESSAGE
+   ===================================================== */
 
 #loginMessage {
-    margin-top: 18px;
+    min-height: 0;
+
+    margin:
+        14px 0
+        0;
+
+    color:
+        #ba5147;
+
+    font-family:
+        "Nunito",
+        Arial,
+        sans-serif;
+
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.45;
+
     text-align: center;
-    font-weight: bold;
 }
 
+
+#loginMessage:empty {
+    margin: 0;
+}
+
+
+/* =====================================================
+   DESKTOP / LARGE SCREEN
+
+   Vì background gốc là ảnh dọc 800x1307,
+   giữ nó như một poster ở giữa thay vì kéo ngang.
+   ===================================================== */
+
+@media (min-width: 769px) {
+
+    .login-page {
+        padding:
+            32px
+            20px;
+    }
+
+
+    .pastel-login {
+        min-height: 704px;
+    }
+
+}
+
+
+/* =====================================================
+   MOBILE
+   ===================================================== */
+
 @media (max-width: 768px) {
-    .login-wrapper {
-        grid-template-columns: 1fr;
+
+    .login-page {
+        min-height:
+            100dvh;
+
+        display: block;
+
+        padding: 0;
+
+        background:
+            #fffaf3;
     }
 
-    .login-left {
-        padding: 36px;
+
+    .pastel-login {
+        width: 100%;
+        max-width: 430px;
+
+        min-height:
+            100dvh;
+
+        margin:
+            0 auto;
+
+        padding:
+            calc(
+                25px +
+                env(
+                    safe-area-inset-top
+                )
+            )
+            22px
+            calc(
+                38px +
+                env(
+                    safe-area-inset-bottom
+                )
+            );
+
+        border: none;
+        border-radius: 0;
+
+        background-color:
+            #fffaf3;
+
+        background-image:
+            url(
+                "../assets/images/login-bg-pastel.png"
+            );
+
+        background-repeat:
+            no-repeat;
+
+        background-position:
+            center top;
+
+        /*
+         * Giữ toàn bộ artwork:
+         * crayon, hoa, đồi, thập tự.
+         */
+        background-size:
+            100% 100%;
+
+        box-shadow:
+            none;
     }
 
-    .login-left h1 {
-        font-size: 38px;
+
+    /* Logo */
+
+    .pastel-login-logo {
+        width: 184px;
+
+        margin:
+            0 auto
+            3px;
     }
 
-    .login-card {
-        padding: 36px;
+
+    /* Toàn bộ khu vực thương hiệu */
+
+    .pastel-login-brand {
+        margin-bottom:
+            16px;
     }
+
+
+    /* BAN THANH NIÊN HTTL CH NGUYỄN TRI PHƯƠNG */
+
+    .pastel-login-organization {
+        margin:
+            1px 0
+            5px !important;
+
+        font-size:
+            9.5px !important;
+
+        letter-spacing:
+            0.45px;
+    }
+
+
+    /* THÁNH KINH HÈ 2026 */
+
+    .pastel-login-brand h1 {
+        font-size:
+            26px;
+    }
+
+
+    /* Hệ thống điểm danh và điểm số */
+
+    .pastel-login-description {
+        font-size:
+            15px !important;
+    }
+
+
+    .pastel-login-card {
+        padding:
+            23px
+            21px
+            21px;
+
+        border-radius:
+            23px;
+    }
+
+
+    .pastel-login-heading h2 {
+        font-size:
+            27px;
+    }
+
+
+    .pastel-card-heart {
+        font-size:
+            36px;
+    }
+
+
+    .pastel-input-wrapper input {
+        height:
+            50px;
+
+        /*
+         * 16px giúp iPhone không tự zoom
+         * khi focus input.
+         */
+        font-size:
+            16px;
+    }
+
+
+    .pastel-login-button {
+        height:
+            52px;
+
+        font-size:
+            16px;
+    }
+
+}
+
+
+/* =====================================================
+   SMALL PHONE
+   ===================================================== */
+
+@media (max-width: 380px) {
+
+    .pastel-login {
+        padding-left:
+            17px;
+
+        padding-right:
+            17px;
+    }
+
+
+    /* Logo */
+
+    .pastel-login-logo {
+        width:
+            170px;
+    }
+
+
+    /* BAN THANH NIÊN HTTL CH NGUYỄN TRI PHƯƠNG */
+
+    .pastel-login-organization {
+        font-size:
+            9px !important;
+
+        letter-spacing:
+            0.3px;
+    }
+
+
+    /* THÁNH KINH HÈ 2026 */
+
+    .pastel-login-brand h1 {
+        font-size:
+            24px;
+    }
+
+
+    /* Hệ thống điểm danh và điểm số */
+
+    .pastel-login-description {
+        font-size:
+            14px !important;
+    }
+
+
+    .pastel-login-card {
+        padding:
+            21px
+            18px
+            20px;
+    }
+
+
+    .pastel-login-heading h2 {
+        font-size:
+            25px;
+    }
+
+}
+
+/* =====================================================
+   TKH LOGIN — BUTTON LOADING STATE
+   ===================================================== */
+
+.login-button-content {
+    position: relative;
+    z-index: 2;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 9px;
+}
+
+
+.login-button-spinner {
+    display: none;
+
+    width: 17px;
+    height: 17px;
+
+    flex-shrink: 0;
+
+    border:
+        2px solid
+        rgba(255, 255, 255, 0.38);
+
+    border-top-color:
+        #ffffff;
+
+    border-radius: 50%;
+
+    animation:
+        loginButtonSpinner
+        0.7s
+        linear
+        infinite;
+}
+
+
+.pastel-login-button.is-loading
+.login-button-spinner {
+    display: block;
+}
+
+
+.pastel-login-button:disabled {
+    cursor: wait;
+
+    opacity: 0.86;
+
+    transform: none;
+}
+
+
+@keyframes loginButtonSpinner {
+    to {
+        transform:
+            rotate(360deg);
+    }
+}
+
+
+/* =====================================================
+   TKH LOGIN — SUCCESS OVERLAY
+   ===================================================== */
+
+.login-success-overlay {
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 20000;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    padding: 24px;
+
+    background:
+        rgba(
+            255,
+            250,
+            243,
+            0.94
+        );
+
+    backdrop-filter:
+        blur(8px);
+
+    -webkit-backdrop-filter:
+        blur(8px);
+
+    opacity: 0;
+
+    visibility: hidden;
+
+    pointer-events: none;
+
+    transition:
+        opacity 220ms ease,
+        visibility 220ms ease;
+}
+
+
+/* Khi JS bật animation */
+
+.login-success-overlay.is-visible {
+    opacity: 1;
+
+    visibility: visible;
+
+    pointer-events: auto;
+}
+
+
+/* =====================================================
+   LOGO GLOW AREA
+   ===================================================== */
+
+.login-success-glow {
+    position: relative;
+
+    width: 210px;
+    height: 210px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-bottom: 24px;
+
+    transform:
+        scale(0.72);
+
+    opacity: 0;
+}
+
+
+.login-success-overlay.is-visible
+.login-success-glow {
+    animation:
+        loginSuccessLogoEnter
+        620ms
+        cubic-bezier(
+            0.16,
+            1,
+            0.3,
+            1
+        )
+        forwards;
+}
+
+
+/* =====================================================
+   LOGO CIRCLE
+   ===================================================== */
+
+.login-success-logo-circle {
+    position: relative;
+
+    z-index: 4;
+
+    width: 142px;
+    height: 142px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 18px;
+
+    border-radius: 50%;
+
+    background:
+        rgba(
+            255,
+            252,
+            244,
+            0.96
+        );
+
+    border:
+        1px solid
+        rgba(
+            240,
+            187,
+            112,
+            0.32
+        );
+
+    box-shadow:
+        0 12px 35px
+        rgba(
+            132,
+            90,
+            52,
+            0.12
+        ),
+        0 0 30px
+        rgba(
+            255,
+            210,
+            122,
+            0.22
+        );
+
+    animation:
+        loginSuccessLogoFloat
+        1.7s
+        ease-in-out
+        infinite;
+}
+
+
+/* Logo pastel thật */
+
+.login-success-logo {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: contain;
+
+    filter:
+        drop-shadow(
+            0 4px 6px
+            rgba(
+                110,
+                78,
+                46,
+                0.06
+            )
+        );
+}
+
+
+/* =====================================================
+   EXPANDING LIGHT RINGS
+   ===================================================== */
+
+.login-success-ring {
+    position: absolute;
+
+    top: 50%;
+    left: 50%;
+
+    border-radius: 50%;
+
+    transform:
+        translate(-50%, -50%)
+        scale(0.45);
+
+    opacity: 0;
+
+    border:
+        2px solid
+        rgba(
+            244,
+            183,
+            91,
+            0.34
+        );
+}
+
+
+.login-success-ring-1 {
+    width: 158px;
+    height: 158px;
+}
+
+
+.login-success-ring-2 {
+    width: 184px;
+    height: 184px;
+
+    border-color:
+        rgba(
+            145,
+            181,
+            139,
+            0.28
+        );
+}
+
+
+.login-success-ring-3 {
+    width: 208px;
+    height: 208px;
+
+    border-color:
+        rgba(
+            132,
+            174,
+            208,
+            0.22
+        );
+}
+
+
+.login-success-overlay.is-visible
+.login-success-ring-1 {
+    animation:
+        loginSuccessRing
+        850ms
+        ease-out
+        80ms
+        forwards;
+}
+
+
+.login-success-overlay.is-visible
+.login-success-ring-2 {
+    animation:
+        loginSuccessRing
+        900ms
+        ease-out
+        140ms
+        forwards;
+}
+
+
+.login-success-overlay.is-visible
+.login-success-ring-3 {
+    animation:
+        loginSuccessRing
+        950ms
+        ease-out
+        190ms
+        forwards;
+}
+
+
+/* =====================================================
+   SUCCESS TEXT
+   ===================================================== */
+
+.login-success-text {
+    position: relative;
+    z-index: 4;
+
+    text-align: center;
+
+    opacity: 0;
+
+    transform:
+        translateY(10px);
+}
+
+
+.login-success-overlay.is-visible
+.login-success-text {
+    animation:
+        loginSuccessTextEnter
+        400ms
+        ease-out
+        260ms
+        forwards;
+}
+
+
+.login-success-check {
+    width: 34px;
+    height: 34px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-bottom: 9px;
+
+    border-radius: 50%;
+
+    background:
+        #91b58b;
+
+    color:
+        #ffffff;
+
+    font-family:
+        Arial,
+        sans-serif;
+
+    font-size: 20px;
+    font-weight: 800;
+
+    box-shadow:
+        0 5px 14px
+        rgba(
+            104,
+            151,
+            98,
+            0.20
+        );
+}
+
+
+.login-success-text h2 {
+    margin:
+        0 0
+        5px;
+
+    color:
+        #ed785f;
+
+    font-family:
+        "Nunito",
+        Arial,
+        sans-serif;
+
+    font-size: 25px;
+    font-weight: 900;
+    line-height: 1.2;
+}
+
+
+.login-success-text p {
+    margin: 0;
+
+    color:
+        #62574d;
+
+    font-family:
+        "Nunito",
+        Arial,
+        sans-serif;
+
+    font-size: 14px;
+    font-weight: 600;
+}
+
+
+/* =====================================================
+   LOGIN CARD LEAVING
+   ===================================================== */
+
+.pastel-login.login-is-success
+.pastel-login-card {
+    animation:
+        loginCardLeave
+        300ms
+        ease
+        forwards;
+}
+
+
+.pastel-login.login-is-success
+.pastel-login-brand {
+    animation:
+        loginBrandLeave
+        300ms
+        ease
+        forwards;
+}
+
+
+/* =====================================================
+   ANIMATIONS
+   ===================================================== */
+
+@keyframes loginSuccessLogoEnter {
+
+    0% {
+        opacity: 0;
+
+        transform:
+            scale(0.68)
+            rotate(-3deg);
+    }
+
+    65% {
+        opacity: 1;
+
+        transform:
+            scale(1.06)
+            rotate(1deg);
+    }
+
+    100% {
+        opacity: 1;
+
+        transform:
+            scale(1)
+            rotate(0);
+    }
+
+}
+
+
+@keyframes loginSuccessRing {
+
+    0% {
+        opacity: 0.55;
+
+        transform:
+            translate(-50%, -50%)
+            scale(0.45);
+    }
+
+    100% {
+        opacity: 0;
+
+        transform:
+            translate(-50%, -50%)
+            scale(1.18);
+    }
+
+}
+
+
+@keyframes loginSuccessLogoFloat {
+
+    0%,
+    100% {
+        transform:
+            translateY(0);
+    }
+
+    50% {
+        transform:
+            translateY(-3px);
+    }
+
+}
+
+
+@keyframes loginSuccessTextEnter {
+
+    from {
+        opacity: 0;
+
+        transform:
+            translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+
+        transform:
+            translateY(0);
+    }
+
+}
+
+
+@keyframes loginCardLeave {
+
+    to {
+        opacity: 0;
+
+        transform:
+            translateY(12px)
+            scale(0.98);
+
+        filter:
+            blur(2px);
+    }
+
+}
+
+
+@keyframes loginBrandLeave {
+
+    to {
+        opacity: 0;
+
+        transform:
+            translateY(-8px)
+            scale(0.98);
+
+        filter:
+            blur(2px);
+    }
+
+}
+
+
+/* =====================================================
+   ACCESSIBILITY
+   Người dùng bật Reduce Motion
+   ===================================================== */
+
+@media (
+    prefers-reduced-motion:
+    reduce
+) {
+
+    .login-success-glow,
+    .login-success-text,
+    .login-success-ring,
+    .login-success-logo-circle,
+    .pastel-login.login-is-success
+    .pastel-login-card,
+    .pastel-login.login-is-success
+    .pastel-login-brand {
+
+        animation-duration:
+            1ms !important;
+
+        animation-iteration-count:
+            1 !important;
+    }
+
+}
+
+
+/* =====================================================
+   LOGIN SUCCESS — MOBILE
+   ===================================================== */
+
+@media (max-width: 768px) {
+
+    .login-success-glow {
+        width: 190px;
+        height: 190px;
+
+        margin-bottom: 20px;
+    }
+
+
+    .login-success-logo-circle {
+        width: 130px;
+        height: 130px;
+
+        padding: 16px;
+    }
+
+
+    .login-success-ring-1 {
+        width: 148px;
+        height: 148px;
+    }
+
+
+    .login-success-ring-2 {
+        width: 170px;
+        height: 170px;
+    }
+
+
+    .login-success-ring-3 {
+        width: 190px;
+        height: 190px;
+    }
+
+
+    .login-success-text h2 {
+        font-size: 23px;
+    }
+
 }
 
 .app-page {
@@ -11493,4 +13006,741 @@ small {
     font-weight: 900;
 
     letter-spacing: 1.2px;
+}
+
+
+/* =====================================================
+   TKH 2026 — STUDENT PASTEL THEME
+   Applied only to pages with:
+   <body class="app-page student-pastel-page">
+   ===================================================== */
+
+
+/* =====================================================
+   PAGE BACKGROUND
+   Desktop: pastel CSS
+   Mobile: TKH crayon artwork very subtle
+   ===================================================== */
+
+.student-pastel-page {
+    min-height: 100vh;
+
+    background:
+        radial-gradient(
+            circle at 8% 12%,
+            rgba(183, 217, 232, 0.14),
+            transparent 27%
+        ),
+        radial-gradient(
+            circle at 92% 14%,
+            rgba(245, 220, 164, 0.14),
+            transparent 28%
+        ),
+        radial-gradient(
+            circle at 8% 85%,
+            rgba(242, 192, 181, 0.10),
+            transparent 27%
+        ),
+        #fffaf3;
+}
+
+
+/* =====================================================
+   SIDEBAR
+   ===================================================== */
+
+.student-pastel-page .sidebar {
+    background:
+        linear-gradient(
+            180deg,
+            #fffaf3 0%,
+            #fff5e8 100%
+        );
+
+    color:
+        #51473f;
+
+    border-right:
+        1px solid
+        rgba(215, 190, 154, 0.35);
+
+    box-shadow:
+        6px 0 24px
+        rgba(102, 75, 47, 0.05);
+}
+
+
+/* TKH 2026 */
+
+.student-pastel-page .sidebar h2 {
+    color:
+        #ed785f;
+
+    font-family:
+        "Nunito",
+        Arial,
+        sans-serif;
+
+    font-weight:
+        900;
+}
+
+
+/* Menu links */
+
+.student-pastel-page .sidebar a {
+    color:
+        #62574d;
+
+    font-family:
+        "Nunito",
+        Arial,
+        sans-serif;
+
+    transition:
+        background-color 180ms ease,
+        color 180ms ease,
+        transform 180ms ease;
+}
+
+
+.student-pastel-page .sidebar a:hover {
+    background:
+        rgba(
+            242,
+            139,
+            105,
+            0.10
+        );
+
+    color:
+        #d96349;
+
+    transform:
+        translateX(2px);
+}
+
+
+/* Current page */
+
+.student-pastel-page
+.sidebar a.active {
+    background:
+        linear-gradient(
+            135deg,
+            rgba(243, 139, 105, 0.16),
+            rgba(241, 111, 82, 0.10)
+        );
+
+    color:
+        #d95e43;
+
+    font-weight:
+        800;
+
+    box-shadow:
+        inset 3px 0 0
+        #ef785b;
+}
+
+
+/* Divider */
+
+.student-pastel-page
+.sidebar-divider {
+    border-top-color:
+        rgba(
+            176,
+            145,
+            109,
+            0.22
+        );
+}
+
+
+/* Logout */
+
+.student-pastel-page
+.logout-menu {
+    color:
+        #b4534a !important;
+}
+
+
+/* =====================================================
+   MOBILE MENU BUTTON
+   Primary coral identity
+   ===================================================== */
+
+.student-pastel-page
+.mobile-menu-btn {
+    background:
+        linear-gradient(
+            135deg,
+            #f38b69 0%,
+            #f16f52 100%
+        );
+
+    color:
+        #ffffff;
+
+    box-shadow:
+        0 8px 18px
+        rgba(
+            231,
+            108,
+            77,
+            0.17
+        );
+}
+
+
+.student-pastel-page
+.mobile-menu-btn:hover {
+    background:
+        linear-gradient(
+            135deg,
+            #ef805f,
+            #eb654a
+        );
+}
+
+
+/* =====================================================
+   MAIN CONTENT
+   ===================================================== */
+
+.student-pastel-page
+.main-content {
+    position:
+        relative;
+
+    background:
+        transparent;
+}
+
+
+/* =====================================================
+   TOPBAR
+   ===================================================== */
+
+.student-pastel-page
+.topbar {
+    border:
+        1px solid
+        rgba(
+            215,
+            190,
+            154,
+            0.28
+        );
+
+    background:
+        rgba(
+            255,
+            253,
+            248,
+            0.93
+        );
+
+    box-shadow:
+        0 10px 28px
+        rgba(
+            102,
+            75,
+            47,
+            0.07
+        );
+
+    backdrop-filter:
+        blur(5px);
+
+    -webkit-backdrop-filter:
+        blur(5px);
+}
+
+
+.student-pastel-page
+.topbar h1 {
+    color:
+        #493f38;
+
+    font-family:
+        "Nunito",
+        Arial,
+        sans-serif;
+
+    font-weight:
+        900;
+}
+
+
+.student-pastel-page
+.topbar p {
+    color:
+        #75695f;
+}
+
+
+/* =====================================================
+   ATTENDANCE CARD
+   ===================================================== */
+
+.student-pastel-page
+.attendance-box {
+    border:
+        1px solid
+        rgba(
+            215,
+            190,
+            154,
+            0.25
+        );
+
+    background:
+        rgba(
+            255,
+            253,
+            248,
+            0.92
+        );
+
+    box-shadow:
+        0 10px 28px
+        rgba(
+            102,
+            75,
+            47,
+            0.07
+        );
+
+    backdrop-filter:
+        blur(4px);
+
+    -webkit-backdrop-filter:
+        blur(4px);
+}
+
+
+.student-pastel-page
+.attendance-box h2 {
+    color:
+        #493f38;
+
+    font-family:
+        "Nunito",
+        Arial,
+        sans-serif;
+
+    font-weight:
+        900;
+}
+
+
+/* =====================================================
+   ATTENDANCE STATUS
+   ===================================================== */
+
+.student-pastel-page
+.status-waiting {
+    background:
+        #fff0bd;
+
+    color:
+        #a74c13;
+}
+
+
+.student-pastel-page
+.status-success {
+    background:
+        #e5f5e6;
+
+    color:
+        #477a4b;
+}
+
+
+.student-pastel-page
+.status-fail {
+    background:
+        #fbe5df;
+
+    color:
+        #ae4f45;
+}
+
+
+/* =====================================================
+   ACTIVE CHECK-IN WINDOW
+   Sage pastel
+   ===================================================== */
+
+.student-pastel-page
+.checkin-window-box {
+    border:
+        1px solid
+        #cbe7ce;
+
+    background:
+        #eff9ef;
+
+    color:
+        #427448;
+}
+
+
+/* =====================================================
+   PRIMARY ACTION
+   Same coral family as LOGIN button
+   ===================================================== */
+
+.student-pastel-page
+.checkin-btn {
+    border:
+        none;
+
+    background:
+        linear-gradient(
+            135deg,
+            #f38b69 0%,
+            #f16f52 100%
+        );
+
+    color:
+        #ffffff;
+
+    box-shadow:
+        0 8px 18px
+        rgba(
+            231,
+            108,
+            77,
+            0.18
+        );
+
+    transition:
+        transform 160ms ease,
+        box-shadow 160ms ease,
+        opacity 160ms ease;
+}
+
+
+.student-pastel-page
+.checkin-btn:hover:not(:disabled) {
+    background:
+        linear-gradient(
+            135deg,
+            #ef805f,
+            #eb654a
+        );
+
+    transform:
+        translateY(-1px);
+
+    box-shadow:
+        0 11px 23px
+        rgba(
+            231,
+            108,
+            77,
+            0.23
+        );
+}
+
+
+.student-pastel-page
+.checkin-btn:active:not(:disabled) {
+    transform:
+        translateY(1px);
+}
+
+
+.student-pastel-page
+.checkin-btn:disabled {
+    background:
+        #d8cfc5;
+
+    color:
+        #ffffff;
+
+    box-shadow:
+        none;
+
+    opacity:
+        0.75;
+
+    cursor:
+        not-allowed;
+}
+
+
+/* =====================================================
+   GPS HELP — SECONDARY BLUE PASTEL
+   ===================================================== */
+
+.student-pastel-page
+.gps-help-btn {
+    border:
+        1px solid
+        #bfd9ec;
+
+    background:
+        #edf6fc;
+
+    color:
+        #3976a2;
+}
+
+
+.student-pastel-page
+.gps-help-btn:hover {
+    background:
+        #e1f0fa;
+}
+
+
+/* =====================================================
+   GPS INFORMATION
+   ===================================================== */
+
+.student-pastel-page
+.gps-info {
+    border:
+        1px solid
+        rgba(
+            215,
+            190,
+            154,
+            0.20
+        );
+
+    background:
+        rgba(
+            255,
+            250,
+            242,
+            0.82
+        );
+}
+
+
+.student-pastel-page
+.distance-label {
+    color:
+        #75695f;
+}
+
+
+.student-pastel-page
+.distance-number {
+    color:
+        #ef785b;
+}
+
+
+/* =====================================================
+   MODAL — STUDENT ONLY
+   ===================================================== */
+
+.student-pastel-page
+.modal-box {
+    border:
+        1px solid
+        rgba(
+            215,
+            190,
+            154,
+            0.32
+        );
+
+    background:
+        #fffaf3;
+
+    box-shadow:
+        0 20px 60px
+        rgba(
+            73,
+            55,
+            40,
+            0.22
+        );
+}
+
+
+.student-pastel-page
+.gps-help-section {
+    border-color:
+        #e7dbc9;
+
+    background:
+        #fffdf8;
+}
+
+
+.student-pastel-page
+.gps-help-section h4 {
+    color:
+        #3976a2;
+}
+
+
+/* Retry = primary */
+
+.student-pastel-page
+.gps-retry-btn {
+    background:
+        linear-gradient(
+            135deg,
+            #f38b69,
+            #f16f52
+        );
+
+    color:
+        #ffffff;
+}
+
+
+.student-pastel-page
+.gps-retry-btn:hover {
+    background:
+        linear-gradient(
+            135deg,
+            #ef805f,
+            #eb654a
+        );
+}
+
+
+/* =====================================================
+   MOBILE
+   Use TKH artwork very subtly
+   ===================================================== */
+
+@media (max-width: 768px) {
+
+    .student-pastel-page {
+        position:
+            relative;
+
+        background-color:
+            #fffaf3;
+
+        background-image:
+            linear-gradient(
+                rgba(
+                    255,
+                    250,
+                    243,
+                    0.87
+                ),
+                rgba(
+                    255,
+                    250,
+                    243,
+                    0.87
+                )
+            ),
+            url(
+                "../assets/images/login-bg-pastel.png"
+            );
+
+        background-repeat:
+            no-repeat;
+
+        background-position:
+            center top;
+
+        background-size:
+            cover;
+
+        background-attachment:
+            scroll;
+    }
+
+
+    /*
+     * Sidebar mobile becomes the first content panel.
+     */
+
+    .student-pastel-page
+    .sidebar {
+        border-right:
+            none;
+
+        border-bottom:
+            1px solid
+            rgba(
+                215,
+                190,
+                154,
+                0.28
+            );
+
+        background:
+            rgba(
+                255,
+                250,
+                243,
+                0.91
+            );
+
+        box-shadow:
+            0 7px 22px
+            rgba(
+                102,
+                75,
+                47,
+                0.07
+            );
+
+        backdrop-filter:
+            blur(6px);
+
+        -webkit-backdrop-filter:
+            blur(6px);
+    }
+
+
+    .student-pastel-page
+    .sidebar h2 {
+        font-size:
+            22px;
+    }
+
+
+    .student-pastel-page
+    .main-content {
+        background:
+            transparent;
+    }
+
+
+    .student-pastel-page
+    .topbar,
+    .student-pastel-page
+    .attendance-box {
+        background:
+            rgba(
+                255,
+                253,
+                248,
+                0.92
+            );
+    }
+
+
+    .student-pastel-page
+    .topbar {
+        border-radius:
+            20px;
+    }
+
+
+    .student-pastel-page
+    .attendance-box {
+        border-radius:
+            20px;
+    }
+
 }

@@ -1,40 +1,307 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
     <title>TKH 2026 - Đăng nhập</title>
-    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Font cho concept Pastel -->
+    <link
+        rel="preconnect"
+        href="https://fonts.googleapis.com"
+    >
+
+    <link
+        rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossorigin
+    >
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet"
+    >
+
+    <!--
+        Tăng version để trình duyệt không giữ CSS cũ
+    -->
+    <link
+        rel="stylesheet"
+        href="css/style.css?v=141"
+    >
 </head>
+
+
 <body class="login-page">
 
-    <div class="login-wrapper">
-        <div class="login-left">
-            <p class="label">THÁNH KINH HÈ 2026</p>
-            <h1>TKH System</h1>
-            <p class="subtitle">
-                Hệ thống điểm danh, điểm số và Bible Challenge.
+    <main class="pastel-login">
+
+        <!-- =========================================
+             BRAND
+             ========================================= -->
+
+        <section class="pastel-login-brand">
+
+            <img
+                class="pastel-login-logo"
+                src="assets/images/LOGO-Mau-Chieu-Ra-2026-pastel.png"
+                alt="Màu Chiếu Ra 2026"
+            >
+
+            <p class="pastel-login-organization">
+                BAN THANH NIÊN HTTL CH NGUYỄN TRI PHƯƠNG
             </p>
-        </div>
 
-        <div class="login-card">
-            <h2>Đăng nhập</h2>
-            <p class="hint">Vui lòng đăng nhập bằng tài khoản TKH do Ban Tổ Chức cung cấp.</p>
+            <h1>
+                THÁNH KINH HÈ 2026
+            </h1>
 
-            <label>Tên đăng nhập</label>
-            <input type="text" id="username" placeholder="Ví dụ: tkh001">
+            <p class="pastel-login-description">
+                Hệ thống điểm danh và điểm số.
+            </p>
 
-            <label>Mật khẩu</label>
-            <input type="password" id="password" placeholder="Nhập mật khẩu">
+        </section>
 
-            <button onclick="loginDemo()">Đăng nhập</button>
+
+        <!-- =========================================
+             LOGIN CARD
+             ========================================= -->
+
+        <section class="pastel-login-card">
+
+            <div class="pastel-login-heading">
+
+                <h2>
+                    Đăng nhập
+                </h2>
+
+
+                <!--
+                    Giữ trái tim này vì nó thuộc card.
+                    Background đã có heart trang trí riêng.
+                -->
+                <span
+                    class="pastel-card-heart"
+                    aria-hidden="true"
+                >
+                    ♡
+                </span>
+
+            </div>
+
+
+            <p class="pastel-login-hint">
+                Vui lòng đăng nhập bằng tài khoản
+                <br>
+                TKH do Ban Tổ Chức cung cấp.
+            </p>
+
+
+            <!-- USERNAME -->
+
+            <div class="pastel-field">
+
+                <label for="username">
+                    Tên đăng nhập
+                </label>
+
+
+                <div class="pastel-input-wrapper">
+
+                    <input
+                        type="text"
+                        id="username"
+                        placeholder="Ví dụ: tkh001"
+                        autocomplete="username"
+                    >
+
+
+                    <span
+                        class="pastel-input-icon"
+                        aria-hidden="true"
+                    >
+
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <circle
+                                cx="12"
+                                cy="8"
+                                r="4"
+                            ></circle>
+
+                            <path
+                                d="M4.5 21a7.5 7.5 0 0 1 15 0"
+                            ></path>
+                        </svg>
+
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <!-- PASSWORD -->
+
+            <div class="pastel-field">
+
+                <label for="password">
+                    Mật khẩu
+                </label>
+
+
+                <div class="pastel-input-wrapper">
+
+                    <input
+                        type="password"
+                        id="password"
+                        placeholder="Nhập mật khẩu"
+                        autocomplete="current-password"
+                    >
+
+
+                    <span
+                        class="pastel-input-icon"
+                        aria-hidden="true"
+                    >
+
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+
+                            <rect
+                                x="5"
+                                y="10"
+                                width="14"
+                                height="11"
+                                rx="2"
+                            ></rect>
+
+                            <path
+                                d="M8 10V7a4 4 0 0 1 8 0v3"
+                            ></path>
+
+                        </svg>
+
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <!--
+                Giữ nguyên loginDemo()
+                để không ảnh hưởng login hiện tại.
+            -->
+
+            <button
+                type="button"
+                id="loginButton"
+                class="pastel-login-button"
+                onclick="loginDemo()"
+            >
+                <span class="login-button-content">
+
+                    <span
+                        class="login-button-spinner"
+                        aria-hidden="true"
+                    ></span>
+
+                    <span id="loginButtonText">
+                        Đăng nhập
+                    </span>
+
+                </span>
+            </button>
+
+
+            <!--
+                Giữ nguyên ID cho app.js
+            -->
 
             <p id="loginMessage"></p>
+
+        </section>
+
+    </main>
+
+
+        <!-- =========================================
+         LOGIN SUCCESS TRANSITION
+         Chỉ xuất hiện sau khi Backend login thành công
+         ========================================= -->
+
+    <div
+        id="loginSuccessOverlay"
+        class="login-success-overlay"
+        aria-hidden="true"
+    >
+
+        <div class="login-success-glow">
+
+            <div class="login-success-ring login-success-ring-1"></div>
+
+            <div class="login-success-ring login-success-ring-2"></div>
+
+            <div class="login-success-ring login-success-ring-3"></div>
+
+
+            <div class="login-success-logo-circle">
+
+                <img
+                    src="assets/images/LOGO-Mau-Chieu-Ra-2026-pastel.png"
+                    alt=""
+                    class="login-success-logo"
+                >
+
+            </div>
+
         </div>
+
+
+        <div class="login-success-text">
+
+            <span class="login-success-check">
+                ✓
+            </span>
+
+            <h2>
+                Đăng nhập thành công
+            </h2>
+
+            <p id="loginSuccessWelcome">
+                Chào mừng đến với TKH 2026
+            </p>
+
+        </div>
+
     </div>
 
-<script src="https://cdn.socket.io/4.8.3/socket.io.min.js"></script>
-<script src="js/app.js"></script>
-    <script src="js/app.js?v=137"></script>
+    <script
+        src="https://cdn.socket.io/4.8.3/socket.io.min.js"
+    ></script>
+
+
+    <script src="js/app.js?v=138"></script>
+
 </body>
+
 </html>

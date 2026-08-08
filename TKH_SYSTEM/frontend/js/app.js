@@ -32,94 +32,398 @@ const demoUsers = [
     }
 ];
 
-async function loginDemo() {
-    const usernameInput = document.getElementById("username");
-    const passwordInput = document.getElementById("password");
-    const message = document.getElementById("loginMessage");
+/*
+ * =========================================================
+ * LOGIN SUCCESS ANIMATION
+ * =========================================================
+ */
 
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value;
+function getLoginRedirectUrl(currentUser) {
 
-    if (!username || !password) {
-        message.style.color = "red";
-        message.innerText = "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.";
+    if (currentUser.mustChangePassword) {
+        return "change-password.html";
+    }
+
+    if (currentUser.role === "admin") {
+        return "admin-dashboard.html";
+    }
+
+    return "attendance.html";
+}
+
+
+function showLoginSuccessAnimation(
+    currentUser,
+    redirectUrl
+) {
+    const overlay =
+        document.getElementById(
+            "loginSuccessOverlay"
+        );
+
+    const loginContainer =
+        document.querySelector(
+            ".pastel-login"
+        );
+
+    const welcomeText =
+        document.getElementById(
+            "loginSuccessWelcome"
+        );
+
+
+    /*
+     * Nếu vì lý do nào đó HTML animation
+     * không tồn tại, vẫn redirect bình thường.
+     */
+    if (!overlay) {
+        window.location.href =
+            redirectUrl;
+
         return;
     }
 
-    message.style.color = "#555";
-    message.innerText = "Đang đăng nhập...";
+
+    if (welcomeText) {
+
+        const displayName =
+            currentUser.fullName ||
+            currentUser.tkhCode ||
+            currentUser.username ||
+            "bạn";
+
+        welcomeText.innerText =
+            `Chào mừng ${displayName}`;
+    }
+
+
+    if (loginContainer) {
+        loginContainer.classList.add(
+            "login-is-success"
+        );
+    }
+
+
+    overlay.classList.add(
+        "is-visible"
+    );
+
+    overlay.setAttribute(
+        "aria-hidden",
+        "false"
+    );
+
+
+    /*
+     * Animation chỉ chạy trên Frontend.
+     *
+     * Không gọi thêm API.
+     * Không query thêm Database.
+     *
+     * 850 ms đủ để thấy animation
+     * nhưng không làm cảm giác login chậm.
+     */
+    window.setTimeout(
+        () => {
+            window.location.href =
+                redirectUrl;
+        },
+        850
+    );
+}
+
+
+/*
+ * =========================================================
+ * LOGIN
+ * =========================================================
+ */
+
+async function loginDemo() {
+
+    const usernameInput =
+        document.getElementById(
+            "username"
+        );
+
+    const passwordInput =
+        document.getElementById(
+            "password"
+        );
+
+    const message =
+        document.getElementById(
+            "loginMessage"
+        );
+
+    const loginButton =
+        document.getElementById(
+            "loginButton"
+        );
+
+    const loginButtonText =
+        document.getElementById(
+            "loginButtonText"
+        );
+
+
+    const username =
+        usernameInput
+            .value
+            .trim();
+
+    const password =
+        passwordInput.value;
+
+
+    if (!username || !password) {
+
+        message.style.color =
+            "red";
+
+        message.innerText =
+            "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.";
+
+        return;
+    }
+
+
+    /*
+     * Chặn double click / spam login.
+     */
+    if (
+        loginButton &&
+        loginButton.disabled
+    ) {
+        return;
+    }
+
+
+    if (loginButton) {
+
+        loginButton.disabled =
+            true;
+
+        loginButton.classList.add(
+            "is-loading"
+        );
+    }
+
+
+    if (loginButtonText) {
+        loginButtonText.innerText =
+            "Đang đăng nhập...";
+    }
+
+
+    message.style.color =
+        "#7a6d62";
+
+    message.innerText =
+        "Đang kết nối đến hệ thống...";
+
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                username,
-                password
-            })
-        });
 
-        const result = await response.json();
+        /*
+         * Backend request vẫn giữ nguyên.
+         * Không thêm request mới.
+         */
+        const response =
+            await fetch(
+                `${API_BASE_URL}/api/auth/login`,
+                {
+                    method:
+                        "POST",
 
-        if (!response.ok || !result.success) {
-            message.style.color = "red";
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+                            username,
+                            password
+                        })
+                }
+            );
+
+
+        const result =
+            await response.json();
+
+
+        if (
+            !response.ok ||
+            !result.success
+        ) {
+
+            message.style.color =
+                "red";
+
             message.innerText =
                 result?.error?.message ||
                 "Đăng nhập không thành công.";
+
             return;
         }
 
-        const backendUser = result.data.user;
+
+        const backendUser =
+            result.data.user;
+
 
         const currentUser = {
-            id: backendUser.id,
-            memberId: backendUser.memberId,
-            username: backendUser.username,
-            role: String(backendUser.role).toLowerCase(),
-            fullName: backendUser.fullName || "Quản trị viên TKH",
-            tkhCode: backendUser.tkhCode,
-            groupName: null,
-            mustChangePassword: backendUser.mustChangePassword
+
+            id:
+                backendUser.id,
+
+            memberId:
+                backendUser.memberId,
+
+            username:
+                backendUser.username,
+
+            role:
+                String(
+                    backendUser.role
+                ).toLowerCase(),
+
+            fullName:
+                backendUser.fullName ||
+                "Quản trị viên TKH",
+
+            tkhCode:
+                backendUser.tkhCode,
+
+            groupName:
+                null,
+
+            mustChangePassword:
+                backendUser
+                    .mustChangePassword
         };
 
+
+        /*
+         * QUAN TRỌNG:
+         *
+         * Token + user vẫn được lưu
+         * TRƯỚC animation.
+         */
         localStorage.setItem(
             "accessToken",
             result.data.accessToken
         );
+
 
         localStorage.setItem(
             "currentUsername",
             currentUser.username
         );
 
+
         localStorage.setItem(
             "currentUser",
-            JSON.stringify(currentUser)
+            JSON.stringify(
+                currentUser
+            )
         );
 
-        message.style.color = "green";
-        message.innerText = "Đăng nhập thành công!";
 
-        setTimeout(() => {
-            if (currentUser.mustChangePassword) {
-                window.location.href = "change-password.html";
-                return;
-            }
+        message.style.color =
+            "#588152";
 
-            if (currentUser.role === "admin") {
-                window.location.href = "admin-dashboard.html";
-            } else {
-                window.location.href = "attendance.html";
-            }
-        }, 500);
+        message.innerText =
+            "Đăng nhập thành công!";
+
+
+        if (loginButton) {
+            loginButton.classList.remove(
+                "is-loading"
+            );
+        }
+
+
+        if (loginButtonText) {
+            loginButtonText.innerText =
+                "Đã đăng nhập ✓";
+        }
+
+
+        /*
+         * Xác định trang cần đi tới
+         * giống hệt logic cũ.
+         */
+        const redirectUrl =
+            getLoginRedirectUrl(
+                currentUser
+            );
+
+
+        /*
+         * Chỉ sau khi Backend thành công
+         * mới chạy hiệu ứng.
+         */
+        showLoginSuccessAnimation(
+            currentUser,
+            redirectUrl
+        );
+
     } catch (error) {
-        console.error("Login error:", error);
 
-        message.style.color = "red";
+        console.error(
+            "Login error:",
+            error
+        );
+
+
+        message.style.color =
+            "red";
+
         message.innerText =
             "Không thể kết nối đến hệ thống. Vui lòng thử lại.";
+
+    } finally {
+
+        /*
+         * Chỉ bật lại button nếu
+         * chưa bắt đầu animation thành công.
+         */
+        const overlay =
+            document.getElementById(
+                "loginSuccessOverlay"
+            );
+
+
+        const successAnimationRunning =
+            overlay?.classList.contains(
+                "is-visible"
+            );
+
+
+        if (
+            !successAnimationRunning
+        ) {
+
+            if (loginButton) {
+
+                loginButton.disabled =
+                    false;
+
+                loginButton.classList.remove(
+                    "is-loading"
+                );
+            }
+
+
+            if (loginButtonText) {
+
+                loginButtonText.innerText =
+                    "Đăng nhập";
+            }
+        }
     }
 }
 //đổi thành km nếu hơn 1000m
