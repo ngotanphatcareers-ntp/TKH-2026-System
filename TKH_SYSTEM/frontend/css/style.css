@@ -384,20 +384,188 @@ body {
 }
 
 
-.pastel-card-heart {
-    color:
-        #ef846d;
+/* =====================================================
+   LOGIN CARD CROSS
+   ===================================================== */
 
-    font-family:
-        Arial,
-        sans-serif;
+.pastel-card-cross {
+    position: relative;
 
-    font-size: 38px;
-    font-weight: 400;
-    line-height: 1;
+    width: 40px;
+    height: 40px;
+
+    flex:
+        0 0
+        40px;
+
+    display: block;
+
+    margin-top:
+        -2px;
+}
+
+
+/* =====================================================
+   CROSS VERTICAL BODY
+   ===================================================== */
+
+.pastel-cross-symbol {
+    position: absolute;
+
+    left: 50%;
+    top: 50%;
+
+    width: 13px;
+    height: 25px;
 
     transform:
-        rotate(-8deg);
+        translate(
+            -50%,
+            -43%
+        );
+
+    border:
+        2.4px solid
+        #f27b60;
+
+    border-radius:
+        2px;
+
+    box-sizing:
+        border-box;
+}
+
+
+/* =====================================================
+   CROSS HORIZONTAL ARM
+   ===================================================== */
+
+.pastel-cross-symbol::before {
+    content: "";
+
+    position: absolute;
+
+    left: 50%;
+    top: 5px;
+
+    width: 21px;
+    height: 7px;
+
+    transform:
+        translateX(-50%);
+
+    border:
+        2.4px solid
+        #f27b60;
+
+    border-radius:
+        2px;
+
+    background:
+        #fffaf3;
+
+    box-sizing:
+        border-box;
+}
+
+
+/*
+ * Che phần viền thân dọc phía sau
+ * để thập tự nhìn thành một khối sạch hơn.
+ */
+
+.pastel-cross-symbol::after {
+    content: "";
+
+    position: absolute;
+
+    left: 50%;
+    top: 7.5px;
+
+    width: 9px;
+    height: 3px;
+
+    transform:
+        translateX(-50%);
+
+    background:
+        #fffaf3;
+}
+
+
+/* =====================================================
+   SMALL LIGHT RAYS
+   ===================================================== */
+
+.pastel-cross-ray {
+    position: absolute;
+
+    width: 2px;
+    height: 6px;
+
+    border-radius:
+        999px;
+
+    background:
+        #f2ad63;
+
+    opacity:
+        0.88;
+
+    transform-origin:
+        center;
+}
+
+
+/* Top */
+
+.pastel-card-cross .ray-1 {
+    top: 0;
+    left: 19px;
+}
+
+
+/* Upper left */
+
+.pastel-card-cross .ray-2 {
+    top: 6px;
+    left: 7px;
+
+    transform:
+        rotate(-45deg);
+}
+
+
+/* Upper right */
+
+.pastel-card-cross .ray-3 {
+    top: 6px;
+    right: 7px;
+
+    transform:
+        rotate(45deg);
+}
+
+
+/* Left */
+
+.pastel-card-cross .ray-4 {
+    top: 17px;
+    left: 2px;
+
+    transform:
+        rotate(90deg);
+}
+
+
+/* Right */
+
+.pastel-card-cross .ray-5 {
+    top: 17px;
+    right: 2px;
+
+    transform:
+        rotate(90deg);
 }
 
 
@@ -885,9 +1053,21 @@ input:focus {
     }
 
 
-    .pastel-card-heart {
-        font-size:
-            36px;
+    .pastel-card-cross {
+        width:
+            38px;
+
+        height:
+            38px;
+
+        flex-basis:
+            38px;
+
+        transform:
+            scale(0.92);
+
+        transform-origin:
+            top right;
     }
 
 
