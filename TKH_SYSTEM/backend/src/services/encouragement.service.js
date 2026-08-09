@@ -389,11 +389,7 @@ async function sendEncouragement({
     };
   }
 
-  const normalizedAnonymous =
-    isAnonymous === true ||
-    isAnonymous === 1 ||
-    String(isAnonymous).toLowerCase() ===
-      "true";
+
 
   const recipient =
     await findActiveRecipientByUsername({
@@ -439,15 +435,25 @@ async function sendEncouragement({
 
   try {
     const encouragement =
-      await createEncouragement({
-        seasonId: context.activeSeason.id,
-        senderSeasonMembershipId:
-          context.membership.id,
-        recipientSeasonMembershipId:
-          recipient.season_membership_id,
-        message: normalizedMessage,
-        isAnonymous: normalizedAnonymous,
-      });
+  await createEncouragement({
+    seasonId: context.activeSeason.id,
+    senderSeasonMembershipId:
+      context.membership.id,
+    recipientSeasonMembershipId:
+      recipient.season_membership_id,
+    message: normalizedMessage,
+
+    /*
+     * Quy định mới của BTC:
+     * mọi lời khích lệ mới đều phải công khai.
+     *
+     * Dù client có gửi isAnonymous = true,
+     * backend vẫn luôn lưu false.
+     *
+     * Các thư cũ trong database không bị thay đổi.
+     */
+    isAnonymous: false,
+  });
 
     return {
       success: true,
@@ -1336,11 +1342,14 @@ async function sendMensDayCampaignBulk({
                         normalizedMessage,
 
                     /*
-                     * YÊU CẦU BTC:
-                     * thư phải ẨN DANH.
-                     */
+                    * Quy định hiện tại của BTC:
+                    * mọi thư khích lệ mới đều phải công khai.
+                    *
+                    * Có thể bật lại tính năng ẩn danh trong tương lai
+                    * nếu BTC thay đổi quy định.
+                    */
                     isAnonymous:
-                        true,
+                        false,
 
                     campaignCode:
                         CAMPAIGN_CODE,

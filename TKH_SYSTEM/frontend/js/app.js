@@ -5709,11 +5709,6 @@ async function sendEncouragementFromApi() {
             .value
             .trim();
 
-    const anonymous =
-        document
-            .getElementById("anonymousEncourage")
-            .checked;
-
     const message =
         document.getElementById(
             "encourageMessage"
@@ -5760,8 +5755,13 @@ async function sendEncouragementFromApi() {
                         receiverUsername,
                     message:
                         encourageText,
+
+                    /*
+                     * Từ nay mọi lời khích lệ mới
+                     * đều được gửi công khai.
+                     */
                     isAnonymous:
-                        anonymous
+                        false
                 })
             }
         );
@@ -5776,6 +5776,7 @@ async function sendEncouragementFromApi() {
             localStorage.removeItem(
                 "accessToken"
             );
+
             localStorage.removeItem(
                 "currentUser"
             );
@@ -5816,10 +5817,6 @@ async function sendEncouragementFromApi() {
         document.getElementById(
             "encourageText"
         ).value = "";
-
-        document.getElementById(
-            "anonymousEncourage"
-        ).checked = false;
 
         message.style.color = "green";
         message.innerText =
