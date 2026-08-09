@@ -2710,7 +2710,150 @@ async function findExamPresentationById(
   return result.recordset[0] || null;
 }
 
+
+/*
+=====================================================
+Find Student completed Exam review
+
+Security:
+- The attempt must belong to the supplied membership.
+- Only COMPLETED Exam + COMPLETED attempt are returned.
+- FULL_RESULT is required before correct answers can
+  be exposed to the Student.
+- Start from exam_questions so unanswered questions
+  are still included in the review.
+=====================================================
+*/
+
+async function findCompletedExamReview({
+  examId,
+  seasonMembershipId,
+}) {
+  const pool = await getPool();
+
+  const summaryResult =
+    await pool.request()
+      .input(
+        "examId",
+        sql.Int,
+        examId
+      )
+      .input(
+        "seasonMembershipId",
+        sql.Int,
+        seasonMembershipId
+      )
+      .query(`
+        SELECT TOP (1)
+          e.id AS exam_id,
+          e.season_id,
+          e.name AS exam_name,
+          e.type AS exam_type,
+          e.status AS exam_status,
+          e.result_visibility,
+
+          ea.id AS attempt_id,
+          ea.status AS attempt_status,
+          ea.started_at,
+          ea.submitted_at,
+          ea.score,
+          ea.correct_count,
+          ea.total_questions,
+          ea.is_late_join,
+          ea.joined_question_index,
+
+          (
+            SELECT
+              COALESCE(
+                SUM(eq.points),
+                0
+              )
+            FROM dbo.exam_questions AS eq
+            WHERE eq.exam_id = e.id
+          ) AS maximum_score
+
+        FROM dbo.exams AS e
+
+        INNER JOIN dbo.exam_attempts AS ea
+          ON ea.exam_id = e.id
+          AND ea.season_membership_id =
+              @seasonMembershipId
+
+        WHERE e.id = @examId
+          AND e.status = 'COMPLETED'
+          AND ea.status = 'COMPLETED'
+          AND e.result_visibility =
+              'FULL_RESULT'
+
+        ORDER BY
+          ea.attempt_no DESC,
+          ea.id DESC;
+      `);
+
+  const summary =
+    summaryResult.recordset[0] ||
+    null;
+
+  if (!summary) {
+    return null;
+  }
+
+  const questionsResult =
+    await pool.request()
+      .input(
+        "examId",
+        sql.Int,
+        examId
+      )
+      .input(
+        "attemptId",
+        sql.Int,
+        summary.attempt_id
+      )
+      .query(`
+        SELECT
+          eq.id AS question_id,
+          eq.question_index,
+          eq.question_text,
+
+          eq.answer_a,
+          eq.answer_b,
+          eq.answer_c,
+          eq.answer_d,
+
+          eq.correct_answer,
+          eq.points,
+
+          eaa.chosen_answer,
+          eaa.is_correct,
+          eaa.answered_at,
+          eaa.updated_at
+            AS answer_updated_at
+
+        FROM dbo.exam_questions AS eq
+
+        LEFT JOIN dbo.exam_attempt_answers
+          AS eaa
+          ON eaa.question_id = eq.id
+          AND eaa.attempt_id =
+              @attemptId
+
+        WHERE eq.exam_id = @examId
+
+        ORDER BY
+          eq.question_index ASC,
+          eq.id ASC;
+      `);
+
+  return {
+    summary,
+    questions:
+      questionsResult.recordset,
+  };
+}
+
 module.exports = {
+findCompletedExamReview,
 findExamPresentationById,
 saveStudentExamAnswer,  
 findExamRealtimeStateById,

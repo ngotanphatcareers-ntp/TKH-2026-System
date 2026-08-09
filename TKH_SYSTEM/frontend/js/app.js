@@ -20835,13 +20835,25 @@ function renderStudentExamCompletedResult(
                 Kết quả đã được lưu vào hồ sơ điểm cá nhân của bạn.
             </p>
 
-            <button
-                type="button"
-                class="student-exam-back-button"
-                onclick="loadStudentExamsFromApi()"
-            >
-                Quay lại danh sách bài kiểm tra
-            </button>
+            <div class="student-exam-result-actions">
+                <button
+                    type="button"
+                    class="student-exam-review-button"
+                    onclick="loadStudentExamReview(${Number(
+                        exam?.id
+                    ) || 0})"
+                >
+                    🔎 Xem lại bài
+                </button>
+
+                <button
+                    type="button"
+                    class="student-exam-back-button"
+                    onclick="loadStudentExamsFromApi()"
+                >
+                    Quay lại danh sách bài kiểm tra
+                </button>
+            </div>
         </article>
     `;
 
@@ -20984,6 +20996,652 @@ async function loadStudentExamCompletedResult(
             `;
         }
     }
+}
+
+/*
+=====================================================
+Student Exam Review
+Load completed Exam review from Backend
+=====================================================
+*/
+
+async function loadStudentExamReview(
+    examId
+) {
+    const normalizedExamId =
+        Number(examId);
+
+    if (
+        !Number.isInteger(
+            normalizedExamId
+        ) ||
+        normalizedExamId <= 0
+    ) {
+        window.alert(
+            "ID bài kiểm tra không hợp lệ."
+        );
+
+        return;
+    }
+
+    const token =
+        localStorage.getItem(
+            "accessToken"
+        );
+
+    if (!token) {
+        logoutDemo();
+        return;
+    }
+
+    const list =
+        document.getElementById(
+            "studentExamList"
+        );
+
+    if (!list) {
+        return;
+    }
+
+    list.innerHTML = `
+        <article class="student-exam-review-loading">
+            <div class="student-exam-review-loading-icon">
+                ⏳
+            </div>
+
+            <h3>
+                Đang tải bài làm...
+            </h3>
+
+            <p>
+                Hệ thống đang lấy lại câu trả lời của bạn.
+            </p>
+        </article>
+    `;
+
+    try {
+        const response =
+            await fetch(
+                `${API_BASE_URL}/api/exams/${normalizedExamId}/attempt/review`,
+                {
+                    method: "GET",
+
+                    headers: {
+                        Authorization:
+                            `Bearer ${token}`
+                    },
+
+                    cache: "no-store"
+                }
+            );
+
+        let result = null;
+
+        try {
+            result =
+                await response.json();
+        } catch (error) {
+            result = null;
+        }
+
+        if (response.status === 401) {
+            logoutDemo();
+            return;
+        }
+
+        if (
+            !response.ok ||
+            result?.success !== true
+        ) {
+            throw new Error(
+                result?.error?.message ||
+                "Không thể tải dữ liệu xem lại bài."
+            );
+        }
+
+        const review =
+            result?.data?.review;
+
+        if (
+            !review ||
+            !Array.isArray(
+                review.questions
+            )
+        ) {
+            throw new Error(
+                "Dữ liệu xem lại bài không hợp lệ."
+            );
+        }
+
+        renderStudentExamReview(
+            review
+        );
+    } catch (error) {
+        console.error(
+            "Load Student Exam review error:",
+            error
+        );
+
+        list.innerHTML = `
+            <article class="student-exam-review-error">
+                <div class="student-exam-review-error-icon">
+                    ⚠️
+                </div>
+
+                <h3>
+                    Không thể tải bài làm
+                </h3>
+
+                <p>
+                    ${escapeStudentExamHtml(
+                        error.message ||
+                        "Vui lòng thử lại."
+                    )}
+                </p>
+
+                <div class="student-exam-result-actions">
+                    <button
+                        type="button"
+                        class="student-exam-review-button"
+                        onclick="loadStudentExamReview(${normalizedExamId})"
+                    >
+                        Thử lại
+                    </button>
+
+                    <button
+                        type="button"
+                        class="student-exam-back-button"
+                        onclick="loadStudentExamCompletedResult(${normalizedExamId})"
+                    >
+                        Quay lại kết quả
+                    </button>
+                </div>
+            </article>
+        `;
+    }
+}
+
+/*
+=====================================================
+Render Student completed Exam review
+=====================================================
+*/
+
+function renderStudentExamReview(
+    review
+) {
+    const list =
+        document.getElementById(
+            "studentExamList"
+        );
+
+    if (!list) {
+        return;
+    }
+
+    const exam =
+        review?.exam || {};
+
+    const attempt =
+        review?.attempt || {};
+
+    const questions =
+        Array.isArray(
+            review?.questions
+        )
+            ? review.questions
+            : [];
+
+    const examId =
+        Number(exam.id) || 0;
+
+    const totalQuestions =
+        Number(
+            attempt.totalQuestions
+        ) || questions.length;
+
+    const correctCount =
+        Number(
+            attempt.correctCount
+        ) || 0;
+
+    const incorrectCount =
+        Number(
+            attempt.incorrectCount
+        ) || 0;
+
+    const unansweredCount =
+        Number(
+            attempt.unansweredCount
+        ) || 0;
+
+    const reviewCount =
+        incorrectCount +
+        unansweredCount;
+
+    const score =
+        Number(
+            attempt.score
+        ) || 0;
+
+    const maximumScore =
+        Number(
+            attempt.maximumScore
+        ) || 0;
+
+    list.innerHTML = `
+        <section
+            class="student-exam-review"
+            data-exam-id="${examId}"
+        >
+            <div class="student-exam-review-header">
+                <span class="student-exam-result-badge">
+                    Xem lại bài
+                </span>
+
+                <h2>
+                    ${escapeStudentExamHtml(
+                        exam.name ||
+                        getStudentExamTypeLabel(
+                            exam.type
+                        )
+                    )}
+                </h2>
+
+                <p>
+                    Kiểm tra lại câu trả lời của bạn
+                    sau khi bài thi đã kết thúc.
+                </p>
+            </div>
+
+            <div class="student-exam-review-summary">
+                <div class="student-exam-review-summary-item">
+                    <span>Điểm</span>
+
+                    <strong>
+                        ${formatStudentExamScore(
+                            score
+                        )}/${formatStudentExamScore(
+                            maximumScore
+                        )}
+                    </strong>
+                </div>
+
+                <div class="student-exam-review-summary-item">
+                    <span>Đúng</span>
+
+                    <strong>
+                        ${correctCount}/${totalQuestions}
+                    </strong>
+                </div>
+
+                <div class="student-exam-review-summary-item">
+                    <span>Sai</span>
+
+                    <strong>
+                        ${incorrectCount}
+                    </strong>
+                </div>
+
+                <div class="student-exam-review-summary-item">
+                    <span>Chưa trả lời</span>
+
+                    <strong>
+                        ${unansweredCount}
+                    </strong>
+                </div>
+            </div>
+
+            <div class="student-exam-review-filters">
+                <button
+                    type="button"
+                    class="student-exam-review-filter is-active"
+                    data-review-filter="all"
+                    onclick="filterStudentExamReview('all')"
+                >
+                    Tất cả
+                    <span>
+                        ${totalQuestions}
+                    </span>
+                </button>
+
+                <button
+                    type="button"
+                    class="student-exam-review-filter"
+                    data-review-filter="correct"
+                    onclick="filterStudentExamReview('correct')"
+                >
+                    Đúng
+                    <span>
+                        ${correctCount}
+                    </span>
+                </button>
+
+                <button
+                    type="button"
+                    class="student-exam-review-filter"
+                    data-review-filter="review"
+                    onclick="filterStudentExamReview('review')"
+                >
+                    Cần xem lại
+                    <span>
+                        ${reviewCount}
+                    </span>
+                </button>
+            </div>
+
+            <div
+                id="studentExamReviewQuestions"
+                class="student-exam-review-questions"
+            >
+                ${questions
+                    .map(
+                        renderStudentExamReviewQuestion
+                    )
+                    .join("")}
+            </div>
+
+            <div class="student-exam-result-actions">
+                <button
+                    type="button"
+                    class="student-exam-back-button"
+                    onclick="loadStudentExamCompletedResult(${examId})"
+                >
+                    ← Quay lại kết quả
+                </button>
+
+                <button
+                    type="button"
+                    class="student-exam-back-button student-exam-review-list-button"
+                    onclick="loadStudentExamsFromApi()"
+                >
+                    Danh sách bài kiểm tra
+                </button>
+            </div>
+        </section>
+    `;
+
+    scheduleStudentExamAnswerLock("");
+    stopStudentExamCountdown();
+}
+
+/*
+=====================================================
+Render one Student Exam review question
+=====================================================
+*/
+
+function renderStudentExamReviewQuestion(
+    question
+) {
+    const questionIndex =
+        Number(
+            question?.questionIndex
+        ) || 0;
+
+    const chosenAnswer =
+        question?.chosenAnswer
+            ? String(
+                question.chosenAnswer
+            )
+                .trim()
+                .toUpperCase()
+            : null;
+
+    const correctAnswer =
+        String(
+            question?.correctAnswer ||
+            ""
+        )
+            .trim()
+            .toUpperCase();
+
+    const isAnswered =
+        Boolean(
+            question?.isAnswered
+        );
+
+    const isCorrect =
+        Boolean(
+            question?.isCorrect
+        );
+
+    const answers =
+        question?.answers || {};
+
+    let reviewState =
+        "unanswered";
+
+    if (isAnswered) {
+        reviewState =
+            isCorrect
+                ? "correct"
+                : "incorrect";
+    }
+
+    const statusText =
+        reviewState === "correct"
+            ? "✓ Đúng"
+            : reviewState === "incorrect"
+                ? "✕ Sai"
+                : "— Chưa trả lời";
+
+    const chosenText =
+        chosenAnswer
+            ? (
+                answers[chosenAnswer] ||
+                question
+                    ?.chosenAnswerText ||
+                ""
+            )
+            : "";
+
+    const correctText =
+        answers[correctAnswer] ||
+        question
+            ?.correctAnswerText ||
+        "";
+
+    return `
+        <article
+            class="student-exam-review-question student-exam-review-question-${reviewState}"
+            data-review-state="${reviewState}"
+        >
+            <div class="student-exam-review-question-top">
+                <span class="student-exam-review-question-number">
+                    Câu ${questionIndex}
+                </span>
+
+                <span
+                    class="student-exam-review-status student-exam-review-status-${reviewState}"
+                >
+                    ${statusText}
+                </span>
+            </div>
+
+            <h3 class="student-exam-review-question-text">
+                ${escapeStudentExamHtml(
+                    question?.questionText ||
+                    ""
+                )}
+            </h3>
+
+            <div class="student-exam-review-answer-list">
+                ${["A", "B", "C", "D"]
+                    .map(answerKey => {
+                        const answerText =
+                            answers[
+                                answerKey
+                            ] || "";
+
+                        const isChosen =
+                            chosenAnswer ===
+                            answerKey;
+
+                        const isCorrectOption =
+                            correctAnswer ===
+                            answerKey;
+
+                        let optionClass =
+                            "";
+
+                        if (
+                            isCorrectOption
+                        ) {
+                            optionClass +=
+                                " is-correct-answer";
+                        }
+
+                        if (
+                            isChosen &&
+                            !isCorrectOption
+                        ) {
+                            optionClass +=
+                                " is-wrong-choice";
+                        }
+
+                        if (isChosen) {
+                            optionClass +=
+                                " is-student-choice";
+                        }
+
+                        return `
+                            <div
+                                class="student-exam-review-option${optionClass}"
+                            >
+                                <span class="student-exam-review-option-letter">
+                                    ${answerKey}
+                                </span>
+
+                                <span class="student-exam-review-option-text">
+                                    ${escapeStudentExamHtml(
+                                        answerText
+                                    )}
+                                </span>
+
+                                ${
+                                    isCorrectOption
+                                        ? `
+                                            <span class="student-exam-review-option-mark">
+                                                ✓ Đáp án đúng
+                                            </span>
+                                        `
+                                        : isChosen
+                                            ? `
+                                                <span class="student-exam-review-option-mark">
+                                                    Bạn chọn
+                                                </span>
+                                            `
+                                            : ""
+                                }
+                            </div>
+                        `;
+                    })
+                    .join("")}
+            </div>
+
+            <div class="student-exam-review-answer-summary">
+                <div>
+                    <span>Bạn chọn</span>
+
+                    <strong>
+                        ${
+                            chosenAnswer
+                                ? `
+                                    ${escapeStudentExamHtml(
+                                        chosenAnswer
+                                    )}.
+                                    ${escapeStudentExamHtml(
+                                        chosenText
+                                    )}
+                                `
+                                : "— Không trả lời"
+                        }
+                    </strong>
+                </div>
+
+                <div>
+                    <span>Đáp án đúng</span>
+
+                    <strong>
+                        ${escapeStudentExamHtml(
+                            correctAnswer
+                        )}.
+                        ${escapeStudentExamHtml(
+                            correctText
+                        )}
+                    </strong>
+                </div>
+            </div>
+        </article>
+    `;
+}
+
+/*
+=====================================================
+Filter Student Exam review
+=====================================================
+*/
+
+function filterStudentExamReview(
+    filter
+) {
+    const normalizedFilter =
+        ["all", "correct", "review"]
+            .includes(filter)
+            ? filter
+            : "all";
+
+    document
+        .querySelectorAll(
+            ".student-exam-review-filter"
+        )
+        .forEach(button => {
+            button.classList.toggle(
+                "is-active",
+                button.dataset
+                    .reviewFilter ===
+                    normalizedFilter
+            );
+        });
+
+    document
+        .querySelectorAll(
+            ".student-exam-review-question"
+        )
+        .forEach(card => {
+            const state =
+                String(
+                    card.dataset
+                        .reviewState || ""
+                );
+
+            let shouldShow = true;
+
+            if (
+                normalizedFilter ===
+                "correct"
+            ) {
+                shouldShow =
+                    state === "correct";
+            }
+
+            if (
+                normalizedFilter ===
+                "review"
+            ) {
+                shouldShow =
+                    state ===
+                        "incorrect" ||
+                    state ===
+                        "unanswered";
+            }
+
+            card.classList.toggle(
+                "hidden",
+                !shouldShow
+            );
+        });
 }
 
 

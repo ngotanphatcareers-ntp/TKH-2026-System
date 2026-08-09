@@ -14271,3 +14271,866 @@ small {
     }
 
 }
+
+
+/* =====================================================
+   STUDENT EXAM REVIEW
+   ===================================================== */
+
+.student-exam-result-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+
+    margin-top: 22px;
+}
+
+
+/* =====================================================
+   REVIEW BUTTON
+   ===================================================== */
+
+.student-exam-review-button {
+    min-height: 48px;
+
+    padding: 13px 22px;
+
+    border: none;
+    border-radius: 14px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #2563eb,
+            #1d4ed8
+        );
+
+    color: #ffffff;
+
+    font-size: 15px;
+    font-weight: 800;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 8px 18px
+        rgba(37, 99, 235, 0.18);
+
+    transition:
+        transform 160ms ease,
+        box-shadow 160ms ease,
+        opacity 160ms ease;
+}
+
+
+.student-exam-review-button:hover {
+    transform:
+        translateY(-1px);
+
+    box-shadow:
+        0 10px 22px
+        rgba(37, 99, 235, 0.24);
+}
+
+
+.student-exam-review-button:active {
+    transform:
+        translateY(0);
+}
+
+
+/* =====================================================
+   REVIEW PAGE
+   ===================================================== */
+
+.student-exam-review {
+    max-width: 920px;
+
+    margin:
+        0 auto;
+
+    padding:
+        4px 0
+        12px;
+}
+
+
+/* =====================================================
+   REVIEW HEADER
+   ===================================================== */
+
+.student-exam-review-header {
+    text-align: center;
+
+    margin-bottom: 24px;
+}
+
+
+.student-exam-review-header h2 {
+    margin:
+        12px 0
+        7px;
+
+    color: #111827;
+
+    font-size: 28px;
+    line-height: 1.25;
+}
+
+
+.student-exam-review-header p {
+    margin: 0;
+
+    color: #6b7280;
+
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+
+/* =====================================================
+   RESULT BADGE
+   ===================================================== */
+
+.student-exam-result-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding:
+        7px 13px;
+
+    border-radius: 999px;
+
+    background: #dbeafe;
+
+    color: #1d4ed8;
+
+    font-size: 12px;
+    font-weight: 800;
+
+    letter-spacing: 0.4px;
+
+    text-transform: uppercase;
+}
+
+
+/* =====================================================
+   REVIEW SUMMARY
+   ===================================================== */
+
+.student-exam-review-summary {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            4,
+            minmax(0, 1fr)
+        );
+
+    gap: 12px;
+
+    margin-bottom: 22px;
+}
+
+
+.student-exam-review-summary-item {
+    min-width: 0;
+
+    padding:
+        16px 12px;
+
+    border:
+        1px solid #e5e7eb;
+
+    border-radius: 16px;
+
+    background: #ffffff;
+
+    text-align: center;
+
+    box-shadow:
+        0 5px 16px
+        rgba(15, 23, 42, 0.05);
+}
+
+
+.student-exam-review-summary-item span {
+    display: block;
+
+    margin-bottom: 7px;
+
+    color: #6b7280;
+
+    font-size: 12px;
+    font-weight: 700;
+}
+
+
+.student-exam-review-summary-item strong {
+    display: block;
+
+    color: #111827;
+
+    font-size: 21px;
+    line-height: 1.2;
+}
+
+
+/* =====================================================
+   REVIEW FILTERS
+   ===================================================== */
+
+.student-exam-review-filters {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+
+    margin-bottom: 22px;
+}
+
+
+.student-exam-review-filter {
+    display: inline-flex;
+    align-items: center;
+
+    gap: 7px;
+
+    min-height: 42px;
+
+    padding:
+        9px 15px;
+
+    border:
+        1px solid #d1d5db;
+
+    border-radius: 999px;
+
+    background: #ffffff;
+
+    color: #4b5563;
+
+    font-size: 14px;
+    font-weight: 800;
+
+    cursor: pointer;
+
+    transition:
+        border-color 160ms ease,
+        background 160ms ease,
+        color 160ms ease,
+        transform 160ms ease;
+}
+
+
+.student-exam-review-filter:hover {
+    transform:
+        translateY(-1px);
+
+    border-color: #93c5fd;
+}
+
+
+.student-exam-review-filter span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-width: 24px;
+    height: 24px;
+
+    padding:
+        0 7px;
+
+    border-radius: 999px;
+
+    background: #f3f4f6;
+
+    color: #4b5563;
+
+    font-size: 12px;
+}
+
+
+.student-exam-review-filter.is-active {
+    border-color: #2563eb;
+
+    background: #2563eb;
+
+    color: #ffffff;
+}
+
+
+.student-exam-review-filter.is-active span {
+    background:
+        rgba(
+            255,
+            255,
+            255,
+            0.18
+        );
+
+    color: #ffffff;
+}
+
+
+/* =====================================================
+   QUESTION LIST
+   ===================================================== */
+
+.student-exam-review-questions {
+    display: grid;
+
+    gap: 18px;
+}
+
+
+/* =====================================================
+   QUESTION CARD
+   ===================================================== */
+
+.student-exam-review-question {
+    overflow: hidden;
+
+    padding: 20px;
+
+    border:
+        1px solid #e5e7eb;
+
+    border-left-width: 5px;
+
+    border-radius: 18px;
+
+    background: #ffffff;
+
+    box-shadow:
+        0 7px 22px
+        rgba(15, 23, 42, 0.06);
+}
+
+
+/*
+ * Correct
+ */
+
+.student-exam-review-question-correct {
+    border-left-color:
+        #22c55e;
+}
+
+
+/*
+ * Incorrect
+ */
+
+.student-exam-review-question-incorrect {
+    border-left-color:
+        #ef4444;
+}
+
+
+/*
+ * Unanswered
+ */
+
+.student-exam-review-question-unanswered {
+    border-left-color:
+        #f59e0b;
+}
+
+
+/* =====================================================
+   QUESTION TOP
+   ===================================================== */
+
+.student-exam-review-question-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 12px;
+
+    margin-bottom: 14px;
+}
+
+
+.student-exam-review-question-number {
+    color: #374151;
+
+    font-size: 14px;
+    font-weight: 900;
+}
+
+
+/* =====================================================
+   QUESTION STATUS
+   ===================================================== */
+
+.student-exam-review-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 30px;
+
+    padding:
+        5px 10px;
+
+    border-radius: 999px;
+
+    font-size: 12px;
+    font-weight: 900;
+}
+
+
+.student-exam-review-status-correct {
+    background: #dcfce7;
+    color: #166534;
+}
+
+
+.student-exam-review-status-incorrect {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+
+.student-exam-review-status-unanswered {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+
+/* =====================================================
+   QUESTION TEXT
+   ===================================================== */
+
+.student-exam-review-question-text {
+    margin:
+        0 0
+        17px;
+
+    color: #111827;
+
+    font-size: 18px;
+    line-height: 1.55;
+}
+
+
+/* =====================================================
+   ANSWER OPTIONS
+   ===================================================== */
+
+.student-exam-review-answer-list {
+    display: grid;
+
+    gap: 10px;
+}
+
+
+.student-exam-review-option {
+    display: grid;
+
+    grid-template-columns:
+        36px
+        minmax(0, 1fr)
+        auto;
+
+    gap: 11px;
+
+    align-items: center;
+
+    min-height: 52px;
+
+    padding:
+        10px 12px;
+
+    border:
+        1px solid #e5e7eb;
+
+    border-radius: 13px;
+
+    background: #f9fafb;
+}
+
+
+.student-exam-review-option-letter {
+    width: 34px;
+    height: 34px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 10px;
+
+    background: #e5e7eb;
+
+    color: #374151;
+
+    font-size: 14px;
+    font-weight: 900;
+}
+
+
+.student-exam-review-option-text {
+    min-width: 0;
+
+    color: #374151;
+
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+
+.student-exam-review-option-mark {
+    padding:
+        5px 9px;
+
+    border-radius: 999px;
+
+    background:
+        rgba(
+            255,
+            255,
+            255,
+            0.75
+        );
+
+    font-size: 11px;
+    font-weight: 900;
+
+    white-space: nowrap;
+}
+
+
+/* =====================================================
+   CORRECT ANSWER OPTION
+   ===================================================== */
+
+.student-exam-review-option.is-correct-answer {
+    border-color: #86efac;
+
+    background: #f0fdf4;
+}
+
+
+.student-exam-review-option.is-correct-answer
+.student-exam-review-option-letter {
+    background: #22c55e;
+
+    color: #ffffff;
+}
+
+
+.student-exam-review-option.is-correct-answer
+.student-exam-review-option-mark {
+    color: #166534;
+}
+
+
+/* =====================================================
+   WRONG STUDENT CHOICE
+   ===================================================== */
+
+.student-exam-review-option.is-wrong-choice {
+    border-color: #fca5a5;
+
+    background: #fef2f2;
+}
+
+
+.student-exam-review-option.is-wrong-choice
+.student-exam-review-option-letter {
+    background: #ef4444;
+
+    color: #ffffff;
+}
+
+
+.student-exam-review-option.is-wrong-choice
+.student-exam-review-option-mark {
+    color: #991b1b;
+}
+
+
+/* =====================================================
+   STUDENT CHOICE + CORRECT ANSWER
+   ===================================================== */
+
+.student-exam-review-option.is-student-choice.is-correct-answer {
+    box-shadow:
+        inset 0 0 0 1px
+        rgba(
+            34,
+            197,
+            94,
+            0.22
+        );
+}
+
+
+/* =====================================================
+   ANSWER SUMMARY
+   ===================================================== */
+
+.student-exam-review-answer-summary {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+
+    gap: 12px;
+
+    margin-top: 16px;
+
+    padding-top: 16px;
+
+    border-top:
+        1px solid #e5e7eb;
+}
+
+
+.student-exam-review-answer-summary > div {
+    min-width: 0;
+
+    padding: 12px;
+
+    border-radius: 12px;
+
+    background: #f8fafc;
+}
+
+
+.student-exam-review-answer-summary span {
+    display: block;
+
+    margin-bottom: 5px;
+
+    color: #6b7280;
+
+    font-size: 12px;
+    font-weight: 700;
+}
+
+
+.student-exam-review-answer-summary strong {
+    display: block;
+
+    color: #1f2937;
+
+    font-size: 13px;
+    line-height: 1.45;
+
+    overflow-wrap: anywhere;
+}
+
+
+/* =====================================================
+   LOADING / ERROR
+   ===================================================== */
+
+.student-exam-review-loading,
+.student-exam-review-error {
+    max-width: 620px;
+
+    margin:
+        10px auto;
+
+    padding:
+        40px 24px;
+
+    border:
+        1px solid #e5e7eb;
+
+    border-radius: 20px;
+
+    background: #ffffff;
+
+    text-align: center;
+
+    box-shadow:
+        0 8px 24px
+        rgba(15, 23, 42, 0.06);
+}
+
+
+.student-exam-review-loading-icon,
+.student-exam-review-error-icon {
+    margin-bottom: 12px;
+
+    font-size: 38px;
+}
+
+
+.student-exam-review-loading h3,
+.student-exam-review-error h3 {
+    margin:
+        0 0
+        8px;
+
+    color: #111827;
+}
+
+
+.student-exam-review-loading p,
+.student-exam-review-error p {
+    margin: 0;
+
+    color: #6b7280;
+
+    line-height: 1.5;
+}
+
+
+.student-exam-review-list-button {
+    background: #ffffff;
+}
+
+
+/* =====================================================
+   EXAM REVIEW MOBILE
+   ===================================================== */
+
+@media (max-width: 768px) {
+
+    .student-exam-result-actions {
+        display: grid;
+
+        grid-template-columns:
+            1fr;
+
+        width: 100%;
+    }
+
+
+    .student-exam-review-button,
+    .student-exam-back-button {
+        width: 100%;
+
+        min-height: 50px;
+    }
+
+
+    .student-exam-review-header h2 {
+        font-size: 23px;
+    }
+
+
+    .student-exam-review-summary {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+
+        gap: 10px;
+    }
+
+
+    .student-exam-review-summary-item {
+        padding:
+            14px 9px;
+    }
+
+
+    .student-exam-review-summary-item strong {
+        font-size: 19px;
+    }
+
+
+    .student-exam-review-filters {
+        display: grid;
+
+        grid-template-columns:
+            repeat(
+                3,
+                minmax(0, 1fr)
+            );
+
+        gap: 7px;
+    }
+
+
+    .student-exam-review-filter {
+        width: 100%;
+
+        justify-content: center;
+
+        padding:
+            8px 7px;
+
+        font-size: 12px;
+    }
+
+
+    .student-exam-review-question {
+        padding: 16px;
+
+        border-radius: 16px;
+    }
+
+
+    .student-exam-review-question-top {
+        align-items: flex-start;
+    }
+
+
+    .student-exam-review-question-text {
+        font-size: 16px;
+    }
+
+
+    .student-exam-review-option {
+        grid-template-columns:
+            34px
+            minmax(0, 1fr);
+
+        gap: 9px;
+
+        padding:
+            10px;
+    }
+
+
+    .student-exam-review-option-mark {
+        grid-column:
+            2;
+
+        justify-self: start;
+
+        margin-top: -3px;
+    }
+
+
+    .student-exam-review-answer-summary {
+        grid-template-columns:
+            1fr;
+    }
+
+}
+
+
+/* =====================================================
+   VERY SMALL PHONE
+   ===================================================== */
+
+@media (max-width: 380px) {
+
+    .student-exam-review-summary {
+        grid-template-columns:
+            1fr
+            1fr;
+    }
+
+
+    .student-exam-review-filters {
+        grid-template-columns:
+            1fr;
+    }
+
+}

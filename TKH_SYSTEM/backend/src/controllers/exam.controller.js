@@ -1,5 +1,6 @@
 const {
-    getExamRealtimeState,
+  getCompletedExamReview,
+  getExamRealtimeState,
   getExams,
   getAdminExams,
   createExam,
@@ -44,6 +45,12 @@ const STATUS_BY_CODE = {
   EXAM_NOT_IN_ACTIVE_SEASON: 400,
 
   EXAM_ALREADY_COMPLETED: 409,
+  EXAM_REVIEW_NOT_AVAILABLE: 409,
+  EXAM_FULL_RESULT_NOT_AVAILABLE: 403,
+  EXAM_ATTEMPT_NOT_FOUND: 404,
+  EXAM_ATTEMPT_NOT_COMPLETED: 409,
+  EXAM_REVIEW_NOT_FOUND: 404,
+
   EXAM_WAITING_ROOM_NOT_OPEN: 409,
   EXCEL_FILE_REQUIRED: 400,
   INVALID_EXCEL_FILE: 400,
@@ -755,6 +762,136 @@ async function finishExamController(
 
 /*
 =====================================================
+Student: Get completed Exam review
+=====================================================
+*/
+
+async function getCompletedExamReviewController(
+  req,
+  res,
+  next
+) {
+  try {
+    const result =
+      await getCompletedExamReview({
+        memberId:
+          req.user.memberId,
+
+        examId:
+          req.params.examId,
+      });
+
+    if (!result.success) {
+      const errorResponses = {
+        INVALID_EXAM_ID: {
+          status: 400,
+          message:
+            "Exam ID không hợp lệ.",
+        },
+
+        MEMBER_NOT_FOUND: {
+          status: 400,
+          message:
+            "Không tìm thấy thông tin học viên.",
+        },
+
+        ACTIVE_SEASON_NOT_FOUND: {
+          status: 404,
+          message:
+            "Không tìm thấy mùa Thánh Kinh Hè đang hoạt động.",
+        },
+
+        ACTIVE_MEMBERSHIP_NOT_FOUND: {
+          status: 403,
+          message:
+            "Bạn không có hồ sơ học viên trong mùa đang hoạt động.",
+        },
+
+        MEMBERSHIP_NOT_IN_ACTIVE_SEASON: {
+          status: 403,
+          message:
+            "Hồ sơ học viên không thuộc mùa đang hoạt động.",
+        },
+
+        EXAM_NOT_FOUND: {
+          status: 404,
+          message:
+            "Không tìm thấy bài kiểm tra.",
+        },
+
+        EXAM_NOT_IN_ACTIVE_SEASON: {
+          status: 403,
+          message:
+            "Bài kiểm tra không thuộc mùa đang hoạt động.",
+        },
+
+        EXAM_REVIEW_NOT_AVAILABLE: {
+          status: 409,
+          message:
+            "Chỉ có thể xem lại bài sau khi bài kiểm tra đã kết thúc.",
+        },
+
+        EXAM_FULL_RESULT_NOT_AVAILABLE: {
+          status: 403,
+          message:
+            "Bài kiểm tra này không cho phép xem chi tiết đáp án.",
+        },
+
+        EXAM_ATTEMPT_NOT_FOUND: {
+          status: 404,
+          message:
+            "Không tìm thấy bài làm của bạn cho bài kiểm tra này.",
+        },
+
+        EXAM_ATTEMPT_NOT_COMPLETED: {
+          status: 409,
+          message:
+            "Bài làm của bạn chưa ở trạng thái hoàn tất.",
+        },
+
+        EXAM_REVIEW_NOT_FOUND: {
+          status: 404,
+          message:
+            "Không tìm thấy dữ liệu xem lại bài làm.",
+        },
+      };
+
+      const errorResponse =
+        errorResponses[result.code] || {
+          status: 400,
+          message:
+            "Không thể tải dữ liệu xem lại bài.",
+        };
+
+      return res
+        .status(errorResponse.status)
+        .json({
+          success: false,
+
+          error: {
+            code:
+              result.code,
+
+            message:
+              errorResponse.message,
+          },
+        });
+    }
+
+    return res
+      .status(200)
+      .json({
+        success: true,
+        data:
+          result.data,
+      });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/*
+=====================================================
 Student: Submit or update Exam answer
 =====================================================
 */
@@ -996,6 +1133,7 @@ async function getExamPresentationController(
 }
 
 module.exports = {
+getCompletedExamReviewController,
 getExamPresentationController,
 submitExamAnswerController,
 finishExamController,

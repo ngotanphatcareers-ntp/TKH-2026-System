@@ -16,6 +16,7 @@ const {
   findExamRealtimeStateById,
   createLateJoinAttempt,
   updateWaitingRoomLastSeen,
+  findCompletedExamReview,
   saveStudentExamAnswer,
 } = require(
   "../repositories/exam.repository"
@@ -228,6 +229,215 @@ function mapExamRealtimeState(state) {
   };
 }
 
+/*
+=====================================================
+Student Exam review mapping
+=====================================================
+*/
+
+function mapExamReviewQuestion(
+  question
+) {
+  if (!question) {
+    return null;
+  }
+
+  const chosenAnswer =
+    question.chosen_answer
+      ? String(
+          question.chosen_answer
+        )
+          .trim()
+          .toUpperCase()
+      : null;
+
+  const correctAnswer =
+    String(
+      question.correct_answer || ""
+    )
+      .trim()
+      .toUpperCase();
+
+  const answers = {
+    A: question.answer_a || "",
+    B: question.answer_b || "",
+    C: question.answer_c || "",
+    D: question.answer_d || "",
+  };
+
+  return {
+    id:
+      Number(
+        question.question_id
+      ),
+
+    questionIndex:
+      Number(
+        question.question_index
+      ) || 0,
+
+    questionText:
+      question.question_text || "",
+
+    answers,
+
+    chosenAnswer,
+
+    chosenAnswerText:
+      chosenAnswer
+        ? answers[chosenAnswer] || ""
+        : null,
+
+    correctAnswer,
+
+    correctAnswerText:
+      answers[correctAnswer] || "",
+
+    isAnswered:
+      Boolean(chosenAnswer),
+
+    isCorrect:
+      chosenAnswer
+        ? Boolean(
+            question.is_correct
+          )
+        : false,
+
+    points:
+      Number(
+        question.points
+      ) || 0,
+
+    earnedPoints:
+      chosenAnswer &&
+      Boolean(question.is_correct)
+        ? Number(
+            question.points
+          ) || 0
+        : 0,
+
+    answeredAt:
+      question.answered_at,
+
+    updatedAt:
+      question.answer_updated_at,
+  };
+}
+
+
+function mapCompletedExamReview(
+  review
+) {
+  if (
+    !review ||
+    !review.summary
+  ) {
+    return null;
+  }
+
+  const summary =
+    review.summary;
+
+  const questions =
+    Array.isArray(review.questions)
+      ? review.questions
+          .map(
+            mapExamReviewQuestion
+          )
+          .filter(Boolean)
+      : [];
+
+  const unansweredCount =
+    questions.filter(
+      question =>
+        !question.isAnswered
+    ).length;
+
+  const incorrectCount =
+    questions.filter(
+      question =>
+        question.isAnswered &&
+        !question.isCorrect
+    ).length;
+
+  return {
+    exam: {
+      id:
+        Number(summary.exam_id),
+
+      seasonId:
+        Number(summary.season_id),
+
+      name:
+        summary.exam_name,
+
+      type:
+        summary.exam_type,
+
+      status:
+        summary.exam_status,
+
+      resultVisibility:
+        summary.result_visibility,
+    },
+
+    attempt: {
+      id:
+        Number(summary.attempt_id),
+
+      status:
+        summary.attempt_status,
+
+      startedAt:
+        summary.started_at,
+
+      submittedAt:
+        summary.submitted_at,
+
+      score:
+        Number(
+          summary.score
+        ) || 0,
+
+      maximumScore:
+        Number(
+          summary.maximum_score
+        ) || 0,
+
+      correctCount:
+        Number(
+          summary.correct_count
+        ) || 0,
+
+      incorrectCount,
+
+      unansweredCount,
+
+      totalQuestions:
+        Number(
+          summary.total_questions
+        ) || questions.length,
+
+      isLateJoin:
+        Boolean(
+          summary.is_late_join
+        ),
+
+      joinedQuestionIndex:
+        summary.joined_question_index ===
+          null ||
+        summary.joined_question_index ===
+          undefined
+          ? null
+          : Number(
+              summary
+                .joined_question_index
+            ),
+    },
+
+    questions,
+  };
+}
 
 /*
 =====================================================
@@ -2316,7 +2526,181 @@ async function submitExamAnswer({
   };
 }
 
+
+/*
+=====================================================
+Student: Get completed Exam review
+
+Rules:
+- Student must belong to the active season.
+- Exam must belong to the active season.
+- Exam must already be COMPLETED.
+- Only FULL_RESULT exams expose correct answers.
+- Student can only review their own completed attempt.
+=====================================================
+*/
+
+async function getCompletedExamReview({
+  memberId,
+  examId,
+}) {
+  const normalizedExamId =
+    Number(examId);
+
+  if (
+    !Number.isInteger(
+      normalizedExamId
+    ) ||
+    normalizedExamId <= 0
+  ) {
+    return {
+      success: false,
+      code: "INVALID_EXAM_ID",
+    };
+  }
+
+  /*
+   * Resolve membership from the authenticated
+   * Student instead of accepting a membership ID
+   * from the browser.
+   */
+  const context =
+    await resolveActiveMembership(
+      memberId
+    );
+
+  if (!context.success) {
+    return context;
+  }
+
+  const exam =
+    await findExamById(
+      normalizedExamId
+    );
+
+  if (!exam) {
+    return {
+      success: false,
+      code: "EXAM_NOT_FOUND",
+    };
+  }
+
+  /*
+   * Prevent access to Exams belonging to another
+   * season.
+   */
+  if (
+    Number(exam.season_id) !==
+    Number(
+      context.activeSeason.id
+    )
+  ) {
+    return {
+      success: false,
+      code:
+        "EXAM_NOT_IN_ACTIVE_SEASON",
+    };
+  }
+
+  /*
+   * Correct answers must never be exposed while
+   * the Exam is still running.
+   */
+  if (
+    String(
+      exam.status || ""
+    ).toUpperCase() !==
+    "COMPLETED"
+  ) {
+    return {
+      success: false,
+      code:
+        "EXAM_REVIEW_NOT_AVAILABLE",
+    };
+  }
+
+  /*
+   * FULL_RESULT is the only visibility mode that
+   * allows question-by-question review.
+   */
+  if (
+    String(
+      exam.result_visibility || ""
+    ).toUpperCase() !==
+    "FULL_RESULT"
+  ) {
+    return {
+      success: false,
+      code:
+        "EXAM_FULL_RESULT_NOT_AVAILABLE",
+    };
+  }
+
+  const lookupParams = {
+    examId:
+      normalizedExamId,
+
+    seasonMembershipId:
+      context.membership.id,
+  };
+
+  /*
+   * Verify that this Student really owns a
+   * completed attempt for this Exam.
+   */
+  const latestAttempt =
+    await findLatestAttemptByExamAndMembership(
+      lookupParams
+    );
+
+  if (!latestAttempt) {
+    return {
+      success: false,
+      code:
+        "EXAM_ATTEMPT_NOT_FOUND",
+    };
+  }
+
+  if (
+    String(
+      latestAttempt.status || ""
+    ).toUpperCase() !==
+    "COMPLETED"
+  ) {
+    return {
+      success: false,
+      code:
+        "EXAM_ATTEMPT_NOT_COMPLETED",
+    };
+  }
+
+  const review =
+    await findCompletedExamReview(
+      lookupParams
+    );
+
+  if (!review) {
+    return {
+      success: false,
+      code:
+        "EXAM_REVIEW_NOT_FOUND",
+    };
+  }
+
+  return {
+    success: true,
+
+    data: {
+      review:
+        mapCompletedExamReview(
+          review
+        ),
+    },
+  };
+}
+
 module.exports = {
+  getCompletedExamReview,
     submitExamAnswer,
   getExamRealtimeState,
   joinExamRealtime,

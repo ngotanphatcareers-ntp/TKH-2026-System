@@ -7,6 +7,7 @@ const authenticateToken = require(
 const {
   getExamsController,
   joinWaitingRoomController,
+  getCompletedExamReviewController,
   submitExamAnswerController,
 } = require(
   "../controllers/exam.controller"
@@ -49,6 +50,18 @@ router.post(
   joinWaitingRoomController
 );
 
+
+/*
+=====================================================
+GET /api/exams/:examId/attempt/review
+Get the authenticated Student completed Exam review
+=====================================================
+*/
+
+router.get(
+  "/:examId/attempt/review",
+  getCompletedExamReviewController
+);
 
 /*
 =====================================================
