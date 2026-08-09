@@ -27472,3 +27472,397 @@ if (
 } else {
     initializeAdminSurveyPageDemo();
 }
+
+/* =========================================================
+   TKH 2026 — STUDENT PAGE TRANSITION LOADER
+
+   - Chỉ chạy trên .student-pastel-page
+   - Không gọi thêm API
+   - Không tác động Admin
+   - Không tác động Login
+   ========================================================= */
+
+
+function createStudentPageLoader() {
+
+    if (
+        !document.body.classList.contains(
+            "student-pastel-page"
+        )
+    ) {
+        return null;
+    }
+
+
+    const existingLoader =
+        document.getElementById(
+            "studentPageLoader"
+        );
+
+
+    if (existingLoader) {
+        return existingLoader;
+    }
+
+
+    const loader =
+        document.createElement(
+            "div"
+        );
+
+
+    loader.id =
+        "studentPageLoader";
+
+
+    loader.className =
+        "student-page-loader";
+
+
+    loader.setAttribute(
+        "aria-hidden",
+        "true"
+    );
+
+
+    loader.innerHTML = `
+        <div class="student-page-loader-content">
+
+            <div class="student-page-loader-logo-area">
+
+                <div
+                    class="student-page-loader-ring"
+                    aria-hidden="true"
+                ></div>
+
+                <img
+                    src="assets/images/LOGO-Mau-Chieu-Ra-2026-pastel.png"
+                    class="student-page-loader-logo"
+                    alt=""
+                >
+
+            </div>
+
+            <p class="student-page-loader-text">
+                Đang chuyển trang<span class="student-page-loader-dots"></span>
+            </p>
+
+        </div>
+    `;
+
+
+    document.body.appendChild(
+        loader
+    );
+
+
+    return loader;
+}
+
+
+function showStudentPageLoader() {
+
+    const loader =
+        createStudentPageLoader();
+
+
+    if (!loader) {
+        return;
+    }
+
+
+    loader.classList.add(
+        "is-visible"
+    );
+
+
+    loader.setAttribute(
+        "aria-hidden",
+        "false"
+    );
+}
+
+
+function hideStudentPageLoader() {
+
+    const loader =
+        document.getElementById(
+            "studentPageLoader"
+        );
+
+
+    if (!loader) {
+        return;
+    }
+
+
+    loader.classList.remove(
+        "is-visible"
+    );
+
+
+    loader.setAttribute(
+        "aria-hidden",
+        "true"
+    );
+}
+
+
+/*
+ * Kiểm tra link có phải một page navigation
+ * thực sự hay không.
+ */
+function shouldUseStudentPageLoader(
+    link,
+    event
+) {
+
+    if (
+        !link ||
+        !link.href
+    ) {
+        return false;
+    }
+
+
+    /*
+     * Ctrl / Cmd / Shift / Alt click:
+     * giữ nguyên hành vi mở tab mới.
+     */
+    if (
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        event.altKey
+    ) {
+        return false;
+    }
+
+
+    /*
+     * Middle mouse click.
+     */
+    if (
+        typeof event.button === "number" &&
+        event.button !== 0
+    ) {
+        return false;
+    }
+
+
+    /*
+     * target="_blank"
+     */
+    if (
+        link.target &&
+        link.target.toLowerCase() ===
+            "_blank"
+    ) {
+        return false;
+    }
+
+
+    const href =
+        link.getAttribute(
+            "href"
+        );
+
+
+    if (
+        !href ||
+        href === "#" ||
+        href.startsWith("#") ||
+        href.startsWith("javascript:") ||
+        href.startsWith("mailto:") ||
+        href.startsWith("tel:")
+    ) {
+        return false;
+    }
+
+
+    /*
+     * Không chạy loader cho Logout.
+     */
+    if (
+        link.classList.contains(
+            "logout-menu"
+        )
+    ) {
+        return false;
+    }
+
+
+    let targetUrl;
+
+
+    try {
+
+        targetUrl =
+            new URL(
+                link.href,
+                window.location.href
+            );
+
+    } catch (error) {
+
+        return false;
+    }
+
+
+    /*
+     * Chỉ internal navigation.
+     * External website không can thiệp.
+     */
+    if (
+        targetUrl.origin !==
+        window.location.origin
+    ) {
+        return false;
+    }
+
+
+    /*
+     * Nếu click chính URL hiện tại thì
+     * không cần loader.
+     */
+    if (
+        targetUrl.pathname ===
+            window.location.pathname &&
+        targetUrl.search ===
+            window.location.search &&
+        targetUrl.hash ===
+            window.location.hash
+    ) {
+        return false;
+    }
+
+
+    return true;
+}
+
+
+/* =========================================================
+   INITIALIZE
+   ========================================================= */
+
+function initializeStudentPageLoader() {
+
+    if (
+        !document.body.classList.contains(
+            "student-pastel-page"
+        )
+    ) {
+        return;
+    }
+
+
+    /*
+     * Tạo sẵn loader để khi click menu
+     * chỉ cần bật class => phản hồi tức thì.
+     */
+    createStudentPageLoader();
+
+
+    /*
+     * Bắt tất cả link nội bộ của Student.
+     *
+     * Không phải sửa onclick từng menu.
+     */
+    document.addEventListener(
+        "click",
+        event => {
+
+            const link =
+                event.target.closest(
+                    "a"
+                );
+
+
+            if (
+                !shouldUseStudentPageLoader(
+                    link,
+                    event
+                )
+            ) {
+                return;
+            }
+
+
+            /*
+             * KHÔNG preventDefault.
+             *
+             * Navigation vẫn diễn ra ngay lập tức.
+             * Loader chỉ phủ lên trang hiện tại
+             * trong lúc browser chuyển trang.
+             */
+            showStudentPageLoader();
+
+        }
+    );
+
+
+    /*
+     * Trường hợp browser Back / Forward Cache:
+     * đảm bảo loader không bị giữ lại.
+     */
+    window.addEventListener(
+        "pageshow",
+        () => {
+
+            hideStudentPageLoader();
+
+        }
+    );
+
+
+    /*
+     * Safety:
+     * nếu page được restore hoặc navigation
+     * thất bại thì không để overlay mắc kẹt.
+     */
+    window.addEventListener(
+        "focus",
+        () => {
+
+            window.setTimeout(
+                () => {
+
+                    if (
+                        document.visibilityState ===
+                            "visible"
+                    ) {
+                        hideStudentPageLoader();
+                    }
+
+                },
+                700
+            );
+
+        }
+    );
+}
+
+
+/*
+ * app.js đang được dùng chung nhiều page,
+ * nên khởi tạo an toàn theo trạng thái DOM.
+ */
+
+if (
+    document.readyState ===
+        "loading"
+) {
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        initializeStudentPageLoader,
+        {
+            once: true
+        }
+    );
+
+} else {
+
+    initializeStudentPageLoader();
+
+}

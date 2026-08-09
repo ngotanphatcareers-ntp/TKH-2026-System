@@ -13925,3 +13925,349 @@ small {
     }
 
 }
+
+/* =====================================================
+   TKH 2026 — STUDENT PAGE TRANSITION LOADER
+
+   Chỉ dùng cho:
+   <body class="app-page student-pastel-page">
+
+   Không ảnh hưởng Admin / Login.
+   ===================================================== */
+
+.student-page-loader {
+    position: fixed;
+    inset: 0;
+
+    z-index: 30000;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 24px;
+
+    background:
+        rgba(
+            255,
+            250,
+            243,
+            0.94
+        );
+
+    backdrop-filter:
+        blur(6px);
+
+    -webkit-backdrop-filter:
+        blur(6px);
+
+    opacity: 0;
+    visibility: hidden;
+
+    pointer-events: none;
+
+    transition:
+        opacity 180ms ease,
+        visibility 180ms ease;
+}
+
+
+/* Khi chuyển trang */
+
+.student-page-loader.is-visible {
+    opacity: 1;
+    visibility: visible;
+
+    pointer-events: auto;
+}
+
+
+/* =====================================================
+   LOADER CONTENT
+   ===================================================== */
+
+.student-page-loader-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    text-align: center;
+}
+
+
+/* =====================================================
+   LOGO + GLOW
+   ===================================================== */
+
+.student-page-loader-logo-area {
+    position: relative;
+
+    width: 150px;
+    height: 150px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-bottom: 12px;
+}
+
+
+/* Ánh sáng mềm phía sau */
+
+.student-page-loader-logo-area::before {
+    content: "";
+
+    position: absolute;
+
+    width: 128px;
+    height: 128px;
+
+    border-radius: 50%;
+
+    background:
+        radial-gradient(
+            circle,
+            rgba(255, 211, 133, 0.30) 0%,
+            rgba(243, 139, 105, 0.13) 40%,
+            transparent 72%
+        );
+
+    filter:
+        blur(9px);
+
+    animation:
+        studentPageLoaderGlow
+        1.45s
+        ease-in-out
+        infinite;
+}
+
+
+/* Vòng pastel */
+
+.student-page-loader-ring {
+    position: absolute;
+
+    width: 124px;
+    height: 124px;
+
+    border:
+        2px solid
+        rgba(
+            239,
+            120,
+            91,
+            0.20
+        );
+
+    border-top-color:
+        rgba(
+            239,
+            120,
+            91,
+            0.78
+        );
+
+    border-radius: 50%;
+
+    animation:
+        studentPageLoaderSpin
+        1.25s
+        linear
+        infinite;
+}
+
+
+/* Logo */
+
+.student-page-loader-logo {
+    position: relative;
+    z-index: 2;
+
+    display: block;
+
+    width: 88px;
+    height: 88px;
+
+    object-fit: contain;
+
+    filter:
+        drop-shadow(
+            0 5px 10px
+            rgba(
+                102,
+                75,
+                47,
+                0.08
+            )
+        );
+
+    animation:
+        studentPageLoaderFloat
+        1.35s
+        ease-in-out
+        infinite;
+}
+
+
+/* =====================================================
+   TEXT
+   ===================================================== */
+
+.student-page-loader-text {
+    margin: 0;
+
+    color:
+        #75695f;
+
+    font-family:
+        "Nunito",
+        Arial,
+        sans-serif;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    letter-spacing:
+        0.2px;
+}
+
+
+/* Animated dots */
+
+.student-page-loader-dots::after {
+    content: "";
+
+    display: inline-block;
+
+    width: 18px;
+
+    text-align: left;
+
+    animation:
+        studentPageLoaderDots
+        1.2s
+        steps(4, end)
+        infinite;
+}
+
+
+/* =====================================================
+   ANIMATIONS
+   ===================================================== */
+
+@keyframes studentPageLoaderSpin {
+
+    to {
+        transform:
+            rotate(360deg);
+    }
+
+}
+
+
+@keyframes studentPageLoaderFloat {
+
+    0%,
+    100% {
+        transform:
+            translateY(0)
+            scale(1);
+    }
+
+    50% {
+        transform:
+            translateY(-3px)
+            scale(1.02);
+    }
+
+}
+
+
+@keyframes studentPageLoaderGlow {
+
+    0%,
+    100% {
+        opacity: 0.55;
+
+        transform:
+            scale(0.92);
+    }
+
+    50% {
+        opacity: 0.95;
+
+        transform:
+            scale(1.06);
+    }
+
+}
+
+
+@keyframes studentPageLoaderDots {
+
+    0% {
+        content: "";
+    }
+
+    25% {
+        content: ".";
+    }
+
+    50% {
+        content: "..";
+    }
+
+    75%,
+    100% {
+        content: "...";
+    }
+
+}
+
+
+/* =====================================================
+   MOBILE
+   ===================================================== */
+
+@media (max-width: 768px) {
+
+    .student-page-loader-logo-area {
+        width: 138px;
+        height: 138px;
+    }
+
+    .student-page-loader-ring {
+        width: 114px;
+        height: 114px;
+    }
+
+    .student-page-loader-logo {
+        width: 80px;
+        height: 80px;
+    }
+
+}
+
+
+/* =====================================================
+   REDUCED MOTION
+   ===================================================== */
+
+@media (
+    prefers-reduced-motion:
+    reduce
+) {
+
+    .student-page-loader-logo,
+    .student-page-loader-logo-area::before,
+    .student-page-loader-ring,
+    .student-page-loader-dots::after {
+
+        animation:
+            none !important;
+    }
+
+}
