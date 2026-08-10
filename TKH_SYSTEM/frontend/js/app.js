@@ -1,5 +1,5 @@
 const API_BASE_URL =
-    "https://via-giants-attend-accent.trycloudflare.com";
+    "https://glossary-sydney-sixth-enquiries.trycloudflare.com";
 
 const demoUsers = [
     {
