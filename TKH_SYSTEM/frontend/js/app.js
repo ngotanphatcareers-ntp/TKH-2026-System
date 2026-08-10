@@ -1,5 +1,5 @@
 const API_BASE_URL =
-    "https://incorporated-guaranteed-michael-object.trycloudflare.com";
+    "https://bits-horn-giving-continuously.trycloudflare.com";
 
 const demoUsers = [
     {
