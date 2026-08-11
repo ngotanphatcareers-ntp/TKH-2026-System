@@ -1,5 +1,5 @@
 const API_BASE_URL =
-    "https://blocking-proposals-engineers-obtaining.trycloudflare.com";
+    "https://solaris-capital-leave-lender.trycloudflare.com";
 
 const demoUsers = [
     {
