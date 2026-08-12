@@ -1,5 +1,38 @@
 const scoreService = require("../services/score.service");
 
+const seasonService = require("../services/season.service");
+
+async function getRankingVisibilityForRequest(req) {
+  const currentSeason =
+    await seasonService.getCurrentSeason();
+
+  /*
+   * Admin luôn được phép xem ranking,
+   * kể cả khi BTC đang ẩn ranking với học viên.
+   */
+  const isAdmin =
+    String(req.user?.role || "")
+      .trim()
+      .toUpperCase() === "ADMIN";
+
+  /*
+   * Nếu không tìm thấy season/settings,
+   * mặc định khóa ranking với học viên
+   * để tránh vô tình lộ dữ liệu.
+   */
+  const rankingVisible =
+    Boolean(
+      currentSeason?.settings
+        ?.rankingVisible
+    );
+
+  return {
+    rankingVisible,
+    canViewRanking:
+      isAdmin || rankingVisible,
+  };
+}
+
 
 async function getMemberScoreSummary(
   req,
@@ -181,16 +214,29 @@ async function getMyGroupScores(
         });
     }
 
-    return res.status(200).json({
-      success: true,
-      data: {
-        season: result.season,
-        group: result.group,
-        summary: result.summary,
-        ranking: result.ranking,
-        history: result.history,
-      },
-    });
+    const rankingAccess =
+  await getRankingVisibilityForRequest(
+    req
+  );
+
+return res.status(200).json({
+  success: true,
+  data: {
+    season: result.season,
+    group: result.group,
+    summary: result.summary,
+
+    ranking:
+      rankingAccess.canViewRanking
+        ? result.ranking
+        : null,
+
+    rankingVisible:
+      rankingAccess.rankingVisible,
+
+    history: result.history,
+  },
+});
   } catch (error) {
     return next(error);
   }
@@ -203,12 +249,40 @@ async function getGroupRankings(
   next
 ) {
   try {
+    const rankingAccess =
+      await getRankingVisibilityForRequest(
+        req
+      );
+
+    /*
+     * Khi học viên bị khóa ranking,
+     * không cần chạy cả logic tính BXH.
+     *
+     * Quan trọng:
+     * không trả điểm hay thứ hạng nhóm nào
+     * ra khỏi Backend.
+     */
+    if (!rankingAccess.canViewRanking) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          rankingVisible: false,
+          groups: [],
+          total: 0,
+        },
+      });
+    }
+
     const result =
-      await scoreService.getGroupRankings();
+      await scoreService
+        .getGroupRankings();
 
     return res.status(200).json({
       success: true,
       data: {
+        rankingVisible:
+          rankingAccess.rankingVisible,
+
         groups: result.groups,
         total: result.total,
       },
@@ -218,13 +292,31 @@ async function getGroupRankings(
   }
 }
 
-
 async function getIndividualRankings(
   req,
   res,
   next
 ) {
   try {
+
+    const rankingAccess =
+      await getRankingVisibilityForRequest(
+        req
+      );
+
+    if (!rankingAccess.canViewRanking) {
+      return res.status(200).json({
+        success: true,
+
+        data: {
+          rankingVisible: false,
+          top10: [],
+          myRanking: null,
+          total: 0,
+        },
+      });
+    }
+
     const result =
       await scoreService
         .getIndividualRankings(
@@ -284,26 +376,29 @@ async function getIndividualRankings(
       }));
 
     return res.status(200).json({
-      success: true,
+  success: true,
 
-      data: {
-        top10,
+  data: {
+    rankingVisible:
+      rankingAccess.rankingVisible,
 
-        myRanking:
-          result.myRanking
-            ? {
-                ranking:
-                  result.myRanking.ranking,
+    top10,
 
-                totalPoints:
-                  result.myRanking
-                    .totalPoints,
-              }
-            : null,
+    myRanking:
+      result.myRanking
+        ? {
+            ranking:
+              result.myRanking.ranking,
 
-        total: result.total,
-      },
-    });
+            totalPoints:
+              result.myRanking
+                .totalPoints,
+          }
+        : null,
+
+    total: result.total,
+  },
+});
   } catch (error) {
     return next(error);
   }

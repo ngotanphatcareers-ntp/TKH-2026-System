@@ -56,14 +56,56 @@
                 <span>Điểm hiện tại</span>
             </div>
 
-            <div class="info-card">
+            <div
+                class="info-card"
+                id="groupRankingCard"
+            >
                 <h3>Xếp hạng nhóm</h3>
-                <p class="big-number" id="myGroupRankNumber">-</p>
+
+                <p
+                    class="big-number"
+                    id="myGroupRankNumber"
+                >
+                    -
+                </p>
+
                 <span>Trong 8 nhóm</span>
             </div>
         </div>
 
-        <div class="attendance-box">
+        <div
+            id="groupRankingHiddenNotice"
+            class="ranking-hidden-notice hidden"
+        >
+            <div class="ranking-hidden-icon">
+                🏆
+            </div>
+
+            <div class="ranking-hidden-content">
+
+                <h2>
+                    Kết quả thi đua đang được giữ bí mật
+                </h2>
+
+                <p>
+                    Nhóm nào sẽ dẫn đầu
+                    <strong>Thánh Kinh Hè 2026</strong>?
+                </p>
+
+                <p class="ranking-hidden-highlight">
+                    Hãy cùng đón chờ kết quả được công bố
+                    vào ngày
+                    <strong>16/08</strong>
+                    nhé! ✨
+                </p>
+
+            </div>
+        </div>
+
+        <div
+            class="attendance-box"
+            id="topGroupRankingSection"
+        >
             <h2>🏆 Top 3 Nhóm nhỏ có thành tích xuất sắc</h2>
 
             <div id="topGroupRankingList" class="top-group-list">
@@ -72,7 +114,10 @@
         </div>
 
 
-        <div class="attendance-box">
+        <div
+            class="attendance-box"
+            id="fullGroupRankingSection"
+        >
             <h2>Bảng xếp hạng nhóm</h2>
 
             <table class="score-table">

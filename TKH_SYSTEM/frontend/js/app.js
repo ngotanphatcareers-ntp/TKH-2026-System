@@ -9356,6 +9356,31 @@ async function loadGroupRankingDemo() {
         return;
     }
 
+    try {
+        const myGroupData =
+            await getMyGroupScoreApiData();
+
+        if (
+            myGroupData?.rankingVisible === false
+        ) {
+            const fullRankingSection =
+                document.getElementById(
+                    "fullGroupRankingSection"
+                );
+
+            fullRankingSection?.classList.add(
+                "hidden"
+            );
+
+            return;
+        }
+    } catch (error) {
+        console.error(
+            "Check group ranking visibility error:",
+            error
+        );
+    }
+
     tableBody.innerHTML = `
         <tr>
             <td colspan="4">
@@ -10553,6 +10578,16 @@ async function loadTopPersonalRankingDemo() {
             "topPersonalRankingBody"
         );
 
+    const rankingSection =
+        document.getElementById(
+            "personalTopRankingSection"
+        );
+
+    const rankingNotice =
+        document.getElementById(
+            "personalRankingHiddenNotice"
+        );
+
     if (!tableBody) {
         return;
     }
@@ -10568,6 +10603,35 @@ async function loadTopPersonalRankingDemo() {
     try {
         const data =
             await getIndividualRankingApiData();
+
+        /*
+         * BTC đang ẩn bảng xếp hạng.
+         */
+        if (
+            data?.rankingVisible === false
+        ) {
+            rankingSection?.classList.add(
+                "hidden"
+            );
+
+            rankingNotice?.classList.remove(
+                "hidden"
+            );
+
+            return;
+        }
+
+        /*
+         * Ranking đang mở:
+         * đảm bảo giao diện được hiện lại.
+         */
+        rankingSection?.classList.remove(
+            "hidden"
+        );
+
+        rankingNotice?.classList.add(
+            "hidden"
+        );
 
         const ranking =
             Array.isArray(data?.top10)
@@ -10606,15 +10670,20 @@ async function loadTopPersonalRankingDemo() {
                         </td>
 
                         <td>
-                            ${escapeHtml(fullName)}
+                            ${escapeHtml(
+                                fullName
+                            )}
                         </td>
 
                         <td>
-                            ${escapeHtml(groupName)}
+                            ${escapeHtml(
+                                groupName
+                            )}
                         </td>
                     </tr>
                 `;
             }).join("");
+
     } catch (error) {
         console.error(
             "Load personal rankings error:",
@@ -10643,6 +10712,16 @@ async function loadMyPersonalRankDemo() {
             "myPersonalRankText"
         );
 
+    const rankingCard =
+        document.getElementById(
+            "personalRankingCard"
+        );
+
+    const rankingNotice =
+        document.getElementById(
+            "personalRankingHiddenNotice"
+        );
+
     if (
         !rankElement ||
         !rankTextElement
@@ -10658,6 +10737,31 @@ async function loadMyPersonalRankDemo() {
     try {
         const data =
             await getIndividualRankingApiData();
+
+        /*
+         * Khi BTC khóa ranking:
+         * ẩn card thứ hạng cá nhân.
+         */
+        if (
+            data?.rankingVisible === false
+        ) {
+            rankingCard?.classList.add(
+                "hidden"
+            );
+
+            rankingNotice?.classList.remove(
+                "hidden"
+            );
+
+            return;
+        }
+
+        /*
+         * Khi BTC mở ranking trở lại.
+         */
+        rankingCard?.classList.remove(
+            "hidden"
+        );
 
         const myRanking =
             data?.myRanking || null;
@@ -10675,7 +10779,10 @@ async function loadMyPersonalRankDemo() {
             `#${myRanking.ranking}`;
 
         rankTextElement.innerText =
-            `Trong ${Number(data.total) || 0} học viên`;
+            `Trong ${
+                Number(data.total) || 0
+            } học viên`;
+
     } catch (error) {
         console.error(
             "Load personal rank error:",
@@ -10732,6 +10839,21 @@ async function loadTopGroupRankingDemo() {
             "topGroupRankingList"
         );
 
+    const rankingSection =
+        document.getElementById(
+            "topGroupRankingSection"
+        );
+
+    const fullRankingSection =
+        document.getElementById(
+            "fullGroupRankingSection"
+        );
+
+    const rankingNotice =
+        document.getElementById(
+            "groupRankingHiddenNotice"
+        );
+
     if (!list) {
         return;
     }
@@ -10743,6 +10865,43 @@ async function loadTopGroupRankingDemo() {
     `;
 
     try {
+        /*
+         * Dùng my-group để biết trạng thái
+         * rankingVisible hiện tại.
+         */
+        const myGroupData =
+            await getMyGroupScoreApiData();
+
+        if (
+            myGroupData?.rankingVisible === false
+        ) {
+            rankingSection?.classList.add(
+                "hidden"
+            );
+
+            fullRankingSection?.classList.add(
+                "hidden"
+            );
+
+            rankingNotice?.classList.remove(
+                "hidden"
+            );
+
+            return;
+        }
+
+        rankingSection?.classList.remove(
+            "hidden"
+        );
+
+        fullRankingSection?.classList.remove(
+            "hidden"
+        );
+
+        rankingNotice?.classList.add(
+            "hidden"
+        );
+
         const groups =
             await getGroupRankingApiData();
 
@@ -10773,7 +10932,7 @@ async function loadTopGroupRankingDemo() {
                     <div class="question-card">
                         <h3>
                             #${Number(item.ranking) || "-"}
-                            ${groupName}
+                            ${escapeHtml(groupName)}
                         </h3>
 
                         <p>
@@ -10782,6 +10941,7 @@ async function loadTopGroupRankingDemo() {
                     </div>
                 `;
             }).join("");
+
     } catch (error) {
         console.error(
             "Load top group ranking error:",
@@ -10802,6 +10962,16 @@ async function loadMyGroupRankDemo() {
             "myGroupRankNumber"
         );
 
+    const rankingCard =
+        document.getElementById(
+            "groupRankingCard"
+        );
+
+    const rankingNotice =
+        document.getElementById(
+            "groupRankingHiddenNotice"
+        );
+
     if (!rankElement) {
         return;
     }
@@ -10816,6 +10986,31 @@ async function loadMyGroupRankDemo() {
             return;
         }
 
+        /*
+         * Khi BTC khóa ranking:
+         * ẩn luôn card xếp hạng nhóm.
+         */
+        if (
+            data?.rankingVisible === false
+        ) {
+            rankingCard?.classList.add(
+                "hidden"
+            );
+
+            rankingNotice?.classList.remove(
+                "hidden"
+            );
+
+            return;
+        }
+
+        /*
+         * Khi BTC mở ranking trở lại.
+         */
+        rankingCard?.classList.remove(
+            "hidden"
+        );
+
         const ranking =
             Number(data.ranking);
 
@@ -10823,6 +11018,7 @@ async function loadMyGroupRankDemo() {
             ranking > 0
                 ? "#" + ranking
                 : "-";
+
     } catch (error) {
         console.error(
             "Load group ranking error:",
