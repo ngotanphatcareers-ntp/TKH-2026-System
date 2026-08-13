@@ -19973,6 +19973,38 @@ function getStudentExamSocket() {
         }
     );
 
+    studentExamSocket.io.on(
+    "reconnect",
+    () => {
+        const examId =
+            Number(
+                activeStudentExamId
+            );
+
+        if (
+            !Number.isInteger(examId) ||
+            examId <= 0
+        ) {
+            return;
+        }
+
+        console.log(
+            `Student Exam Socket reconnected. Rejoining exam ${examId}...`
+        );
+
+        enterStudentExamRealtime(
+            examId
+        ).catch(
+            error => {
+                console.error(
+                    "Student Exam rejoin after reconnect error:",
+                    error
+                );
+            }
+        );
+    }
+);
+
     const synchronizeActiveExam =
         payload => {
             const payloadExamId =
