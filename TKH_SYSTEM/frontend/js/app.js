@@ -1,5 +1,5 @@
 const API_BASE_URL =
-    "https://solaris-capital-leave-lender.trycloudflare.com";
+    "https://gbp-inquiry-america-heaven.trycloudflare.com";
 
 const demoUsers = [
     {
