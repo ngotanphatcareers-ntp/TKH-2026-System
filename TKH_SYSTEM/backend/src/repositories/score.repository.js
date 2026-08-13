@@ -287,10 +287,17 @@ async function findGroupScoreHistory(groupId) {
             AND st.status = 'ACTIVE'
 
             /*
-            * Pre-test vẫn giữ trong lịch sử và tổng điểm cá nhân,
-            * nhưng không hiển thị trong lịch sử điểm nhóm.
-            */
-            AND st.score_type <> 'PRE_TEST'
+              * Pre-test và Final Test vẫn được giữ trong
+              * lịch sử điểm cá nhân và dùng để tính điểm,
+              * nhưng không hiển thị trong lịch sử điểm nhóm.
+              *
+              * Học viên chỉ được xem kết quả bài thi
+              * của chính mình tại trang điểm cá nhân.
+              */
+              AND st.score_type NOT IN (
+                'PRE_TEST',
+                'FINAL_TEST'
+              )
       ) AS history
 
       ORDER BY
