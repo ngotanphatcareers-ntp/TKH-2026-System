@@ -1,5 +1,5 @@
 const API_BASE_URL =
-    "https://gbp-inquiry-america-heaven.trycloudflare.com";
+    "https://surveys-inquiry-eating-push.trycloudflare.com";
 
 const demoUsers = [
     {
